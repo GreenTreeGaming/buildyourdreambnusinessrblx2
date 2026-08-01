@@ -5,12 +5,24 @@ local RunService =
 	game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
+local Debris = game:GetService("Debris")
+local TweenService =
+	game:GetService("TweenService")
+
 local player = Players.LocalPlayer
 local playerGui =
 	player:WaitForChild("PlayerGui")
 
 local plotsFolder =
 	Workspace:WaitForChild("Plots")
+
+local remotes =
+ReplicatedStorage:WaitForChild("Remotes")
+
+local manualSaleResultRemote =
+	remotes:WaitForChild(
+		"ManualLemonadeSaleResult"
+	)
 
 local UITheme = require(
 	ReplicatedStorage
@@ -25,7 +37,7 @@ type StandUIState = {
 	Stand: Model,
 	Billboard: BillboardGui,
 
-	TimerLabel: TextLabel,
+	TimerLabel: TextLabel, 
 	StatusLabel: TextLabel,
 	ProgressFill: Frame,
 
@@ -343,6 +355,245 @@ local function createStandUI(
 	end)
 end
 
+local function showSalePopup(
+	stand: Model,
+	amount: number
+)
+	local positionPart =
+		stand:FindFirstChild(
+			"SaleEffectPosition",
+			true
+		)
+		or stand:FindFirstChild(
+			"CooldownUIPosition",
+			true
+		)
+
+	if not positionPart
+		or not positionPart:IsA(
+			"BasePart"
+		) then
+
+		return
+	end
+
+	local existing =
+		playerGui:FindFirstChild(
+			"ResponsiveSalePopup"
+		)
+
+	if existing then
+		existing:Destroy()
+	end
+
+	local billboard =
+		Instance.new("BillboardGui")
+
+	billboard.Name =
+		"ResponsiveSalePopup"
+
+	billboard.Adornee = positionPart
+	billboard.Size =
+		UDim2.fromScale(4.4, 1.25)
+
+	billboard.StudsOffsetWorldSpace =
+		Vector3.new(0, 2, 0)
+
+	billboard.AlwaysOnTop = true
+	billboard.LightInfluence = 0
+	billboard.MaxDistance = 80
+	billboard.ResetOnSpawn = false
+	billboard.Parent = playerGui
+
+	local container = Instance.new("Frame")
+	container.Name = "Container"
+	container.AnchorPoint =
+		Vector2.new(0.5, 0.5)
+
+	container.Position =
+		UDim2.fromScale(0.5, 0.5)
+
+	container.Size =
+		UDim2.fromScale(0.96, 0.88)
+
+	container.BackgroundColor3 =
+		Colors.Success
+
+	container.BorderSizePixel = 0
+	container.Parent = billboard
+
+	UITheme.AddCorner(
+		container,
+		0.23
+	)
+
+	local stroke = UITheme.AddStroke(
+		container,
+		Color3.fromRGB(
+			120,
+			255,
+			175
+		),
+		2,
+		0.1
+	)
+
+	UITheme.AddGradient(
+		container,
+		Colors.Success,
+		Colors.SuccessDark
+	)
+
+	local amountLabel =
+		Instance.new("TextLabel")
+
+	amountLabel.Name = "Amount"
+	amountLabel.Position =
+		UDim2.fromScale(0.05, 0.08)
+
+	amountLabel.Size =
+		UDim2.fromScale(0.9, 0.55)
+
+	amountLabel.BackgroundTransparency = 1
+
+	amountLabel.Text =
+		string.format(
+			"+$%d",
+			amount
+		)
+
+	amountLabel.TextColor3 =
+		Colors.Text
+
+	amountLabel.TextTransparency = 0
+	amountLabel.Parent = container
+
+	UITheme.StyleText(
+		amountLabel,
+		16,
+		28,
+		Colors.Text,
+		Fonts.Black
+	)
+
+	local caption =
+		Instance.new("TextLabel")
+
+	caption.Name = "Caption"
+	caption.Position =
+		UDim2.fromScale(0.05, 0.62)
+
+	caption.Size =
+		UDim2.fromScale(0.9, 0.22)
+
+	caption.BackgroundTransparency = 1
+	caption.Text = "SALE COMPLETE"
+	caption.TextColor3 = Colors.Text
+	caption.TextTransparency = 0
+	caption.Parent = container
+
+	UITheme.StyleText(
+		caption,
+		9,
+		13,
+		Colors.Text,
+		Fonts.Bold
+	)
+
+	local moveTween =
+		TweenService:Create(
+			billboard,
+			TweenInfo.new(
+				1,
+				Enum.EasingStyle.Back,
+				Enum.EasingDirection.Out
+			),
+			{
+				StudsOffsetWorldSpace =
+					Vector3.new(
+						0,
+						4.3,
+						0
+					),
+			}
+		)
+
+	local amountFade =
+		TweenService:Create(
+			amountLabel,
+			TweenInfo.new(
+				0.25,
+				Enum.EasingStyle.Linear,
+				Enum.EasingDirection.Out,
+				0,
+				false,
+				0.7
+			),
+			{
+				TextTransparency = 1,
+			}
+		)
+
+	local captionFade =
+		TweenService:Create(
+			caption,
+			TweenInfo.new(
+				0.25,
+				Enum.EasingStyle.Linear,
+				Enum.EasingDirection.Out,
+				0,
+				false,
+				0.7
+			),
+			{
+				TextTransparency = 1,
+			}
+		)
+
+	local containerFade =
+		TweenService:Create(
+			container,
+			TweenInfo.new(
+				0.25,
+				Enum.EasingStyle.Linear,
+				Enum.EasingDirection.Out,
+				0,
+				false,
+				0.7
+			),
+			{
+				BackgroundTransparency = 1,
+			}
+		)
+
+	local strokeFade =
+		TweenService:Create(
+			stroke,
+			TweenInfo.new(
+				0.25,
+				Enum.EasingStyle.Linear,
+				Enum.EasingDirection.Out,
+				0,
+				false,
+				0.7
+			),
+			{
+				Transparency = 1,
+			}
+		)
+
+	moveTween:Play()
+	amountFade:Play()
+	captionFade:Play()
+	containerFade:Play()
+	strokeFade:Play()
+
+	Debris:AddItem(
+		billboard,
+		1.15
+	)
+end
+
 local function watchPlacedBusinesses(
 	folder: Instance
 )
@@ -405,6 +656,33 @@ plotsFolder.ChildAdded:Connect(function(child)
 		watchPlot(child)
 	end
 end)
+
+manualSaleResultRemote.OnClientEvent:Connect(
+	function(
+		stand: Model,
+		amount: number
+	)
+		if typeof(stand) ~= "Instance"
+			or not stand:IsA("Model")
+			or stand.Name
+			~= "LemonadeStand" then
+
+			return
+		end
+
+		if typeof(amount) ~= "number" then
+			return
+		end
+
+		showSalePopup(
+			stand,
+			math.max(
+				0,
+				math.floor(amount)
+			)
+		)
+	end
+)
 
 RunService.RenderStepped:Connect(function()
 	local serverTime =

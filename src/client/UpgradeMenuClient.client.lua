@@ -100,35 +100,53 @@ local function createInterface()
 	screenGui.Parent = playerGui
 
 	local openButton =
-		Instance.new("TextButton")
+	Instance.new("TextButton")
 
-	openButton.Name = "OpenButton"
-	openButton.AnchorPoint =
-		Vector2.new(1, 0)
+openButton.Name = "OpenButton"
+openButton.AnchorPoint =
+	Vector2.new(0, 0.5)
 
-	openButton.Position =
-		UDim2.fromScale(0.975, 0.075)
+openButton.Position =
+	UDim2.fromScale(0.025, 0.5)
 
-	openButton.Size =
-		UDim2.fromScale(0.18, 0.075)
+openButton.Size =
+	UDim2.fromScale(0.12, 0.06)
 
-	openButton.Text = "★  UPGRADES"
-	openButton.Parent = screenGui
+openButton.Text = "UPGRADES"
+openButton.Parent = screenGui
 
-	UITheme.StyleText(
+UITheme.StyleText(
 	openButton,
-	11,
-	17,
+	10,
+	16,
 	Colors.Text,
 	Fonts.Black
 )
 
-	UITheme.StyleButton(
+UITheme.StyleButton(
 	openButton,
 	Colors.Primary,
 	Colors.PrimaryDark,
 	Colors.Text
 )
+
+openButton.TextColor3 = Colors.Text
+openButton.TextTransparency = 0
+
+local openGradient =
+	openButton:FindFirstChildOfClass("UIGradient")
+
+if openGradient then
+	openGradient:Destroy()
+end
+
+openButton.BackgroundColor3 =
+	Colors.Primary
+
+openButton.TextColor3 =
+	Color3.fromRGB(255, 255, 255)
+
+openButton.TextTransparency = 0
 
 	local overlay = Instance.new("Frame")
 	overlay.Name = "Overlay"
@@ -560,7 +578,10 @@ cashLabel.TextXAlignment =
 		UDim2.fromScale(0.92, 0.68)
 
 	openButton.Size =
-		UDim2.fromScale(0.28, 0.065)
+		UDim2.fromScale(0.2, 0.06)
+
+	openButton.Position =
+		UDim2.fromScale(0.025, 0.5)
 elseif compact then
 	panel.Size =
 		UDim2.fromScale(0.7, 0.82)
@@ -569,7 +590,10 @@ elseif compact then
 		UDim2.fromScale(0.7, 0.82)
 
 	openButton.Size =
-		UDim2.fromScale(0.18, 0.08)
+		UDim2.fromScale(0.14, 0.07)
+
+	openButton.Position =
+		UDim2.fromScale(0.025, 0.5)
 else
 	panel.Size =
 		UDim2.fromScale(0.47, 0.64)
@@ -578,7 +602,10 @@ else
 		UDim2.fromScale(0.47, 0.64)
 
 	openButton.Size =
-		UDim2.fromScale(0.135, 0.065)
+		UDim2.fromScale(0.12, 0.06)
+
+	openButton.Position =
+		UDim2.fromScale(0.025, 0.5)
 end
 	end
 
