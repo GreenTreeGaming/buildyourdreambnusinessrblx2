@@ -41,6 +41,7 @@ local managementStand: Model? = nil
 local confirmationOverlay: Frame? = nil
 local confirmationWindow: Frame? = nil
 local toastLabel: TextLabel? = nil
+local managementCreationPending = false
 
 local removeRequestPending = false
 local toastVersion = 0
@@ -128,34 +129,71 @@ local function getCharacterRoot(): BasePart?
 end
 
 local function getUIAdornee(
-	stand: Model
+	stand: Model,
+	waitForReplication: boolean?
 ): BasePart?
-	local managementPosition =
-		stand:FindFirstChild(
-			"ManagementUIPosition",
-			true
-		)
+	local function findAdornee(): BasePart?
+		local managementPosition =
+			stand:FindFirstChild(
+				"ManagementUIPosition",
+				true
+			)
 
-	if managementPosition
-		and managementPosition:IsA("BasePart") then
+		if managementPosition
+			and managementPosition:IsA("BasePart") then
 
-		return managementPosition
+			return managementPosition
+		end
+
+		local cooldownPosition =
+			stand:FindFirstChild(
+				"CooldownUIPosition",
+				true
+			)
+
+		if cooldownPosition
+			and cooldownPosition:IsA("BasePart") then
+
+			return cooldownPosition
+		end
+
+		local salePosition =
+			stand:FindFirstChild(
+				"SaleEffectPosition",
+				true
+			)
+
+		if salePosition
+			and salePosition:IsA("BasePart") then
+
+			return salePosition
+		end
+
+		if stand.PrimaryPart then
+			return stand.PrimaryPart
+		end
+
+		return nil
 	end
 
-	local cooldownPosition =
-		stand:FindFirstChild(
-			"CooldownUIPosition",
-			true
-		)
+	local existing = findAdornee()
 
-	if cooldownPosition
-		and cooldownPosition:IsA("BasePart") then
-
-		return cooldownPosition
+	if existing or waitForReplication ~= true then
+		return existing
 	end
 
-	if stand.PrimaryPart then
-		return stand.PrimaryPart
+	local startedAt = time()
+
+	while stand.Parent
+		and time() - startedAt < 10 do
+
+		local adornee = findAdornee()
+
+		if adornee then
+			return adornee
+		end
+
+		task.wait(0.1)
 	end
 
 	return stand:FindFirstChildWhichIsA(
@@ -246,12 +284,16 @@ local function createManagementUI(
 )
 	destroyManagementUI()
 
-	local adornee = getUIAdornee(stand)
+	local adornee =
+	getUIAdornee(
+		stand,
+		true
+	)
 
 	if not adornee then
 		warn(
-			"LemonadeStand is missing a management UI position."
-		)
+	`{stand:GetFullName()} did not finish loading a management UI position.`
+)
 
 		return
 	end
@@ -925,12 +967,18 @@ task.spawn(function()
 		local rootPart = getCharacterRoot()
 
 		if stand ~= managementStand then
-			if stand then
-				createManagementUI(stand)
-			else
-				destroyManagementUI()
-			end
-		end
+	if stand and not managementCreationPending then
+		managementCreationPending = true
+
+		task.spawn(function()
+			createManagementUI(stand)
+			managementCreationPending = false
+		end)
+	elseif not stand then
+		destroyManagementUI()
+		managementCreationPending = false
+	end
+end
 
 		local shouldShow = false
 

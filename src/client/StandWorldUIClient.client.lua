@@ -71,33 +71,78 @@ local function disableLegacyWorldUI(
 end
 
 local function getTimerPosition(
-	stand: Model
+	stand: Model,
+	waitForReplication: boolean?
 ): BasePart?
-	local timerPosition =
-		stand:FindFirstChild(
-			"CooldownUIPosition",
-			true
-		)
+	local function findPosition(): BasePart?
+		local timerPosition =
+			stand:FindFirstChild(
+				"CooldownUIPosition",
+				true
+			)
 
-	if timerPosition
-		and timerPosition:IsA("BasePart") then
+		if timerPosition
+			and timerPosition:IsA("BasePart") then
 
-		return timerPosition
+			return timerPosition
+		end
+
+		local salePosition =
+			stand:FindFirstChild(
+				"SaleEffectPosition",
+				true
+			)
+
+		if salePosition
+			and salePosition:IsA("BasePart") then
+
+			return salePosition
+		end
+
+		local managementPosition =
+			stand:FindFirstChild(
+				"ManagementUIPosition",
+				true
+			)
+
+		if managementPosition
+			and managementPosition:IsA("BasePart") then
+
+			return managementPosition
+		end
+
+		if stand.PrimaryPart then
+			return stand.PrimaryPart
+		end
+
+		return nil
 	end
 
-	local salePosition =
-		stand:FindFirstChild(
-			"SaleEffectPosition",
-			true
-		)
+	local existing = findPosition()
 
-	if salePosition
-		and salePosition:IsA("BasePart") then
-
-		return salePosition
+	if existing or waitForReplication ~= true then
+		return existing
 	end
 
-	return stand.PrimaryPart
+	-- The model may replicate before all of its parts.
+	local startedAt = time()
+
+	while stand.Parent
+		and time() - startedAt < 10 do
+
+		local position = findPosition()
+
+		if position then
+			return position
+		end
+
+		task.wait(0.1)
+	end
+
+	return stand:FindFirstChildWhichIsA(
+		"BasePart",
+		true
+	)
 end
 
 local function removeStandUI(
@@ -123,12 +168,15 @@ local function createStandUI(
 	end
 
 	local positionPart =
-		getTimerPosition(stand)
+	getTimerPosition(
+		stand,
+		true
+	)
 
 	if not positionPart then
 		warn(
-			"LemonadeStand is missing CooldownUIPosition."
-		)
+	`{stand:GetFullName()} did not finish loading a UI position.`
+)
 
 		return
 	end
@@ -161,7 +209,7 @@ local function createStandUI(
 	billboard.AlwaysOnTop = true
 	billboard.LightInfluence = 0
 	billboard.MaxDistance = 80
-	billboard.Enabled = false
+	billboard.Enabled = true
 	billboard.ResetOnSpawn = false
 	billboard.Parent = playerGui
 
@@ -259,7 +307,7 @@ local function createStandUI(
 		UDim2.fromScale(0.45, 0.22)
 
 	statusLabel.BackgroundTransparency = 1
-	statusLabel.Text = "SERVING CUSTOMER"
+	statusLabel.Text = "READY"
 	statusLabel.TextXAlignment =
 		Enum.TextXAlignment.Left
 
@@ -284,7 +332,7 @@ local function createStandUI(
 		UDim2.fromScale(0.23, 0.32)
 
 	timerLabel.BackgroundTransparency = 1
-	timerLabel.Text = "0.0s"
+	timerLabel.Text = "OPEN"
 	timerLabel.TextXAlignment =
 		Enum.TextXAlignment.Right
 
@@ -610,10 +658,14 @@ local function watchPlacedBusinesses(
 	end
 
 	folder.ChildAdded:Connect(function(child)
-		if child:IsA("Model") then
-			task.defer(createStandUI, child)
-		end
+	if not child:IsA("Model") then
+		return
+	end
+
+	task.spawn(function()
+		createStandUI(child)
 	end)
+end)
 
 	folder.Destroying:Connect(function()
 		watchedFolders[folder] = nil
@@ -696,13 +748,50 @@ RunService.RenderStepped:Connect(function()
 			continue
 		end
 
+		local unavailable =
+			stand:GetAttribute(
+				"StandUnavailable"
+			) == true
+
+		local beingEdited =
+			stand:GetAttribute(
+				"IsBeingEdited"
+			) == true
+
+		if unavailable or beingEdited then
+			state.StatusLabel.Text = "CLOSED"
+			state.StatusLabel.TextColor3 =
+				Colors.Danger
+
+			state.TimerLabel.Text = "--"
+			state.TimerLabel.TextColor3 =
+				Colors.Danger
+
+			state.ProgressFill.Size =
+				UDim2.fromScale(0, 1)
+
+			state.Billboard.Enabled = true
+			continue
+		end
+
 		local active =
 			stand:GetAttribute(
 				"IsServingCustomer"
 			) == true
 
 		if not active then
-			state.Billboard.Enabled = false
+			state.StatusLabel.Text = "READY"
+			state.StatusLabel.TextColor3 =
+				Colors.Text
+
+			state.TimerLabel.Text = "OPEN"
+			state.TimerLabel.TextColor3 =
+				Colors.Success
+
+			state.ProgressFill.Size =
+				UDim2.fromScale(1, 1)
+
+			state.Billboard.Enabled = true
 			continue
 		end
 
@@ -720,7 +809,20 @@ RunService.RenderStepped:Connect(function()
 			or typeof(duration) ~= "number"
 			or duration <= 0 then
 
-			state.Billboard.Enabled = false
+			state.StatusLabel.Text =
+				"PREPARING"
+
+			state.StatusLabel.TextColor3 =
+				Colors.Text
+
+			state.TimerLabel.Text = "..."
+			state.TimerLabel.TextColor3 =
+				Colors.Primary
+
+			state.ProgressFill.Size =
+				UDim2.fromScale(0, 1)
+
+			state.Billboard.Enabled = true
 			continue
 		end
 
@@ -747,12 +849,21 @@ RunService.RenderStepped:Connect(function()
 			UDim2.fromScale(progress, 1)
 
 		state.TimerLabel.Text =
-			string.format("%.1fs", remaining)
+			string.format(
+				"%.1fs",
+				remaining
+			)
+
+		state.TimerLabel.TextColor3 =
+			Colors.Primary
 
 		state.StatusLabel.Text =
 			progress >= 1
 			and "FINISHING SALE"
 			or "SERVING CUSTOMER"
+
+		state.StatusLabel.TextColor3 =
+			Colors.Text
 
 		state.Billboard.Enabled = true
 	end
