@@ -1,22 +1,52 @@
 local Players = game:GetService("Players")
 
-local STARTING_CASH = 0
+local DataService = require(
+	script.Parent
+		:WaitForChild("Services")
+		:WaitForChild("DataService")
+)
 
-local function createLeaderstats(player: Player)
-	local leaderstats = Instance.new("Folder")
-	leaderstats.Name = "leaderstats"
-	leaderstats.Parent = player
+local AUTOSAVE_INTERVAL_SECONDS = 60
 
-	local cash = Instance.new("IntValue")
-	cash.Name = "Cash"
-	cash.Value = STARTING_CASH
-	cash.Parent = leaderstats
+local shuttingDown = false
+
+local function loadPlayer(player: Player)
+	local loaded =
+		DataService.LoadPlayer(player)
+
+	if not loaded then
+		return
+	end
+
+	print(`Loaded data for {player.Name}.`)
 end
 
-Players.PlayerAdded:Connect(createLeaderstats)
+Players.PlayerAdded:Connect(function(player)
+	task.spawn(loadPlayer, player)
+end)
 
 for _, player in Players:GetPlayers() do
-	if not player:FindFirstChild("leaderstats") then
-		createLeaderstats(player)
-	end
+	task.spawn(loadPlayer, player)
 end
+
+task.spawn(function()
+	while not shuttingDown do
+		task.wait(AUTOSAVE_INTERVAL_SECONDS)
+
+		if shuttingDown then
+			break
+		end
+
+		for _, player in Players:GetPlayers() do
+			task.spawn(function()
+				DataService.SavePlayer(player)
+			end)
+		end
+	end
+end)
+
+game:BindToClose(function()
+	shuttingDown = true
+
+	DataService.SaveAllPlayers()
+end)
