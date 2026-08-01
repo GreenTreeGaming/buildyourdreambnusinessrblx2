@@ -22,7 +22,7 @@ local businessAvailabilityEvent =
 	ServerStorage:FindFirstChild("BusinessAvailabilityChanged")
 
 local BUSINESS_NAME = "LemonadeStand"
-local REMOVE_CONFIRMIRMATION_TIMEOUT = 15
+local REMOVE_CONFIRMATION_TIMEOUT = 15
 
 type EditState = {
 	stand: Model,
@@ -66,6 +66,50 @@ local function getPlayerPlot(player: Player): Model?
 	return nil
 end
 
+local function findOwnedBusinessById(
+	player: Player,
+	plot: Model,
+	businessId: string
+): Model?
+	if type(businessId) ~= "string"
+		or businessId == "" then
+
+		return nil
+	end
+
+	local placedBusinesses =
+		plot:FindFirstChild(
+			"PlacedBusinesses"
+		)
+
+	if not placedBusinesses then
+		return nil
+	end
+
+	for _, child in
+		placedBusinesses:GetChildren() do
+
+		if not child:IsA("Model") then
+			continue
+		end
+
+		local childId =
+			child:GetAttribute("BusinessId")
+
+		if childId == businessId
+			or child.Name == businessId then
+
+			if child:GetAttribute("OwnerUserId")
+				== player.UserId then
+
+				return child
+			end
+		end
+	end
+
+	return nil
+end
+
 local function getPlacedBusinesses(plot: Model): Instance?
 	local placedBusinesses =
 		plot:FindFirstChild("PlacedBusinesses")
@@ -75,31 +119,6 @@ local function getPlacedBusinesses(plot: Model): Instance?
 	end
 
 	return nil
-end
-
-local function getPlayerStand(
-	player: Player
-): (Model?, Model?)
-	local plot = getPlayerPlot(player)
-
-	if not plot then
-		return nil, nil
-	end
-
-	local placedBusinesses = getPlacedBusinesses(plot)
-
-	if not placedBusinesses then
-		return nil, plot
-	end
-
-	local stand =
-		placedBusinesses:FindFirstChild(BUSINESS_NAME)
-
-	if stand and stand:IsA("Model") then
-		return stand, plot
-	end
-
-	return nil, plot
 end
 
 local function playerOwnsStand(
@@ -146,7 +165,15 @@ local function closeStand(
 
 	-- Tells CustomerManager to cancel all queue movement and send every
 	-- customer assigned to this plot toward CustomerExit.
-	businessAvailabilityEvent:Fire(plot)
+	if businessAvailabilityEvent
+	and businessAvailabilityEvent:IsA(
+		"BindableEvent"
+	) then
+
+	businessAvailabilityEvent:Fire(
+		plot
+	)
+end
 end
 
 local function reopenStand(stand: Model)
@@ -175,14 +202,41 @@ local function sendFailure(
 	)
 end
 
-local function beginEditing(player: Player)
+local function beginEditing(
+	player: Player,
+	businessId: string
+)
 	if activeEdits[player] then
+		sendFailure(
+			player,
+			"EditFailed",
+			"You are already editing a business."
+		)
+
 		return
 	end
 
-	local stand, plot = getPlayerStand(player)
+	local plot =
+		getPlayerPlot(player)
 
-	if not stand or not plot then
+	if not plot then
+		sendFailure(
+			player,
+			"EditFailed",
+			"Your plot could not be found."
+		)
+
+		return
+	end
+
+	local stand =
+		findOwnedBusinessById(
+			player,
+			plot,
+			businessId
+		)
+
+	if not stand then
 		sendFailure(
 			player,
 			"EditFailed",
@@ -192,7 +246,11 @@ local function beginEditing(player: Player)
 		return
 	end
 
-	if not playerOwnsStand(player, stand, plot) then
+	if not playerOwnsStand(
+		player,
+		stand,
+		plot
+	) then
 		sendFailure(
 			player,
 			"EditFailed",
@@ -202,7 +260,9 @@ local function beginEditing(player: Player)
 		return
 	end
 
-	if stand:GetAttribute("IsBeingEdited") == true then
+	if stand:GetAttribute(
+		"IsBeingEdited"
+	) == true then
 		sendFailure(
 			player,
 			"EditFailed",
@@ -222,19 +282,26 @@ local function beginEditing(player: Player)
 
 	player:SetAttribute(
 		"EditingBusiness",
-		BUSINESS_NAME
+		businessId
 	)
 
-	closeStand(stand, plot)
+	closeStand(
+		stand,
+		plot
+	)
 
 	interactionResultRemote:FireClient(
 		player,
 		"BeginEdit",
-		stand:GetPivot()
+		stand:GetPivot(),
+		businessId
 	)
 end
 
-local function beginRemoveConfirmation(player: Player)
+local function beginRemoveConfirmation(
+	player: Player,
+	businessId: string
+)
 	if activeEdits[player] then
 		sendFailure(
 			player,
@@ -245,9 +312,27 @@ local function beginRemoveConfirmation(player: Player)
 		return
 	end
 
-	local stand, plot = getPlayerStand(player)
+	local plot =
+		getPlayerPlot(player)
 
-	if not stand or not plot then
+	if not plot then
+		sendFailure(
+			player,
+			"RemoveFailed",
+			"Your plot could not be found."
+		)
+
+		return
+	end
+
+	local stand =
+		findOwnedBusinessById(
+			player,
+			plot,
+			businessId
+		)
+
+	if not stand then
 		sendFailure(
 			player,
 			"RemoveFailed",
@@ -257,7 +342,11 @@ local function beginRemoveConfirmation(player: Player)
 		return
 	end
 
-	if not playerOwnsStand(player, stand, plot) then
+	if not playerOwnsStand(
+		player,
+		stand,
+		plot
+	) then
 		sendFailure(
 			player,
 			"RemoveFailed",
@@ -270,17 +359,25 @@ local function beginRemoveConfirmation(player: Player)
 	pendingRemovals[player] = {
 		stand = stand,
 		plot = plot,
-		expiresAt = time() + REMOVE_CONFIRMIRMATION_TIMEOUT,
+		expiresAt =
+			time()
+			+ REMOVE_CONFIRMATION_TIMEOUT,
 	}
 
 	interactionResultRemote:FireClient(
 		player,
-		"ShowRemoveConfirmation"
+		"ShowRemoveConfirmation",
+		nil,
+		businessId
 	)
 end
 
-local function confirmRemoval(player: Player)
-	local request = pendingRemovals[player]
+local function confirmRemoval(
+	player: Player,
+	businessId: string
+)
+	local request =
+		pendingRemovals[player]
 
 	if not request then
 		sendFailure(
@@ -307,9 +404,27 @@ local function confirmRemoval(player: Player)
 	local stand = request.stand
 	local plot = request.plot
 
+	local storedBusinessId =
+		stand:GetAttribute("BusinessId")
+		or stand.Name
+
+	if storedBusinessId ~= businessId then
+		sendFailure(
+			player,
+			"RemoveFailed",
+			"The selected lemonade stand changed."
+		)
+
+		return
+	end
+
 	if not stand.Parent
 		or not plot.Parent
-		or not playerOwnsStand(player, stand, plot) then
+		or not playerOwnsStand(
+			player,
+			stand,
+			plot
+		) then
 
 		sendFailure(
 			player,
@@ -320,19 +435,51 @@ local function confirmRemoval(player: Player)
 		return
 	end
 
-	closeStand(stand, plot)
+	closeStand(
+		stand,
+		plot
+	)
 
-	-- Gives CustomerManager time to detect StandUnavailable
-	-- and send existing customers away.
 	task.wait()
 
 	if stand.Parent then
 		stand:Destroy()
 	end
 
+	local placedBusinesses =
+		getPlacedBusinesses(plot)
+
+	local hasRemainingStand = false
+
+	if placedBusinesses then
+		for _, child in
+			placedBusinesses:GetChildren() do
+
+			if not child:IsA("Model") then
+				continue
+			end
+
+			local businessType =
+				child:GetAttribute(
+					"BusinessType"
+				)
+
+			if businessType == BUSINESS_NAME
+				or child.Name == BUSINESS_NAME
+				or string.match(
+					child.Name,
+					"^LemonadeStand_"
+				) then
+
+				hasRemainingStand = true
+				break
+			end
+		end
+	end
+
 	plot:SetAttribute(
 		"StarterBusinessPlaced",
-		false
+		hasRemainingStand
 	)
 
 	clearPlayerInteractionState(player)
@@ -340,7 +487,8 @@ local function confirmRemoval(player: Player)
 	interactionResultRemote:FireClient(
 		player,
 		"Removed",
-		"Lemonade stand removed."
+		"Lemonade stand removed.",
+		businessId
 	)
 end
 
@@ -367,18 +515,56 @@ local function cancelEditing(player: Player)
 	)
 end
 
-requestEditRemote.OnServerEvent:Connect(function(player: Player)
-	beginEditing(player)
+requestEditRemote.OnServerEvent:Connect(function(
+	player: Player,
+	businessId: string
+)
+	if typeof(businessId) ~= "string"
+		or businessId == "" then
+
+		interactionResultRemote:FireClient(
+			player,
+			"EditFailed",
+			"The lemonade stand could not be identified."
+		)
+
+		return
+	end
+
+	beginEditing(
+		player,
+		businessId
+	)
 end)
 
 requestRemoveRemote.OnServerEvent:Connect(function(
 	player: Player,
-	confirmed: boolean?
+	confirmed: boolean,
+	businessId: string
 )
-	if confirmed == true then
-		confirmRemoval(player)
+	if typeof(confirmed) ~= "boolean"
+		or typeof(businessId) ~= "string"
+		or businessId == "" then
+
+		sendFailure(
+			player,
+			"RemoveFailed",
+			"The removal request was invalid."
+		)
+
+		return
+	end
+
+	if confirmed then
+		confirmRemoval(
+			player,
+			businessId
+		)
 	else
-		beginRemoveConfirmation(player)
+		beginRemoveConfirmation(
+			player,
+			businessId
+		)
 	end
 end)
 

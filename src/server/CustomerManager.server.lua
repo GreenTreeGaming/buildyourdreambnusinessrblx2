@@ -1,12 +1,18 @@
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local ServerStorage = game:GetService("ServerStorage")
-local Workspace = game:GetService("Workspace")
-local PathfindingService = game:GetService("PathfindingService")
-local TweenService = game:GetService("TweenService")
-local Debris = game:GetService("Debris")
-local PhysicsService = game:GetService("PhysicsService")
-local RunService = game:GetService("RunService")
+local ReplicatedStorage =
+	game:GetService("ReplicatedStorage")
+local ServerStorage =
+	game:GetService("ServerStorage")
+local Workspace =
+	game:GetService("Workspace")
+local PathfindingService =
+	game:GetService("PathfindingService")
+local TweenService =
+	game:GetService("TweenService")
+local Debris =
+	game:GetService("Debris")
+local RunService =
+	game:GetService("RunService")
 
 local BusinessConfig = require(
 	ReplicatedStorage
@@ -23,6 +29,8 @@ local UITheme = require(
 local Colors = UITheme.Colors
 local Fonts = UITheme.Fonts
 
+local BUSINESS_NAME = "LemonadeStand"
+
 local lemonadeStandConfig =
 	BusinessConfig.LemonadeStand
 
@@ -32,47 +40,48 @@ local DEFAULT_LEMONADE_COOLDOWN =
 local DEFAULT_LEMONADE_SALE_VALUE =
 	lemonadeStandConfig.BaseSaleValue
 
-local CUSTOMER_COLLISION_GROUP = "Customers"
+local CUSTOMER_COLLISION_GROUP =
+	"Customers"
 
-local plotsFolder = Workspace:WaitForChild("Plots")
-local npcFolder = ServerStorage:WaitForChild("NPCs")
-
-local customersFolder = Workspace:FindFirstChild("Customers")
-
-if not customersFolder then
-	customersFolder = Instance.new("Folder")
-	customersFolder.Name = "Customers"
-	customersFolder.Parent = Workspace
-end
-
-local businessAvailabilityEvent =
-	ServerStorage:FindFirstChild("BusinessAvailabilityChanged")
-
--- Arrival timing. Customers arrive faster than some transactions complete,
--- allowing a visible queue to form naturally.
 local MIN_SPAWN_INTERVAL = 1.8
 local MAX_SPAWN_INTERVAL = 3.4
-
-local MIN_TRANSACTION_TIME = 1.25
-local MAX_TRANSACTION_TIME = 3.25
 
 local MIN_COUNTER_RESET_TIME = 0.1
 local MAX_COUNTER_RESET_TIME = 0.25
 
-local QUEUE_REACHED_DISTANCE = 1.5
+local QUEUE_REACHED_DISTANCE = 1.75
 local QUEUE_COMMAND_INTERVAL = 0.4
-
-local randomGenerator = Random.new()
-
-local WALK_TIMEOUT = 20
-local WAYPOINT_SPACING = 7
-local TARGET_REACHED_DISTANCE = 2.5
+local QUEUE_MOVE_TIMEOUT = 10
 
 local PATH_TIMEOUT = 20
 local PATH_WAYPOINT_REACHED_DISTANCE = 3
 local PATH_FINAL_REACHED_DISTANCE = 2
 local PATH_REISSUE_INTERVAL = 0.75
 local PATH_STUCK_TIME = 2
+
+local plotsFolder =
+	Workspace:WaitForChild("Plots")
+
+local npcFolder =
+	ServerStorage:WaitForChild("NPCs")
+
+local customersFolder =
+	Workspace:FindFirstChild("Customers")
+
+if not customersFolder then
+	customersFolder =
+		Instance.new("Folder")
+
+	customersFolder.Name = "Customers"
+	customersFolder.Parent = Workspace
+end
+
+local businessAvailabilityEvent =
+	ServerStorage:FindFirstChild(
+		"BusinessAvailabilityChanged"
+	)
+
+local randomGenerator = Random.new()
 
 type QueueEntry = {
 	customer: Model,
@@ -87,7 +96,7 @@ type QueueEntry = {
 	movementVersion: number,
 }
 
-type PlotState = {
+type StandState = {
 	queue: {QueueEntry},
 	isServing: boolean,
 
@@ -97,54 +106,160 @@ type PlotState = {
 	nextSpawnTime: number,
 }
 
-local plotStates: {
-	[Model]: PlotState
+local standStates: {
+	[Model]: StandState
 } = {}
 
-local function getPlotState(plot: Model): PlotState
-	local existingState = plotStates[plot]
+local function isLemonadeStand(
+	instance: Instance
+): boolean
+	if not instance:IsA("Model") then
+		return false
+	end
+
+	local businessType =
+		instance:GetAttribute("BusinessType")
+
+	if businessType == BUSINESS_NAME then
+		return true
+	end
+
+	if instance.Name == BUSINESS_NAME then
+		return true
+	end
+
+	return string.match(
+		instance.Name,
+		"^LemonadeStand_"
+	) ~= nil
+end
+
+local function getPlacedBusinesses(
+	plot: Model
+): Folder?
+	local folder =
+		plot:FindFirstChild(
+			"PlacedBusinesses"
+		)
+
+	if folder and folder:IsA("Folder") then
+		return folder
+	end
+
+	return nil
+end
+
+local function getLemonadeStands(
+	plot: Model
+): {Model}
+	local placedBusinesses =
+		getPlacedBusinesses(plot)
+
+	if not placedBusinesses then
+		return {}
+	end
+
+	local stands = {}
+
+	for _, child in
+		placedBusinesses:GetChildren() do
+
+		if isLemonadeStand(child) then
+			table.insert(
+				stands,
+				child :: Model
+			)
+		end
+	end
+
+	return stands
+end
+
+local function getPlotFromStand(
+	stand: Model
+): Model?
+	local placedBusinesses =
+		stand.Parent
+
+	if not placedBusinesses
+		or placedBusinesses.Name
+			~= "PlacedBusinesses" then
+
+		return nil
+	end
+
+	local plot =
+		placedBusinesses.Parent
+
+	if plot and plot:IsA("Model") then
+		return plot
+	end
+
+	return nil
+end
+
+local function getStandState(
+	stand: Model
+): StandState
+	local existingState =
+		standStates[stand]
 
 	if existingState then
 		return existingState
 	end
 
-	local newState: PlotState = {
+	local newState: StandState = {
 		queue = {},
 		isServing = false,
 
 		templateBag = {},
 		lastTemplate = nil,
 
-		nextSpawnTime = time()
+		nextSpawnTime =
+			time()
 			+ randomGenerator:NextNumber(
 				MIN_SPAWN_INTERVAL,
 				MAX_SPAWN_INTERVAL
 			),
 	}
 
-	plotStates[plot] = newState
+	standStates[stand] =
+		newState
 
 	return newState
 end
 
-local function getPlayerFromPlot(plot: Model): Player?
-	local ownerUserId = plot:GetAttribute("OwnerUserId")
+local function getPlayerFromPlot(
+	plot: Model
+): Player?
+	local ownerUserId =
+		plot:GetAttribute("OwnerUserId")
 
-	if typeof(ownerUserId) ~= "number" or ownerUserId == 0 then
+	if typeof(ownerUserId) ~= "number"
+		or ownerUserId <= 0 then
+
 		return nil
 	end
 
-	return Players:GetPlayerByUserId(ownerUserId)
+	return Players:GetPlayerByUserId(
+		ownerUserId
+	)
 end
 
-local function getCashValue(player: Player): IntValue?
-	local leaderstats = player:FindFirstChild("leaderstats")
+local function getCashValue(
+	player: Player
+): IntValue?
+	local leaderstats =
+		player:FindFirstChild(
+			"leaderstats"
+		)
 
 	if not leaderstats then
 		return nil
 	end
 
-	local cash = leaderstats:FindFirstChild("Cash")
+	local cash =
+		leaderstats:FindFirstChild("Cash")
 
 	if cash and cash:IsA("IntValue") then
 		return cash
@@ -153,48 +268,64 @@ local function getCashValue(player: Player): IntValue?
 	return nil
 end
 
-local function getLemonadeStand(plot: Model): Model?
-	local placedBusinesses = plot:FindFirstChild("PlacedBusinesses")
-
-	if not placedBusinesses then
-		return nil
-	end
-
-	local stand = placedBusinesses:FindFirstChild("LemonadeStand")
-
-	if stand and stand:IsA("Model") then
-		return stand
-	end
-
-	return nil
-end
-
-local function standIsAvailable(plot: Model): boolean
-	local stand = getLemonadeStand(plot)
-
-	if not stand then
+local function standIsAvailable(
+	stand: Model
+): boolean
+	if not stand.Parent then
 		return false
 	end
 
-	if stand:GetAttribute("StandUnavailable") == true then
+	if not isLemonadeStand(stand) then
 		return false
 	end
 
-	if stand:GetAttribute("IsBeingEdited") == true then
+	if stand:GetAttribute(
+		"StandUnavailable"
+	) == true then
+
+		return false
+	end
+
+	if stand:GetAttribute(
+		"IsBeingEdited"
+	) == true then
+
 		return false
 	end
 
 	return true
 end
 
-local function getLemonadeCooldown(stand: Model): number
-	local standCooldown = stand:GetAttribute("PurchaseCooldown")
+local function getLemonadeCooldown(
+	stand: Model
+): number
+	local standCooldown =
+		stand:GetAttribute(
+			"PurchaseCooldown"
+		)
 
-	if typeof(standCooldown) == "number" and standCooldown >= 0 then
+	if typeof(standCooldown) == "number"
+		and standCooldown > 0 then
+
 		return standCooldown
 	end
 
 	return DEFAULT_LEMONADE_COOLDOWN
+end
+
+local function getLemonadeSaleValue(
+	stand: Model
+): number
+	local saleValue =
+		stand:GetAttribute("SaleValue")
+
+	if typeof(saleValue) == "number"
+		and saleValue >= 0 then
+
+		return math.floor(saleValue)
+	end
+
+	return DEFAULT_LEMONADE_SALE_VALUE
 end
 
 local function setStandServingState(
@@ -211,7 +342,10 @@ local function setStandServingState(
 		active
 	)
 
-	if active and duration then
+	if active
+		and typeof(duration) == "number"
+		and duration > 0 then
+
 		stand:SetAttribute(
 			"ServiceStartedAt",
 			Workspace:GetServerTimeNow()
@@ -234,66 +368,71 @@ local function setStandServingState(
 	end
 end
 
-local function getLemonadeSaleValue(
+local function getQueuePositions(
 	stand: Model
-): number
-	local standSaleValue =
-		stand:GetAttribute("SaleValue")
-
-	if typeof(standSaleValue) == "number"
-		and standSaleValue >= 0 then
-
-		return math.floor(standSaleValue)
-	end
-
-	return DEFAULT_LEMONADE_SALE_VALUE
-end
-
-local function getQueuePositions(plot: Model): {BasePart}
-	local stand = getLemonadeStand(plot)
-
-	if not stand then
-		return {}
-	end
-
+): {BasePart}
 	local queueFolder =
-		stand:FindFirstChild("QueuePositions")
+		stand:FindFirstChild(
+			"QueuePositions",
+			true
+		)
 
 	if not queueFolder then
-		warn(`{stand.Name} is missing QueuePositions.`)
+		warn(
+			`{stand:GetFullName()} is missing QueuePositions.`
+		)
+
 		return {}
 	end
 
 	local queuePositions = {}
 
-	for _, instance in queueFolder:GetChildren() do
+	for _, instance in
+		queueFolder:GetChildren() do
+
 		if not instance:IsA("BasePart") then
 			continue
 		end
 
-		local queueNumber = tonumber(
-			string.match(
-				instance.Name,
-				"^Queue(%d+)$"
+		local queueNumber =
+			tonumber(
+				string.match(
+					instance.Name,
+					"^Queue(%d+)$"
+				)
 			)
-		)
 
 		if queueNumber then
-			table.insert(queuePositions, instance)
+			table.insert(
+				queuePositions,
+				instance
+			)
 		end
 	end
 
-	table.sort(queuePositions, function(first, second)
-		local firstNumber =
-			tonumber(string.match(first.Name, "%d+"))
-			or math.huge
+	table.sort(
+		queuePositions,
+		function(first, second)
+			local firstNumber =
+				tonumber(
+					string.match(
+						first.Name,
+						"%d+"
+					)
+				) or math.huge
 
-		local secondNumber =
-			tonumber(string.match(second.Name, "%d+"))
-			or math.huge
+			local secondNumber =
+				tonumber(
+					string.match(
+						second.Name,
+						"%d+"
+					)
+				) or math.huge
 
-		return firstNumber < secondNumber
-	end)
+			return firstNumber
+				< secondNumber
+		end
+	)
 
 	return queuePositions
 end
@@ -301,17 +440,29 @@ end
 local function getValidNpcTemplates(): {Model}
 	local templates = {}
 
-	for _, instance in npcFolder:GetChildren() do
+	for _, instance in
+		npcFolder:GetChildren() do
+
 		if not instance:IsA("Model") then
 			continue
 		end
 
-		local humanoid = instance:FindFirstChildOfClass("Humanoid")
-		local rootPart = instance:FindFirstChild("HumanoidRootPart")
-		local torso = instance:FindFirstChild("Torso")
+		local humanoid =
+			instance:FindFirstChildOfClass(
+				"Humanoid"
+			)
+
+		local rootPart =
+			instance:FindFirstChild(
+				"HumanoidRootPart"
+			)
+
+		local torso =
+			instance:FindFirstChild("Torso")
 
 		if not humanoid
-			or humanoid.RigType ~= Enum.HumanoidRigType.R6
+			or humanoid.RigType
+				~= Enum.HumanoidRigType.R6
 			or not rootPart
 			or not rootPart:IsA("BasePart")
 			or not torso
@@ -320,39 +471,57 @@ local function getValidNpcTemplates(): {Model}
 			continue
 		end
 
-		table.insert(templates, instance)
+		table.insert(
+			templates,
+			instance
+		)
 	end
 
 	return templates
 end
 
-local function shuffleTemplates(templates: {Model})
+local function shuffleTemplates(
+	templates: {Model}
+)
 	for index = #templates, 2, -1 do
-		local swapIndex = randomGenerator:NextInteger(1, index)
+		local swapIndex =
+			randomGenerator:NextInteger(
+				1,
+				index
+			)
 
-		templates[index], templates[swapIndex] =
-			templates[swapIndex], templates[index]
+		templates[index],
+		templates[swapIndex] =
+			templates[swapIndex],
+			templates[index]
 	end
 end
 
-local function refillTemplateBag(state: PlotState): boolean
-	local templates = getValidNpcTemplates()
+local function refillTemplateBag(
+	state: StandState
+): boolean
+	local templates =
+		getValidNpcTemplates()
 
 	if #templates == 0 then
-		warn("No valid R6 NPC templates were found in ServerStorage.NPCs.")
+		warn(
+			"No valid R6 NPC templates were found in ServerStorage.NPCs."
+		)
+
 		return false
 	end
 
 	shuffleTemplates(templates)
 
-	-- Templates are removed from the end of the bag. Prevent the next
-	-- selection from matching the final selection of the previous bag.
 	if #templates > 1
 		and state.lastTemplate
-		and templates[#templates] == state.lastTemplate then
+		and templates[#templates]
+			== state.lastTemplate then
 
-		templates[#templates], templates[1] =
-			templates[1], templates[#templates]
+		templates[#templates],
+		templates[1] =
+			templates[1],
+			templates[#templates]
 	end
 
 	state.templateBag = templates
@@ -360,51 +529,83 @@ local function refillTemplateBag(state: PlotState): boolean
 	return true
 end
 
-local function getNextNpcTemplate(state: PlotState): Model?
+local function getNextNpcTemplate(
+	state: StandState
+): Model?
 	while true do
 		if #state.templateBag == 0 then
-			if not refillTemplateBag(state) then
+			if not refillTemplateBag(
+				state
+			) then
 				return nil
 			end
 		end
 
-		local template = table.remove(state.templateBag)
+		local template =
+			table.remove(
+				state.templateBag
+			)
 
-		-- Protect against templates being removed from ServerStorage after
-		-- the current bag was created.
-		if template and template.Parent == npcFolder then
-			state.lastTemplate = template
+		if template
+			and template.Parent
+				== npcFolder then
+
+			state.lastTemplate =
+				template
+
 			return template
 		end
 	end
 end
 
-local function prepareCustomer(customer: Model)
-	local humanoid = customer:FindFirstChildOfClass("Humanoid")
-	local rootPart = customer:FindFirstChild("HumanoidRootPart")
+local function prepareCustomer(
+	customer: Model
+)
+	local humanoid =
+		customer:FindFirstChildOfClass(
+			"Humanoid"
+		)
+
+	local rootPart =
+		customer:FindFirstChild(
+			"HumanoidRootPart"
+		)
 
 	if humanoid then
-		humanoid.DisplayName = "Customer"
+		humanoid.DisplayName =
+			"Customer"
+
 		humanoid.AutoRotate = true
 		humanoid.WalkSpeed = 11
 	end
 
-	for _, descendant in customer:GetDescendants() do
+	for _, descendant in
+		customer:GetDescendants() do
+
 		if descendant:IsA("BasePart") then
 			descendant.Anchored = false
-			descendant.CollisionGroup = CUSTOMER_COLLISION_GROUP
+
+			descendant.CollisionGroup =
+				CUSTOMER_COLLISION_GROUP
 		end
 	end
 
-	-- Handles parts added after the NPC is cloned, such as accessories.
-	customer.DescendantAdded:Connect(function(descendant)
-		if descendant:IsA("BasePart") then
-			descendant.CollisionGroup = CUSTOMER_COLLISION_GROUP
+	customer.DescendantAdded:Connect(
+		function(descendant)
+			if descendant:IsA(
+				"BasePart"
+			) then
+				descendant.CollisionGroup =
+					CUSTOMER_COLLISION_GROUP
+			end
 		end
-	end)
+	)
 
-	if rootPart and rootPart:IsA("BasePart") then
-		local canSetOwnership = rootPart:CanSetNetworkOwnership()
+	if rootPart
+		and rootPart:IsA("BasePart") then
+
+		local canSetOwnership =
+			rootPart:CanSetNetworkOwnership()
 
 		if canSetOwnership then
 			rootPart:SetNetworkOwner(nil)
@@ -416,24 +617,34 @@ local function createPathPoints(
 	startPosition: Vector3,
 	targetPosition: Vector3
 ): {PathWaypoint}?
-	local path = PathfindingService:CreatePath({
-		AgentRadius = 2,
-		AgentHeight = 5,
-		AgentCanJump = true,
-		AgentCanClimb = false,
-		WaypointSpacing = 6,
-	})
+	local path =
+		PathfindingService:CreatePath({
+			AgentRadius = 2,
+			AgentHeight = 5,
+			AgentCanJump = true,
+			AgentCanClimb = false,
+			WaypointSpacing = 6,
+		})
 
-	local success, calculationError = pcall(function()
-		path:ComputeAsync(startPosition, targetPosition)
-	end)
+	local success, calculationError =
+		pcall(function()
+			path:ComputeAsync(
+				startPosition,
+				targetPosition
+			)
+		end)
 
 	if not success then
-		warn(`Path calculation failed: {calculationError}`)
+		warn(
+			`Path calculation failed: {calculationError}`
+		)
+
 		return nil
 	end
 
-	if path.Status ~= Enum.PathStatus.Success then
+	if path.Status
+		~= Enum.PathStatus.Success then
+
 		return nil
 	end
 
@@ -444,29 +655,40 @@ local function moveCustomerTo(
 	customer: Model,
 	target: BasePart
 ): boolean
-	local humanoid = customer:FindFirstChildOfClass("Humanoid")
-	local rootPart = customer:FindFirstChild("HumanoidRootPart")
+	local humanoid =
+		customer:FindFirstChildOfClass(
+			"Humanoid"
+		)
+
+	local rootPart =
+		customer:FindFirstChild(
+			"HumanoidRootPart"
+		)
 
 	if not humanoid
 		or not rootPart
 		or not rootPart:IsA("BasePart") then
 
-		warn(`{customer.Name} is missing its Humanoid or HumanoidRootPart.`)
 		return false
 	end
 
-	local targetPosition = target.Position
-	local waypoints = createPathPoints(
-		rootPart.Position,
-		targetPosition
-	)
+	local targetPosition =
+		target.Position
 
-	-- Direct movement fallback.
-	if not waypoints or #waypoints == 0 then
+	local waypoints =
+		createPathPoints(
+			rootPart.Position,
+			targetPosition
+		)
+
+	if not waypoints
+		or #waypoints == 0 then
+
 		waypoints = {
 			{
 				Position = targetPosition,
-				Action = Enum.PathWaypointAction.Walk,
+				Action =
+					Enum.PathWaypointAction.Walk,
 				Label = "",
 			},
 		}
@@ -474,10 +696,12 @@ local function moveCustomerTo(
 
 	local waypointIndex = 1
 
-	-- Skip the waypoint located at the NPC's current position.
 	if #waypoints >= 2
-		and (rootPart.Position - waypoints[1].Position).Magnitude
-		<= PATH_WAYPOINT_REACHED_DISTANCE then
+		and (
+			rootPart.Position
+				- waypoints[1].Position
+		).Magnitude
+			<= PATH_WAYPOINT_REACHED_DISTANCE then
 
 		waypointIndex = 2
 	end
@@ -488,82 +712,126 @@ local function moveCustomerTo(
 	local lastDistance = math.huge
 	local recalculations = 0
 
-	while customer.Parent and humanoid.Health > 0 do
-		if time() - startedAt >= PATH_TIMEOUT then
-			warn(`{customer.Name} timed out while walking.`)
+	while customer.Parent
+		and humanoid.Health > 0 do
+
+		if time() - startedAt
+			>= PATH_TIMEOUT then
+
 			return false
 		end
 
-		local finalOffset = Vector3.new(
-			rootPart.Position.X - targetPosition.X,
-			0,
-			rootPart.Position.Z - targetPosition.Z
-		)
+		local finalOffset =
+			Vector3.new(
+				rootPart.Position.X
+					- targetPosition.X,
+				0,
+				rootPart.Position.Z
+					- targetPosition.Z
+			)
 
-		if finalOffset.Magnitude <= PATH_FINAL_REACHED_DISTANCE then
-			humanoid:MoveTo(rootPart.Position)
+		if finalOffset.Magnitude
+			<= PATH_FINAL_REACHED_DISTANCE then
+
+			humanoid:MoveTo(
+				rootPart.Position
+			)
+
 			return true
 		end
 
-		local waypoint = waypoints[waypointIndex]
+		local waypoint =
+			waypoints[waypointIndex]
 
 		if not waypoint then
 			waypoint = {
 				Position = targetPosition,
-				Action = Enum.PathWaypointAction.Walk,
+				Action =
+					Enum.PathWaypointAction.Walk,
 				Label = "",
 			}
 		end
 
-		local waypointOffset = Vector3.new(
-			rootPart.Position.X - waypoint.Position.X,
-			0,
-			rootPart.Position.Z - waypoint.Position.Z
-		)
+		local waypointOffset =
+			Vector3.new(
+				rootPart.Position.X
+					- waypoint.Position.X,
+				0,
+				rootPart.Position.Z
+					- waypoint.Position.Z
+			)
 
-		-- Advance slightly before reaching the waypoint so the NPC does not
-		-- stop between path segments.
 		if waypointOffset.Magnitude
 			<= PATH_WAYPOINT_REACHED_DISTANCE
-			and waypointIndex < #waypoints then
+			and waypointIndex
+				< #waypoints then
 
 			waypointIndex += 1
-			waypoint = waypoints[waypointIndex]
+			waypoint =
+				waypoints[waypointIndex]
+
 			lastCommandAt = 0
 		end
 
-		if waypoint.Action == Enum.PathWaypointAction.Jump then
+		if waypoint.Action
+			== Enum.PathWaypointAction.Jump then
+
 			humanoid.Jump = true
 		end
 
-		if time() - lastCommandAt >= PATH_REISSUE_INTERVAL then
-			humanoid:MoveTo(waypoint.Position)
+		if time() - lastCommandAt
+			>= PATH_REISSUE_INTERVAL then
+
+			humanoid:MoveTo(
+				waypoint.Position
+			)
+
 			lastCommandAt = time()
 		end
 
 		local currentDistance =
-			(rootPart.Position - targetPosition).Magnitude
+			(
+				rootPart.Position
+					- targetPosition
+			).Magnitude
 
-		if currentDistance < lastDistance - 0.1 then
-			lastDistance = currentDistance
+		if currentDistance
+			< lastDistance - 0.1 then
+
+			lastDistance =
+				currentDistance
+
 			lastProgressAt = time()
-		elseif time() - lastProgressAt >= PATH_STUCK_TIME
+		elseif time() - lastProgressAt
+				>= PATH_STUCK_TIME
 			and recalculations < 2 then
 
 			recalculations += 1
 			lastProgressAt = time()
 
-			local newWaypoints = createPathPoints(
-				rootPart.Position,
-				targetPosition
-			)
+			local newWaypoints =
+				createPathPoints(
+					rootPart.Position,
+					targetPosition
+				)
 
-			if newWaypoints and #newWaypoints > 0 then
-				waypoints = newWaypoints
-				waypointIndex = math.min(2, #waypoints)
+			if newWaypoints
+				and #newWaypoints > 0 then
+
+				waypoints =
+					newWaypoints
+
+				waypointIndex =
+					math.min(
+						2,
+						#waypoints
+					)
+
 				lastCommandAt = 0
 			else
-				humanoid:MoveTo(targetPosition)
+				humanoid:MoveTo(
+					targetPosition
+				)
 			end
 		end
 
@@ -578,10 +846,14 @@ local function faceCustomerTowardStand(
 	stand: Model
 )
 	local humanoid =
-		customer:FindFirstChildOfClass("Humanoid")
+		customer:FindFirstChildOfClass(
+			"Humanoid"
+		)
 
 	local rootPart =
-		customer:FindFirstChild("HumanoidRootPart")
+		customer:FindFirstChild(
+			"HumanoidRootPart"
+		)
 
 	if not humanoid
 		or not rootPart
@@ -601,28 +873,35 @@ local function faceCustomerTowardStand(
 	if facingPosition
 		and facingPosition:IsA("BasePart") then
 
-		targetPosition = facingPosition.Position
+		targetPosition =
+			facingPosition.Position
 	else
-		targetPosition = stand:GetPivot().Position
+		targetPosition =
+			stand:GetPivot().Position
 	end
 
-	local horizontalTarget = Vector3.new(
-		targetPosition.X,
-		rootPart.Position.Y,
-		targetPosition.Z
-	)
+	local horizontalTarget =
+		Vector3.new(
+			targetPosition.X,
+			rootPart.Position.Y,
+			targetPosition.Z
+		)
 
-	if (horizontalTarget - rootPart.Position).Magnitude < 0.05 then
+	if (
+		horizontalTarget
+			- rootPart.Position
+	).Magnitude < 0.05 then
+
 		return
 	end
 
-	-- Prevent the Humanoid from overriding the serving rotation.
 	humanoid.AutoRotate = false
 
-	rootPart.CFrame = CFrame.lookAt(
-		rootPart.Position,
-		horizontalTarget
-	)
+	rootPart.CFrame =
+		CFrame.lookAt(
+			rootPart.Position,
+			horizontalTarget
+		)
 end
 
 local function showCashPopup(
@@ -640,11 +919,9 @@ local function showCashPopup(
 		)
 
 	if not effectPosition
-		or not effectPosition:IsA("BasePart") then
-
-		warn(
-			`Could not find a sale effect position in {stand.Name}.`
-		)
+		or not effectPosition:IsA(
+			"BasePart"
+		) then
 
 		return
 	end
@@ -653,9 +930,9 @@ local function showCashPopup(
 		Instance.new("BillboardGui")
 
 	billboard.Name = "CashPopup"
-	billboard.Adornee = effectPosition
+	billboard.Adornee =
+		effectPosition
 
-	-- World-space scaling instead of pixel offsets.
 	billboard.Size =
 		UDim2.fromScale(4.2, 1.2)
 
@@ -665,9 +942,12 @@ local function showCashPopup(
 	billboard.AlwaysOnTop = true
 	billboard.LightInfluence = 0
 	billboard.MaxDistance = 80
-	billboard.Parent = effectPosition
+	billboard.Parent =
+		effectPosition
 
-	local container = Instance.new("Frame")
+	local container =
+		Instance.new("Frame")
+
 	container.Name = "Container"
 	container.AnchorPoint =
 		Vector2.new(0.5, 0.5)
@@ -684,39 +964,36 @@ local function showCashPopup(
 	container.BorderSizePixel = 0
 	container.Parent = billboard
 
-	UITheme.AddCorner(container, 0.25)
-
-	local stroke = UITheme.AddStroke(
+	UITheme.AddCorner(
 		container,
-		Colors.Success,
-		2,
-		0.12
+		0.25
 	)
 
-	UITheme.AddGradient(
-		container,
-		Colors.Success,
-		Colors.SuccessDark
-	)
+	local stroke =
+		UITheme.AddStroke(
+			container,
+			Colors.Success,
+			2,
+			0.12
+		)
 
 	local amountLabel =
 		Instance.new("TextLabel")
 
 	amountLabel.Name = "Amount"
-	amountLabel.Position =
-		UDim2.fromScale(0.08, 0.08)
-
 	amountLabel.Size =
-		UDim2.fromScale(0.84, 0.55)
+		UDim2.fromScale(1, 1)
 
 	amountLabel.BackgroundTransparency = 1
+
 	amountLabel.Text =
-		string.format("+$%d", amount)
+		string.format(
+			"+$%d",
+			amount
+		)
 
-	amountLabel.TextXAlignment =
-		Enum.TextXAlignment.Center
-
-	amountLabel.Parent = container
+	amountLabel.Parent =
+		container
 
 	UITheme.StyleText(
 		amountLabel,
@@ -726,45 +1003,25 @@ local function showCashPopup(
 		Fonts.Black
 	)
 
-	local saleLabel =
-		Instance.new("TextLabel")
+	local moveTween =
+		TweenService:Create(
+			billboard,
+			TweenInfo.new(
+				1,
+				Enum.EasingStyle.Back,
+				Enum.EasingDirection.Out
+			),
+			{
+				StudsOffsetWorldSpace =
+					Vector3.new(
+						0,
+						4.3,
+						0
+					),
+			}
+		)
 
-	saleLabel.Name = "SaleLabel"
-	saleLabel.Position =
-		UDim2.fromScale(0.08, 0.61)
-
-	saleLabel.Size =
-		UDim2.fromScale(0.84, 0.24)
-
-	saleLabel.BackgroundTransparency = 1
-	saleLabel.Text = "SALE COMPLETE"
-	saleLabel.TextXAlignment =
-		Enum.TextXAlignment.Center
-
-	saleLabel.Parent = container
-
-	UITheme.StyleText(
-		saleLabel,
-		8,
-		13,
-		Colors.Text,
-		Fonts.Bold
-	)
-
-	local moveTween = TweenService:Create(
-		billboard,
-		TweenInfo.new(
-			1,
-			Enum.EasingStyle.Back,
-			Enum.EasingDirection.Out
-		),
-		{
-			StudsOffsetWorldSpace =
-				Vector3.new(0, 4.3, 0),
-		}
-	)
-
-	local amountFadeTween =
+	local labelFade =
 		TweenService:Create(
 			amountLabel,
 			TweenInfo.new(
@@ -780,23 +1037,7 @@ local function showCashPopup(
 			}
 		)
 
-	local saleFadeTween =
-		TweenService:Create(
-			saleLabel,
-			TweenInfo.new(
-				0.3,
-				Enum.EasingStyle.Linear,
-				Enum.EasingDirection.Out,
-				0,
-				false,
-				0.68
-			),
-			{
-				TextTransparency = 1,
-			}
-		)
-
-	local containerFadeTween =
+	local backgroundFade =
 		TweenService:Create(
 			container,
 			TweenInfo.new(
@@ -812,7 +1053,7 @@ local function showCashPopup(
 			}
 		)
 
-	local strokeFadeTween =
+	local strokeFade =
 		TweenService:Create(
 			stroke,
 			TweenInfo.new(
@@ -829,47 +1070,54 @@ local function showCashPopup(
 		)
 
 	moveTween:Play()
-	amountFadeTween:Play()
-	saleFadeTween:Play()
-	containerFadeTween:Play()
-	strokeFadeTween:Play()
+	labelFade:Play()
+	backgroundFade:Play()
+	strokeFade:Play()
 
-	Debris:AddItem(billboard, 1.15)
+	Debris:AddItem(
+		billboard,
+		1.15
+	)
 end
 
-local function playSaleSound(stand: Model)
-	local saleSound = stand:FindFirstChild("SaleSound", true)
+local function playSaleSound(
+	stand: Model
+)
+	local saleSound =
+		stand:FindFirstChild(
+			"SaleSound",
+			true
+		)
 
-	if not saleSound or not saleSound:IsA("Sound") then
-		warn(`{stand.Name} is missing SaleSound.`)
-		return
+	if saleSound
+		and saleSound:IsA("Sound") then
+
+		saleSound:Play()
 	end
-
-	saleSound:Play()
 end
 
 local function rewardPlotOwner(
 	plot: Model,
 	stand: Model
 ): boolean
-	local player = getPlayerFromPlot(plot)
+	local player =
+		getPlayerFromPlot(plot)
 
 	if not player then
 		return false
 	end
 
-	local cash = getCashValue(player)
+	local cash =
+		getCashValue(player)
 
 	if not cash then
-		warn(
-			`Cash value was not found for {player.Name}.`
-		)
-
 		return false
 	end
 
 	local saleValue =
-		getLemonadeSaleValue(stand)
+		getLemonadeSaleValue(
+			stand
+		)
 
 	cash.Value += saleValue
 
@@ -887,16 +1135,25 @@ local function sendCustomerToExit(
 	plot: Model,
 	customer: Model
 )
-	local customerExit = plot:FindFirstChild("CustomerExit")
+	local customerExit =
+		plot:FindFirstChild(
+			"CustomerExit"
+		)
 
-	if not customerExit or not customerExit:IsA("BasePart") then
-		warn(`{plot.Name} is missing CustomerExit.`)
+	if not customerExit
+		or not customerExit:IsA(
+			"BasePart"
+		) then
+
 		customer:Destroy()
 		return
 	end
 
 	task.spawn(function()
-		moveCustomerTo(customer, customerExit)
+		moveCustomerTo(
+			customer,
+			customerExit
+		)
 
 		if customer.Parent then
 			customer:Destroy()
@@ -904,123 +1161,27 @@ local function sendCustomerToExit(
 	end)
 end
 
-local function evacuatePlotCustomers(plot: Model)
-	local state = plotStates[plot]
-
-	if not state or #state.queue == 0 then
-		return
-	end
-
-	-- Remove the entries from the active queue first so processQueue
-	-- and the spawning system no longer treat them as customers waiting
-	-- for this stand.
-	local customersToEvacuate = state.queue
-	state.queue = {}
-
-	for _, entry in customersToEvacuate do
-		entry.isLeaving = true
-		entry.reachedPosition = false
-		entry.targetPosition = nil
-
-		-- Cancels movement functions that use movementVersion.
-		entry.movementVersion += 1
-
-		local customer = entry.customer
-
-		if not customer.Parent then
-			continue
-		end
-
-		local humanoid =
-			customer:FindFirstChildOfClass("Humanoid")
-
-		local rootPart =
-			customer:FindFirstChild("HumanoidRootPart")
-
-		if humanoid then
-			humanoid.AutoRotate = true
-
-			if rootPart and rootPart:IsA("BasePart") then
-				-- Cancels the command that was taking the customer
-				-- toward a queue position.
-				humanoid:MoveTo(rootPart.Position)
-			end
-		end
-
-		sendCustomerToExit(plot, customer)
-	end
-end
-
-businessAvailabilityEvent.Event:Connect(function(plot: Model)
-	if not plot or not plot:IsA("Model") then
-		return
-	end
-
-	evacuatePlotCustomers(plot)
-end)
-
-local QUEUE_MOVE_TIMEOUT = 8
-local QUEUE_REACHED_DISTANCE = 1.75
-
-local function moveQueueEntryTo(
-	entry: QueueEntry,
-	target: BasePart
-): boolean
-	local customer = entry.customer
-	local humanoid = customer:FindFirstChildOfClass("Humanoid")
-	local rootPart = customer:FindFirstChild("HumanoidRootPart")
-
-	if not humanoid or not rootPart or not rootPart:IsA("BasePart") then
-		return false
-	end
-
-	-- Invalidates any previous queue movement for this customer.
-	entry.movementVersion += 1
-	local currentVersion = entry.movementVersion
-
-	entry.reachedPosition = false
-	humanoid:MoveTo(target.Position)
-
-	local startedAt = time()
-
-	while customer.Parent and humanoid.Health > 0 do
-		if entry.movementVersion ~= currentVersion then
-			return false
-		end
-
-		local horizontalOffset = Vector3.new(
-			rootPart.Position.X - target.Position.X,
-			0,
-			rootPart.Position.Z - target.Position.Z
-		)
-
-		if horizontalOffset.Magnitude <= QUEUE_REACHED_DISTANCE then
-			-- Stop the Humanoid cleanly at its current location.
-			humanoid:MoveTo(rootPart.Position)
-			entry.reachedPosition = true
-			return true
-		end
-
-		if time() - startedAt >= QUEUE_MOVE_TIMEOUT then
-			return false
-		end
-
-		task.wait(0.05)
-	end
-
-	return false
-end
-
-local function runQueueMovementController(entry: QueueEntry)
+local function runQueueMovementController(
+	entry: QueueEntry
+)
 	if entry.controllerRunning then
 		return
 	end
 
 	entry.controllerRunning = true
 
-	local customer = entry.customer
-	local humanoid = customer:FindFirstChildOfClass("Humanoid")
-	local rootPart = customer:FindFirstChild("HumanoidRootPart")
+	local customer =
+		entry.customer
+
+	local humanoid =
+		customer:FindFirstChildOfClass(
+			"Humanoid"
+		)
+
+	local rootPart =
+		customer:FindFirstChild(
+			"HumanoidRootPart"
+		)
 
 	if not humanoid
 		or not rootPart
@@ -1032,41 +1193,66 @@ local function runQueueMovementController(entry: QueueEntry)
 
 	local lastTarget: BasePart? = nil
 	local lastCommandAt = 0
+	local targetStartedAt = time()
 
-	while customer.Parent and not entry.isLeaving do
-		local target = entry.targetPosition
+	while customer.Parent
+		and not entry.isLeaving do
 
-		if not target or not target.Parent then
+		local target =
+			entry.targetPosition
+
+		if not target
+			or not target.Parent then
+
 			entry.reachedPosition = false
 			RunService.Heartbeat:Wait()
 			continue
 		end
 
-		local targetChanged = target ~= lastTarget
-
-		if targetChanged then
+		if target ~= lastTarget then
 			lastTarget = target
 			lastCommandAt = 0
+			targetStartedAt = time()
 			entry.reachedPosition = false
 		end
 
-		local horizontalOffset = Vector3.new(
-			rootPart.Position.X - target.Position.X,
-			0,
-			rootPart.Position.Z - target.Position.Z
-		)
+		local horizontalOffset =
+			Vector3.new(
+				rootPart.Position.X
+					- target.Position.X,
+				0,
+				rootPart.Position.Z
+					- target.Position.Z
+			)
 
-		if horizontalOffset.Magnitude <= QUEUE_REACHED_DISTANCE then
+		if horizontalOffset.Magnitude
+			<= QUEUE_REACHED_DISTANCE then
+
 			if not entry.reachedPosition then
 				entry.reachedPosition = true
-				humanoid:MoveTo(rootPart.Position)
+
+				humanoid:MoveTo(
+					rootPart.Position
+				)
 			end
 		else
 			entry.reachedPosition = false
 
-			if time() - lastCommandAt >= QUEUE_COMMAND_INTERVAL then
-				humanoid:MoveTo(target.Position)
+			if time() - lastCommandAt
+				>= QUEUE_COMMAND_INTERVAL then
+
+				humanoid:MoveTo(
+					target.Position
+				)
+
 				lastCommandAt = time()
+			end
+
+			if time() - targetStartedAt
+				>= QUEUE_MOVE_TIMEOUT then
+
+				entry.isLeaving = true
+				break
 			end
 		end
 
@@ -1077,30 +1263,148 @@ local function runQueueMovementController(entry: QueueEntry)
 end
 
 local function moveQueueForward(
-	plot: Model,
-	state: PlotState
+	stand: Model,
+	state: StandState
 )
-	local queuePositions = getQueuePositions(plot)
+	local queuePositions =
+		getQueuePositions(stand)
 
-	for queueIndex, entry in state.queue do
-		local targetPosition = queuePositions[queueIndex]
+	for queueIndex, entry in
+		state.queue do
 
-		if not targetPosition or entry.isLeaving then
+		local targetPosition =
+			queuePositions[queueIndex]
+
+		if not targetPosition
+			or entry.isLeaving then
+
 			continue
 		end
 
-		entry.assignedSlot = queueIndex
-		entry.targetPosition = targetPosition
+		entry.assignedSlot =
+			queueIndex
+
+		entry.targetPosition =
+			targetPosition
+
 		entry.reachedPosition = false
 
 		if not entry.controllerRunning then
-			task.spawn(runQueueMovementController, entry)
+			task.spawn(
+				runQueueMovementController,
+				entry
+			)
 		end
 	end
 end
 
-local function processQueue(plot: Model)
-	local state = getPlotState(plot)
+local function evacuateStandCustomers(
+	plot: Model,
+	stand: Model
+)
+	local state =
+		standStates[stand]
+
+	if not state then
+		return
+	end
+
+	local customersToEvacuate =
+		state.queue
+
+	state.queue = {}
+	state.isServing = false
+
+	setStandServingState(
+		stand,
+		false
+	)
+
+	for _, entry in
+		customersToEvacuate do
+
+		entry.isLeaving = true
+		entry.reachedPosition = false
+		entry.targetPosition = nil
+		entry.movementVersion += 1
+
+		local customer =
+			entry.customer
+
+		if not customer.Parent then
+			continue
+		end
+
+		local humanoid =
+			customer:FindFirstChildOfClass(
+				"Humanoid"
+			)
+
+		local rootPart =
+			customer:FindFirstChild(
+				"HumanoidRootPart"
+			)
+
+		if humanoid then
+			humanoid.AutoRotate = true
+
+			if rootPart
+				and rootPart:IsA(
+					"BasePart"
+				) then
+
+				humanoid:MoveTo(
+					rootPart.Position
+				)
+			end
+		end
+
+		sendCustomerToExit(
+			plot,
+			customer
+		)
+	end
+end
+
+local function evacuatePlotCustomers(
+	plot: Model
+)
+	for stand in standStates do
+		if getPlotFromStand(stand)
+			== plot then
+
+			evacuateStandCustomers(
+				plot,
+				stand
+			)
+		end
+	end
+end
+
+if businessAvailabilityEvent
+	and businessAvailabilityEvent:IsA(
+		"BindableEvent"
+	) then
+
+	businessAvailabilityEvent.Event:Connect(
+		function(plot: Model)
+			if plot
+				and plot:IsA("Model") then
+
+				evacuatePlotCustomers(
+					plot
+				)
+			end
+		end
+	)
+end
+
+local function processQueue(
+	plot: Model,
+	stand: Model
+)
+	local state =
+		getStandState(stand)
 
 	if state.isServing then
 		return
@@ -1108,12 +1412,25 @@ local function processQueue(plot: Model)
 
 	state.isServing = true
 
-	while #state.queue > 0 and standIsAvailable(plot) do
-		local firstEntry = state.queue[1]
+	while standIsAvailable(stand)
+		and #state.queue > 0 do
 
-		if not firstEntry or not firstEntry.customer.Parent then
-			table.remove(state.queue, 1)
-			moveQueueForward(plot, state)
+		local firstEntry =
+			state.queue[1]
+
+		if not firstEntry
+			or not firstEntry.customer.Parent then
+
+			table.remove(
+				state.queue,
+				1
+			)
+
+			moveQueueForward(
+				stand,
+				state
+			)
+
 			continue
 		end
 
@@ -1121,58 +1438,57 @@ local function processQueue(plot: Model)
 
 		while firstEntry.customer.Parent
 			and not firstEntry.isLeaving
-			and standIsAvailable(plot) do
+			and standIsAvailable(stand) do
+
 			local readyForService =
 				firstEntry.assignedSlot == 1
-				and firstEntry.targetPosition ~= nil
+				and firstEntry.targetPosition
+					~= nil
 				and firstEntry.reachedPosition
 
 			if readyForService then
 				break
 			end
 
-			if time() - waitStartedAt >= WALK_TIMEOUT then
+			if time() - waitStartedAt
+				>= QUEUE_MOVE_TIMEOUT then
+
+				firstEntry.isLeaving =
+					true
+
 				break
 			end
 
 			task.wait(0.05)
 		end
-		
-		if firstEntry.isLeaving or not standIsAvailable(plot) then
+
+		if not standIsAvailable(stand) then
 			break
 		end
 
-		if not firstEntry.customer.Parent then
-			table.remove(state.queue, 1)
-			moveQueueForward(plot, state)
-			continue
-		end
+		if firstEntry.isLeaving
+			or not firstEntry.customer.Parent then
 
-		if firstEntry.assignedSlot ~= 1
-			or not firstEntry.reachedPosition then
+			local customer =
+				firstEntry.customer
 
-			firstEntry.isLeaving = true
-			firstEntry.targetPosition = nil
-			firstEntry.reachedPosition = false
+			table.remove(
+				state.queue,
+				1
+			)
 
-			firstEntry.customer:Destroy()
+			if customer.Parent then
+				sendCustomerToExit(
+					plot,
+					customer
+				)
+			end
 
-			table.remove(state.queue, 1)
-			moveQueueForward(plot, state)
-			continue
-		end
+			moveQueueForward(
+				stand,
+				state
+			)
 
-		local stand = getLemonadeStand(plot)
-
-		if not stand then
-			firstEntry.isLeaving = true
-			firstEntry.targetPosition = nil
-			firstEntry.reachedPosition = false
-
-			firstEntry.customer:Destroy()
-
-			table.remove(state.queue, 1)
-			moveQueueForward(plot, state)
 			continue
 		end
 
@@ -1182,29 +1498,37 @@ local function processQueue(plot: Model)
 		)
 
 		local transactionTime =
-	getLemonadeCooldown(stand)
+			getLemonadeCooldown(
+				stand
+			)
 
-firstEntry.customer:SetAttribute(
-	"TransactionTime",
-	transactionTime
-)
+		firstEntry.customer:SetAttribute(
+			"TransactionTime",
+			transactionTime
+		)
 
-setStandServingState(
-	stand,
-	true,
-	transactionTime
-)
+		setStandServingState(
+			stand,
+			true,
+			transactionTime
+		)
 
 		local transactionEndsAt =
 			time() + transactionTime
 
-		local transactionCompleted = true
+		local transactionCompleted =
+			true
 
-		while time() < transactionEndsAt do
+		while time()
+			< transactionEndsAt do
+
 			transactionCompleted =
 				not firstEntry.isLeaving
-				and firstEntry.customer.Parent ~= nil
-				and standIsAvailable(plot)
+				and firstEntry.customer.Parent
+					~= nil
+				and standIsAvailable(
+					stand
+				)
 
 			if not transactionCompleted then
 				break
@@ -1222,105 +1546,148 @@ setStandServingState(
 			break
 		end
 
-		if firstEntry.isLeaving
-			or not firstEntry.customer.Parent
-			or not standIsAvailable(plot) then
+		rewardPlotOwner(
+			plot,
+			stand
+		)
 
-			break
-		end
-
-		if not firstEntry.customer.Parent then
-			table.remove(state.queue, 1)
-			moveQueueForward(plot, state)
-			continue
-		end
-
-		rewardPlotOwner(plot, stand)
-
-		-- Stop the queue controller before exit movement takes control.
 		firstEntry.isLeaving = true
 		firstEntry.targetPosition = nil
 		firstEntry.reachedPosition = false
+		firstEntry.movementVersion += 1
+
+		local customer =
+			firstEntry.customer
 
 		local humanoid =
-			firstEntry.customer:FindFirstChildOfClass("Humanoid")
+			customer:FindFirstChildOfClass(
+				"Humanoid"
+			)
 
 		local rootPart =
-			firstEntry.customer:FindFirstChild("HumanoidRootPart")
-
-		if humanoid
-			and rootPart
-			and rootPart:IsA("BasePart") then
-
-			humanoid:MoveTo(rootPart.Position)
-		end
-
-		table.remove(state.queue, 1)
-		
-		local humanoid =
-			firstEntry.customer:FindFirstChildOfClass("Humanoid")
+			customer:FindFirstChild(
+				"HumanoidRootPart"
+			)
 
 		if humanoid then
 			humanoid.AutoRotate = true
+
+			if rootPart
+				and rootPart:IsA(
+					"BasePart"
+				) then
+
+				humanoid:MoveTo(
+					rootPart.Position
+				)
+			end
 		end
 
-		-- Exit movement now has sole control of this customer.
+		table.remove(
+			state.queue,
+			1
+		)
+
 		sendCustomerToExit(
 			plot,
-			firstEntry.customer
+			customer
 		)
 
-		-- Reassign everyone still waiting to Queue1, Queue2, Queue3, etc.
-		moveQueueForward(plot, state)
-
-		local counterResetTime = randomGenerator:NextNumber(
-			MIN_COUNTER_RESET_TIME,
-			MAX_COUNTER_RESET_TIME
+		moveQueueForward(
+			stand,
+			state
 		)
 
-		task.wait(counterResetTime)
+		task.wait(
+			randomGenerator:NextNumber(
+				MIN_COUNTER_RESET_TIME,
+				MAX_COUNTER_RESET_TIME
+			)
+		)
 	end
+
+	setStandServingState(
+		stand,
+		false
+	)
 
 	state.isServing = false
 end
 
-local function spawnCustomerForPlot(plot: Model)
-	local state = getPlotState(plot)
-	local queuePositions = getQueuePositions(plot)
+local function spawnCustomerForStand(
+	plot: Model,
+	stand: Model
+)
+	if not standIsAvailable(stand) then
+		return
+	end
+
+	local state =
+		getStandState(stand)
+
+	local queuePositions =
+		getQueuePositions(stand)
 
 	if #queuePositions == 0 then
 		return
 	end
 
-	-- Do not spawn customers when all queue spaces are occupied.
-	if #state.queue >= #queuePositions then
+	if #state.queue
+		>= #queuePositions then
+
 		return
 	end
 
-	local customerSpawn = plot:FindFirstChild("CustomerSpawn")
+	local customerSpawn =
+		plot:FindFirstChild(
+			"CustomerSpawn"
+		)
 
-	if not customerSpawn or not customerSpawn:IsA("BasePart") then
-		warn(`{plot.Name} is missing CustomerSpawn.`)
+	if not customerSpawn
+		or not customerSpawn:IsA(
+			"BasePart"
+		) then
+
 		return
 	end
 
-	local npcTemplate = getNextNpcTemplate(state)
+	local npcTemplate =
+		getNextNpcTemplate(state)
 
 	if not npcTemplate then
 		return
 	end
 
-	local customer = npcTemplate:Clone()
+	local customer =
+		npcTemplate:Clone()
+
 	customer.Name = "Customer"
 
-	customer:SetAttribute("CharacterTemplate", npcTemplate.Name)
-	customer:SetAttribute("PlotName", plot.Name)
+	customer:SetAttribute(
+		"CharacterTemplate",
+		npcTemplate.Name
+	)
+
+	customer:SetAttribute(
+		"PlotName",
+		plot.Name
+	)
+
+	customer:SetAttribute(
+		"BusinessId",
+		stand:GetAttribute(
+			"BusinessId"
+		) or stand.Name
+	)
 
 	prepareCustomer(customer)
 
-	customer.Parent = customersFolder
+	customer.Parent =
+		customersFolder
+
 	customer:PivotTo(
-		customerSpawn.CFrame * CFrame.new(0, 3, 0)
+		customerSpawn.CFrame
+			* CFrame.new(0, 3, 0)
 	)
 
 	local entry: QueueEntry = {
@@ -1336,26 +1703,41 @@ local function spawnCustomerForPlot(plot: Model)
 		movementVersion = 0,
 	}
 
-	table.insert(state.queue, entry)
+	table.insert(
+		state.queue,
+		entry
+	)
 
-	-- Assigns every customer to exactly one deterministic queue slot.
-	moveQueueForward(plot, state)
+	moveQueueForward(
+		stand,
+		state
+	)
 
-	task.spawn(processQueue, plot)
+	task.spawn(
+		processQueue,
+		plot,
+		stand
+	)
 end
 
-local function plotCanReceiveCustomers(plot: Model): boolean
-	local ownerUserId = plot:GetAttribute("OwnerUserId")
+local function plotHasOwner(
+	plot: Model
+): boolean
+	local ownerUserId =
+		plot:GetAttribute(
+			"OwnerUserId"
+		)
 
-	if typeof(ownerUserId) ~= "number" or ownerUserId == 0 then
-		return false
-	end
-
-	return standIsAvailable(plot)
+	return typeof(ownerUserId)
+			== "number"
+		and ownerUserId > 0
 end
 
-local function cleanPlotCustomers(plot: Model)
-	local state = plotStates[plot]
+local function cleanStandState(
+	stand: Model
+)
+	local state =
+		standStates[stand]
 
 	if not state then
 		return
@@ -1367,51 +1749,93 @@ local function cleanPlotCustomers(plot: Model)
 		end
 	end
 
-	state.queue = {}
-	state.isServing = false
+	setStandServingState(
+		stand,
+		false
+	)
+
+	standStates[stand] = nil
 end
 
-Players.PlayerRemoving:Connect(function(player)
-	for _, plot in plotsFolder:GetChildren() do
-		if not plot:IsA("Model") then
-			continue
-		end
+local function cleanPlotCustomers(
+	plot: Model
+)
+	for stand in standStates do
+		if getPlotFromStand(stand)
+			== plot then
 
-		local ownerUserId = plot:GetAttribute("OwnerUserId")
-
-		if ownerUserId == player.UserId then
-			cleanPlotCustomers(plot)
+			cleanStandState(stand)
 		end
 	end
-end)
+end
+
+Players.PlayerRemoving:Connect(
+	function(player)
+		for _, plot in
+			plotsFolder:GetChildren() do
+
+			if not plot:IsA("Model") then
+				continue
+			end
+
+			if plot:GetAttribute(
+				"OwnerUserId"
+			) == player.UserId then
+
+				cleanPlotCustomers(plot)
+			end
+		end
+	end
+)
 
 while true do
 	local currentTime = time()
 
-	for _, plot in plotsFolder:GetChildren() do
-		if not plot:IsA("Model") then
-			continue
+	for stand in standStates do
+		if not stand.Parent then
+			cleanStandState(stand)
 		end
-
-		if not plotCanReceiveCustomers(plot) then
-			continue
-		end
-
-		local state = getPlotState(plot)
-
-		if currentTime < state.nextSpawnTime then
-			continue
-		end
-
-		spawnCustomerForPlot(plot)
-
-		state.nextSpawnTime = currentTime
-			+ randomGenerator:NextNumber(
-				MIN_SPAWN_INTERVAL,
-				MAX_SPAWN_INTERVAL
-			)
 	end
 
-	-- Lightweight scheduler so each plot has independent customer timing.
+	for _, plot in
+		plotsFolder:GetChildren() do
+
+		if not plot:IsA("Model")
+			or not plotHasOwner(plot) then
+
+			continue
+		end
+
+		local stands =
+			getLemonadeStands(plot)
+
+		for _, stand in stands do
+			if not standIsAvailable(stand) then
+				continue
+			end
+
+			local state =
+				getStandState(stand)
+
+			if currentTime
+				< state.nextSpawnTime then
+
+				continue
+			end
+
+			spawnCustomerForStand(
+				plot,
+				stand
+			)
+
+			state.nextSpawnTime =
+				currentTime
+				+ randomGenerator:NextNumber(
+					MIN_SPAWN_INTERVAL,
+					MAX_SPAWN_INTERVAL
+				)
+		end
+	end
+
 	task.wait(0.2)
 end

@@ -44,6 +44,7 @@ local toastLabel: TextLabel? = nil
 local managementCreationPending = false
 
 local removeRequestPending = false
+local pendingRemoveBusinessId: string? = nil
 local toastVersion = 0
 
 local function getOwnedPlot(): Model?
@@ -75,23 +76,46 @@ local function getOwnedPlot(): Model?
 	return nil
 end
 
+local function getCharacterRoot(): BasePart?
+	local character = player.Character
+
+	if not character then
+		return nil
+	end
+
+	local rootPart =
+		character:FindFirstChild(
+			"HumanoidRootPart"
+		)
+
+	if rootPart
+		and rootPart:IsA("BasePart") then
+
+		return rootPart
+	end
+
+	return nil
+end
+
 local function isLemonadeStand(
-	stand: Instance
+	instance: Instance
 ): boolean
-	if not stand:IsA("Model") then
+	if not instance:IsA("Model") then
 		return false
 	end
 
 	local businessType =
-		stand:GetAttribute("BusinessType")
+		instance:GetAttribute(
+			"BusinessType"
+		)
 
 	if businessType == BUSINESS_NAME then
 		return true
 	end
 
-	return stand.Name == BUSINESS_NAME
+	return instance.Name == BUSINESS_NAME
 		or string.match(
-			stand.Name,
+			instance.Name,
 			"^LemonadeStand_"
 		) ~= nil
 end
@@ -125,40 +149,56 @@ local function getClosestOwnedStand(): Model?
 	for _, child in
 		placedBusinesses:GetChildren() do
 
+		if not child:IsA("Model") then
+			continue
+		end
+
 		if not isLemonadeStand(child) then
 			continue
 		end
 
-		if child:GetAttribute("OwnerUserId")
-			~= player.UserId then
+		local stand: Model = child
+
+		if stand:GetAttribute(
+			"OwnerUserId"
+		) ~= player.UserId then
 
 			continue
 		end
 
-		local positionPart =
-			child:FindFirstChild(
+		local positionInstance =
+			stand:FindFirstChild(
 				"ManagementUIPosition",
 				true
 			)
-			or child.PrimaryPart
 
-		if not positionPart
-			or not positionPart:IsA(
+		local positionPart: BasePart? = nil
+
+		if positionInstance
+			and positionInstance:IsA(
 				"BasePart"
 			) then
 
+			positionPart =
+				positionInstance
+		elseif stand.PrimaryPart then
+			positionPart =
+				stand.PrimaryPart
+		end
+
+		if not positionPart then
 			continue
 		end
 
 		local distance =
 			(
 				rootPart.Position
-				- positionPart.Position
+					- positionPart.Position
 			).Magnitude
 
 		if distance < closestDistance then
 			closestDistance = distance
-			closestStand = child
+			closestStand = stand
 		end
 	end
 
@@ -537,7 +577,10 @@ local removeButton = createActionButton(
 		end
 
 		billboard.Enabled = false
-		requestEditRemote:FireServer()
+		requestEditRemote:FireServer(
+	stand:GetAttribute("BusinessId")
+		or stand.Name
+)
 	end)
 
 	removeButton.Activated:Connect(function()
@@ -554,8 +597,16 @@ local removeButton = createActionButton(
 			return
 		end
 
-		removeRequestPending = true
-		requestRemoveRemote:FireServer(false)
+		pendingRemoveBusinessId =
+	stand:GetAttribute("BusinessId")
+	or stand.Name
+
+removeRequestPending = true
+
+requestRemoveRemote:FireServer(
+	false,
+	pendingRemoveBusinessId
+)
 
 		task.delay(2, function()
 			removeRequestPending = false
@@ -572,6 +623,7 @@ local function hideRemoveConfirmation()
 	end
 
 	removeRequestPending = false
+	pendingRemoveBusinessId = nil
 end
 
 local function createRemoveConfirmation()
@@ -725,10 +777,10 @@ title.Size =
 
 	subtitle.Name = "Subtitle"
 	subtitle.Position =
-		UDim2.fromScale(0.27, 0.2)
+	UDim2.fromScale(0.09, 0.29)
 
-	subtitle.Size =
-		UDim2.fromScale(0.65, 0.08)
+subtitle.Size =
+	UDim2.fromScale(0.82, 0.08)
 
 	subtitle.BackgroundTransparency = 1
 	subtitle.Text =
@@ -835,19 +887,27 @@ buttons.Size =
 	end)
 
 	removeButton.Activated:Connect(function()
-		if removeRequestPending then
-			return
-		end
+	if removeRequestPending then
+		return
+	end
 
-		removeRequestPending = true
-		overlay.Visible = false
+	if not pendingRemoveBusinessId then
+		hideRemoveConfirmation()
+		return
+	end
 
-		requestRemoveRemote:FireServer(true)
+	removeRequestPending = true
+	overlay.Visible = false
 
-		task.delay(2, function()
-			removeRequestPending = false
-		end)
+	requestRemoveRemote:FireServer(
+		true,
+		pendingRemoveBusinessId
+	)
+
+	task.delay(2, function()
+		removeRequestPending = false
 	end)
+end)
 
 	local toast = Instance.new("TextLabel")
 	toast.Name = "Toast"
@@ -1021,49 +1081,67 @@ end)
 
 task.spawn(function()
 	while true do
-		local stand = getClosestOwnedStand()
-		local rootPart = getCharacterRoot()
+		local stand =
+			getClosestOwnedStand()
+
+		local rootPart =
+			getCharacterRoot()
 
 		if stand ~= managementStand then
-	if stand and not managementCreationPending then
-		managementCreationPending = true
+			if stand
+				and not managementCreationPending then
 
-		task.spawn(function()
-			createManagementUI(stand)
-			managementCreationPending = false
-		end)
-	elseif not stand then
-		destroyManagementUI()
-		managementCreationPending = false
-	end
-end
+				managementCreationPending =
+					true
+
+				task.spawn(function()
+					createManagementUI(
+						stand
+					)
+
+					managementCreationPending =
+						false
+				end)
+			elseif not stand then
+				destroyManagementUI()
+
+				managementCreationPending =
+					false
+			end
+		end
 
 		local shouldShow = false
 
 		if stand
 			and rootPart
 			and managementGui
-			and stand:GetAttribute("IsBeingEdited")
-			~= true
-			and stand:GetAttribute("StandUnavailable")
-			~= true then
+			and managementStand == stand
+			and stand:GetAttribute(
+				"IsBeingEdited"
+			) ~= true
+			and stand:GetAttribute(
+				"StandUnavailable"
+			) ~= true then
 
-			local adornee = getUIAdornee(stand)
+			local adornee =
+				getUIAdornee(stand)
 
 			if adornee then
 				local distance =
 					(
 						rootPart.Position
-						- adornee.Position
+							- adornee.Position
 					).Magnitude
 
 				shouldShow =
-					distance <= MANAGEMENT_DISTANCE
+					distance
+					<= MANAGEMENT_DISTANCE
 			end
 		end
 
 		if managementGui then
-			managementGui.Enabled = shouldShow
+			managementGui.Enabled =
+				shouldShow
 		end
 
 		task.wait(UPDATE_INTERVAL)
