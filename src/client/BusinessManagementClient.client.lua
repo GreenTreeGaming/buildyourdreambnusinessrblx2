@@ -19,7 +19,7 @@ local interactionResultRemote =
 
 local BUSINESS_NAME = "LemonadeStand"
 
-local MANAGEMENT_DISTANCE = 14
+local MANAGEMENT_DISTANCE = 22
 local UPDATE_INTERVAL = 0.1
 
 local managementGui: BillboardGui? = nil
