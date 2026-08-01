@@ -11,14 +11,14 @@ local remotes =
 
 local BUSINESS_NAME = "LemonadeStand"
 local DEFAULT_SALE_VALUE = 2
-local DEFAULT_PURCHASE_COOLDOWN = 1
+local DEFAULT_PURCHASE_TIME = 5
 
 local promptConnections: {
 	[ProximityPrompt]: RBXScriptConnection
 } = {}
 
-local promptCooldowns: {
-	[ProximityPrompt]: number
+local activePurchases: {
+	[ProximityPrompt]: boolean
 } = {}
 
 local manualSaleResultRemote =
@@ -136,54 +136,24 @@ local function getSaleValue(
 	)
 end
 
-local function getPromptCooldown(
+local function getPurchaseTime(
 	stand: Model
 ): number
-	local cooldown =
+	local purchaseTime =
 		stand:GetAttribute(
-			"ManualPurchaseCooldown"
+			"PurchaseCooldown"
 		)
 
-	if typeof(cooldown) ~= "number"
-		or cooldown < 0 then
+	if typeof(purchaseTime) ~= "number"
+		or purchaseTime <= 0 then
 
-		return DEFAULT_PURCHASE_COOLDOWN
+		return DEFAULT_PURCHASE_TIME
 	end
 
-	return cooldown
+	return purchaseTime
 end
 
-local function isLemonadePurchasePrompt(
-	prompt: ProximityPrompt
-): boolean
-	if prompt:GetAttribute(
-		"IsLemonadePurchasePrompt"
-	) == true then
-
-		return true
-	end
-
-	local actionText =
-		string.lower(prompt.ActionText)
-
-	local objectText =
-		string.lower(prompt.ObjectText)
-
-	return string.find(
-		actionText,
-		"lemonade",
-		1,
-		true
-	) ~= nil
-		or string.find(
-			objectText,
-			"lemonade",
-			1,
-			true
-		) ~= nil
-end
-
-local function canUseStand(
+local function isStandAvailable(
 	stand: Model
 ): boolean
 	if not stand.Parent then
@@ -205,20 +175,87 @@ local function canUseStand(
 	return true
 end
 
+local function isPurchasePrompt(
+	prompt: ProximityPrompt
+): boolean
+	if prompt:GetAttribute(
+		"IsLemonadePurchasePrompt"
+	) == true then
+
+		return true
+	end
+
+	local actionText =
+		string.lower(prompt.ActionText)
+
+	local objectText =
+		string.lower(prompt.ObjectText)
+
+	if string.find(
+		actionText,
+		"lemonade",
+		1,
+		true
+	) then
+
+		return true
+	end
+
+	if string.find(
+		objectText,
+		"lemonade",
+		1,
+		true
+	) then
+
+		return true
+	end
+
+	-- Allows the prompt to work even if its text
+	-- is changed later in Studio.
+	return prompt.Name == "ProximityPrompt"
+end
+
+local function clearPurchaseState(
+	stand: Model,
+	prompt: ProximityPrompt
+)
+	activePurchases[prompt] = nil
+
+	if stand.Parent then
+		stand:SetAttribute(
+			"ManualPurchaseActive",
+			false
+		)
+
+		stand:SetAttribute(
+			"ManualPurchaseStartedAt",
+			nil
+		)
+
+		stand:SetAttribute(
+			"ManualPurchaseDuration",
+			nil
+		)
+	end
+
+	if prompt.Parent
+		and isStandAvailable(stand) then
+
+		prompt.Enabled = true
+	end
+end
+
 local function processPurchase(
 	prompt: ProximityPrompt,
 	stand: Model,
 	buyer: Player
 )
-	if not canUseStand(stand) then
+	if activePurchases[prompt] then
 		return
 	end
 
-	local currentTime = time()
-	local availableAt =
-		promptCooldowns[prompt] or 0
-
-	if currentTime < availableAt then
+	if not isStandAvailable(stand) then
 		return
 	end
 
@@ -233,9 +270,10 @@ local function processPurchase(
 		return
 	end
 
-	local cash = getCashValue(owner)
+	local ownerCash =
+		getCashValue(owner)
 
-	if not cash then
+	if not ownerCash then
 		warn(
 			`Cash value was not found for {owner.Name}.`
 		)
@@ -243,32 +281,77 @@ local function processPurchase(
 		return
 	end
 
+	local purchaseTime =
+		getPurchaseTime(stand)
+
 	local saleValue =
 		getSaleValue(stand)
 
-	local cooldown =
-		getPromptCooldown(stand)
+	activePurchases[prompt] = true
+	prompt.Enabled = false
 
-	promptCooldowns[prompt] =
-		currentTime + cooldown
-
-	cash.Value += saleValue
-
-	-- Show the new sale UI to the buyer.
-	manualSaleResultRemote:FireClient(
-		buyer,
-		stand,
-		saleValue
+	stand:SetAttribute(
+		"ManualPurchaseActive",
+		true
 	)
 
-	-- Also show it to the owner when another player buys.
-	if owner ~= buyer then
+	stand:SetAttribute(
+		"ManualPurchaseStartedAt",
+		Workspace:GetServerTimeNow()
+	)
+
+	stand:SetAttribute(
+		"ManualPurchaseDuration",
+		purchaseTime
+	)
+
+	print(
+		`{buyer.Name} started buying lemonade from {owner.Name}'s stand.`
+	)
+
+	task.delay(purchaseTime, function()
+		if not activePurchases[prompt] then
+			return
+		end
+
+		if not prompt.Parent
+			or not stand.Parent
+			or not buyer.Parent
+			or not isStandAvailable(stand) then
+
+			clearPurchaseState(
+				stand,
+				prompt
+			)
+
+			return
+		end
+
+		ownerCash.Value += saleValue
+
 		manualSaleResultRemote:FireClient(
-			owner,
+			buyer,
 			stand,
 			saleValue
 		)
-	end
+
+		if owner ~= buyer then
+			manualSaleResultRemote:FireClient(
+				owner,
+				stand,
+				saleValue
+			)
+		end
+
+		clearPurchaseState(
+			stand,
+			prompt
+		)
+
+		print(
+			`Lemonade sale completed for ${saleValue}.`
+		)
+	end)
 end
 
 local function connectPrompt(
@@ -279,12 +362,10 @@ local function connectPrompt(
 		return
 	end
 
-	if not isLemonadePurchasePrompt(prompt) then
+	if not isPurchasePrompt(prompt) then
 		return
 	end
 
-	-- This attribute makes the intended prompt explicit
-	-- when inspecting it in Studio.
 	prompt:SetAttribute(
 		"IsLemonadePurchasePrompt",
 		true
@@ -292,12 +373,12 @@ local function connectPrompt(
 
 	promptConnections[prompt] =
 		prompt.Triggered:Connect(function(
-			playerWhoTriggered: Player
+			triggeringPlayer: Player
 		)
 			processPurchase(
 				prompt,
 				stand,
-				playerWhoTriggered
+				triggeringPlayer
 			)
 		end)
 
@@ -310,8 +391,12 @@ local function connectPrompt(
 		end
 
 		promptConnections[prompt] = nil
-		promptCooldowns[prompt] = nil
+		activePurchases[prompt] = nil
 	end)
+
+	print(
+		`Connected lemonade purchase prompt: {prompt:GetFullName()}`
+	)
 end
 
 local function connectStand(

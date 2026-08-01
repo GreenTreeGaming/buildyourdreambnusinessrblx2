@@ -280,6 +280,12 @@ closeButton.TextTransparency = 0
 		Colors.SurfaceRaised
 	)
 
+	closeButton.TextColor3 =
+	Color3.fromRGB(255, 255, 255)
+
+closeButton.TextTransparency = 0
+closeButton.TextStrokeTransparency = 1
+
 	local card = Instance.new("Frame")
 	card.Name = "ServingSpeedCard"
 	card.Position =

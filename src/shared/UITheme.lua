@@ -210,25 +210,39 @@ function UITheme.StyleButton(
 	bottomColor: Color3,
 	textColor: Color3?
 )
+	-- Remove an existing gradient because a UIGradient directly
+	-- inside a TextButton also affects its rendered text.
+	local existingGradient =
+		button:FindFirstChildOfClass("UIGradient")
+
+	if existingGradient then
+		existingGradient:Destroy()
+	end
+
 	button.BackgroundColor3 = topColor
+	button.BackgroundTransparency = 0
 	button.BorderSizePixel = 0
 	button.AutoButtonColor = false
+
 	button.TextColor3 =
 		textColor or UITheme.Colors.Text
 
-	UITheme.AddCorner(button, 0.22)
+	button.TextTransparency = 0
+	button.TextStrokeTransparency = 1
+
+	UITheme.AddCorner(
+		button,
+		0.22
+	)
 
 	UITheme.AddStroke(
 		button,
-		topColor:Lerp(Color3.new(1, 1, 1), 0.25),
+		topColor:Lerp(
+			Color3.new(1, 1, 1),
+			0.25
+		),
 		1.5,
 		0.3
-	)
-
-	UITheme.AddGradient(
-		button,
-		topColor,
-		bottomColor
 	)
 
 	UITheme.AddButtonMotion(button)
@@ -238,52 +252,24 @@ function UITheme.SetButtonEnabled(
 	button: TextButton,
 	enabled: boolean,
 	enabledTop: Color3,
-	enabledBottom: Color3
+	_enabledBottom: Color3
 )
 	button.Active = enabled
 	button.Selectable = enabled
 	button.TextColor3 = UITheme.Colors.Text
 	button.TextTransparency = 0
-
-	local gradient =
-		button:FindFirstChildOfClass("UIGradient")
+	button.TextStrokeTransparency = 1
 
 	if enabled then
-		button.BackgroundColor3 = enabledTop
+		button.BackgroundColor3 =
+			enabledTop
 
-		if gradient then
-			gradient.Color = ColorSequence.new({
-				ColorSequenceKeypoint.new(
-					0,
-					enabledTop
-				),
-				ColorSequenceKeypoint.new(
-					1,
-					enabledBottom
-				),
-			})
-		end
+		button.BackgroundTransparency = 0
 	else
-		local disabledTop =
+		button.BackgroundColor3 =
 			Color3.fromRGB(74, 85, 101)
 
-		local disabledBottom =
-			Color3.fromRGB(51, 61, 75)
-
-		button.BackgroundColor3 = disabledTop
-
-		if gradient then
-			gradient.Color = ColorSequence.new({
-				ColorSequenceKeypoint.new(
-					0,
-					disabledTop
-				),
-				ColorSequenceKeypoint.new(
-					1,
-					disabledBottom
-				),
-			})
-		end
+		button.BackgroundTransparency = 0
 	end
 end
 

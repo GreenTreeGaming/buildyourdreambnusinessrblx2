@@ -209,7 +209,7 @@ local function createStandUI(
 	billboard.AlwaysOnTop = true
 	billboard.LightInfluence = 0
 	billboard.MaxDistance = 80
-	billboard.Enabled = true
+	billboard.Enabled = false
 	billboard.ResetOnSpawn = false
 	billboard.Parent = playerGui
 
@@ -265,46 +265,15 @@ local function createStandUI(
 		Colors.Background
 	)
 
-	local icon = Instance.new("TextLabel")
-	icon.Name = "Icon"
-	icon.Position =
-		UDim2.fromScale(0.05, 0.15)
-
-	icon.Size =
-		UDim2.fromScale(0.18, 0.7)
-
-	icon.BackgroundColor3 =
-		Colors.Primary
-
-	icon.BorderSizePixel = 0
-	icon.Text = "L"
-	icon.Parent = container
-
-	UITheme.AddCorner(icon, 0.5)
-
-	UITheme.AddGradient(
-		icon,
-		Colors.Primary,
-		Colors.PrimaryDark
-	)
-
-	UITheme.StyleText(
-		icon,
-		14,
-		24,
-		Colors.TextDark,
-		Fonts.Black
-	)
-
 	local statusLabel =
 		Instance.new("TextLabel")
 
 	statusLabel.Name = "StatusLabel"
 	statusLabel.Position =
-		UDim2.fromScale(0.28, 0.12)
+	UDim2.fromScale(0.07, 0.12)
 
-	statusLabel.Size =
-		UDim2.fromScale(0.45, 0.22)
+statusLabel.Size =
+	UDim2.fromScale(0.62, 0.22)
 
 	statusLabel.BackgroundTransparency = 1
 	statusLabel.Text = "READY"
@@ -351,10 +320,10 @@ local function createStandUI(
 
 	progressTrack.Name = "ProgressTrack"
 	progressTrack.Position =
-		UDim2.fromScale(0.28, 0.55)
+	UDim2.fromScale(0.07, 0.55)
 
-	progressTrack.Size =
-		UDim2.fromScale(0.67, 0.19)
+progressTrack.Size =
+	UDim2.fromScale(0.88, 0.19)
 
 	progressTrack.BackgroundColor3 =
 		Colors.ProgressTrack
@@ -759,70 +728,64 @@ RunService.RenderStepped:Connect(function()
 			) == true
 
 		if unavailable or beingEdited then
-			state.StatusLabel.Text = "CLOSED"
-			state.StatusLabel.TextColor3 =
-				Colors.Danger
-
-			state.TimerLabel.Text = "--"
-			state.TimerLabel.TextColor3 =
-				Colors.Danger
-
-			state.ProgressFill.Size =
-				UDim2.fromScale(0, 1)
-
-			state.Billboard.Enabled = true
+			state.Billboard.Enabled = false
 			continue
 		end
 
-		local active =
+		local manualActive =
+			stand:GetAttribute(
+				"ManualPurchaseActive"
+			) == true
+
+		local customerActive =
 			stand:GetAttribute(
 				"IsServingCustomer"
 			) == true
 
-		if not active then
-			state.StatusLabel.Text = "READY"
-			state.StatusLabel.TextColor3 =
-				Colors.Text
+		if not manualActive
+			and not customerActive then
 
-			state.TimerLabel.Text = "OPEN"
-			state.TimerLabel.TextColor3 =
-				Colors.Success
-
-			state.ProgressFill.Size =
-				UDim2.fromScale(1, 1)
-
-			state.Billboard.Enabled = true
+			state.Billboard.Enabled = false
 			continue
 		end
 
-		local startedAt =
-			stand:GetAttribute(
-				"ServiceStartedAt"
-			)
+		local startedAt
+		local duration
+		local statusText
 
-		local duration =
-			stand:GetAttribute(
-				"ServiceDuration"
-			)
+		if manualActive then
+			startedAt =
+				stand:GetAttribute(
+					"ManualPurchaseStartedAt"
+				)
+
+			duration =
+				stand:GetAttribute(
+					"ManualPurchaseDuration"
+				)
+
+			statusText =
+				"PREPARING LEMONADE"
+		else
+			startedAt =
+				stand:GetAttribute(
+					"ServiceStartedAt"
+				)
+
+			duration =
+				stand:GetAttribute(
+					"ServiceDuration"
+				)
+
+			statusText =
+				"SERVING CUSTOMER"
+		end
 
 		if typeof(startedAt) ~= "number"
 			or typeof(duration) ~= "number"
 			or duration <= 0 then
 
-			state.StatusLabel.Text =
-				"PREPARING"
-
-			state.StatusLabel.TextColor3 =
-				Colors.Text
-
-			state.TimerLabel.Text = "..."
-			state.TimerLabel.TextColor3 =
-				Colors.Primary
-
-			state.ProgressFill.Size =
-				UDim2.fromScale(0, 1)
-
-			state.Billboard.Enabled = true
+			state.Billboard.Enabled = false
 			continue
 		end
 
@@ -846,7 +809,10 @@ RunService.RenderStepped:Connect(function()
 			)
 
 		state.ProgressFill.Size =
-			UDim2.fromScale(progress, 1)
+			UDim2.fromScale(
+				progress,
+				1
+			)
 
 		state.TimerLabel.Text =
 			string.format(
@@ -860,7 +826,7 @@ RunService.RenderStepped:Connect(function()
 		state.StatusLabel.Text =
 			progress >= 1
 			and "FINISHING SALE"
-			or "SERVING CUSTOMER"
+			or statusText
 
 		state.StatusLabel.TextColor3 =
 			Colors.Text
