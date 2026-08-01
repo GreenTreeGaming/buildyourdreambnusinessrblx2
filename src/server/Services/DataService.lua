@@ -9,6 +9,8 @@ local CURRENT_DATA_VERSION = 1
 local MAX_RETRIES = 3
 local RETRY_DELAY_SECONDS = 2
 
+local SAVE_LOCK_TIMEOUT_SECONDS = 15
+
 local DEFAULT_PROFILE = {
 	Version = CURRENT_DATA_VERSION,
 
@@ -379,6 +381,16 @@ function DataService.LoadPlayer(
 
 	if success then
 		profile = migrateProfile(result)
+
+		if result == nil then
+			print(
+				`No existing data found for {player.Name}; using a new profile.`
+			)
+		else
+			print(
+				`Found saved data for {player.Name}: Cash={profile.Cash}, LemonadeStandOwned={profile.Businesses.LemonadeStand.Owned}`
+			)
+		end
 	else
 		warn(
 			`Failed to load data for {player.Name}: {result}`
@@ -436,18 +448,39 @@ end
 function DataService.SavePlayer(
 	player: Player
 ): boolean
-	if savingPlayers[player] then
-		return false
+	local startedWaitingAt = time()
+
+	-- Never discard a final save merely because an autosave is running.
+	while savingPlayers[player] do
+		if time() - startedWaitingAt
+			>= SAVE_LOCK_TIMEOUT_SECONDS then
+
+			warn(
+				`Timed out waiting for an existing save for {player.Name}.`
+			)
+
+			return false
+		end
+
+		task.wait(0.1)
 	end
 
 	local snapshot =
 		createSaveSnapshot(player)
 
 	if not snapshot then
+		warn(
+			`Could not create a save snapshot for {player.Name}; profile was unavailable.`
+		)
+
 		return false
 	end
 
 	savingPlayers[player] = true
+
+	print(
+		`Saving {player.Name}: Cash={snapshot.Cash}, LemonadeStandOwned={snapshot.Businesses.LemonadeStand.Owned}`
+	)
 
 	local success, result = runWithRetries(function()
 		return playerDataStore:UpdateAsync(
@@ -471,6 +504,10 @@ function DataService.SavePlayer(
 	if profiles[player] then
 		profiles[player] = snapshot
 	end
+
+	print(
+		`Successfully saved data for {player.Name}.`
+	)
 
 	return true
 end
@@ -690,12 +727,12 @@ end
 
 function DataService.SaveAllPlayers()
 	local players = Players:GetPlayers()
-	local remaining = #players
 
-	if remaining == 0 then
+	if #players == 0 then
 		return
 	end
 
+	local remaining = #players
 	local completed = Instance.new("BindableEvent")
 
 	for _, player in players do
@@ -704,14 +741,31 @@ function DataService.SaveAllPlayers()
 
 			remaining -= 1
 
-			if remaining == 0 then
+			if remaining <= 0 then
 				completed:Fire()
 			end
 		end)
 	end
 
-	if remaining > 0 then
+	local finished = false
+
+	task.spawn(function()
 		completed.Event:Wait()
+		finished = true
+	end)
+
+	local startedAt = time()
+
+	while not finished
+		and time() - startedAt < 25 do
+
+		task.wait(0.1)
+	end
+
+	if not finished then
+		warn(
+			`Server shutdown save timed out with {remaining} player save(s) unfinished.`
+		)
 	end
 
 	completed:Destroy()
