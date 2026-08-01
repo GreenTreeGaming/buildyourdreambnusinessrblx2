@@ -1,10 +1,13 @@
-local Players = game:GetService("Players")
+local Players =
+	game:GetService("Players")
+
 local ReplicatedStorage =
 	game:GetService("ReplicatedStorage")
-local Workspace = game:GetService("Workspace")
 
 local DataService = require(
-	script.Parent:WaitForChild("DataService")
+	script.Parent:WaitForChild(
+		"DataService"
+	)
 )
 
 local BusinessConfig = require(
@@ -13,16 +16,16 @@ local BusinessConfig = require(
 		:WaitForChild("BusinessConfig")
 )
 
-local plotsFolder =
-	Workspace:WaitForChild("Plots")
-
-local BUSINESS_NAME = "LemonadeStand"
+local BUSINESS_NAME =
+	"LemonadeStand"
 
 type UpgradeResult = {
 	Success: boolean,
 	Message: string,
 
+	BusinessId: string?,
 	BusinessName: string?,
+
 	UpgradeName: string?,
 	DisplayName: string?,
 
@@ -44,101 +47,70 @@ local function getCashValue(
 	player: Player
 ): IntValue?
 	local leaderstats =
-		player:FindFirstChild("leaderstats")
+		player:FindFirstChild(
+			"leaderstats"
+		)
 
 	if not leaderstats then
 		return nil
 	end
 
 	local cash =
-		leaderstats:FindFirstChild("Cash")
+		leaderstats:FindFirstChild(
+			"Cash"
+		)
 
-	if cash and cash:IsA("IntValue") then
+	if cash
+		and cash:IsA("IntValue") then
+
 		return cash
 	end
 
 	return nil
 end
 
-local function getPlayerPlot(
-	player: Player
-): Model?
-	local plotName =
-		player:GetAttribute("PlotName")
-
-	if typeof(plotName) == "string" then
-		local plot =
-			plotsFolder:FindFirstChild(plotName)
-
-		if plot
-			and plot:IsA("Model")
-			and plot:GetAttribute("OwnerUserId")
-				== player.UserId then
-
-			return plot
-		end
-	end
-
-	for _, plot in plotsFolder:GetChildren() do
-		if plot:IsA("Model")
-			and plot:GetAttribute("OwnerUserId")
-				== player.UserId then
-
-			return plot
-		end
-	end
-
-	return nil
-end
-
-local function getPlayerStand(
-	player: Player
-): Model?
-	local plot = getPlayerPlot(player)
-
-	if not plot then
-		return nil
-	end
-
-	local placedBusinesses =
-		plot:FindFirstChild("PlacedBusinesses")
-
-	if not placedBusinesses then
-		return nil
-	end
-
-	local stand =
-		placedBusinesses:FindFirstChild(
-			BUSINESS_NAME
+local function getBusinessType(
+	stand: Model
+): string
+	local businessType =
+		stand:GetAttribute(
+			"BusinessType"
 		)
 
-	if stand and stand:IsA("Model") then
-		return stand
+	if typeof(businessType) == "string"
+		and businessType ~= "" then
+
+		return businessType
 	end
 
-	return nil
-end
+	if stand.Name == BUSINESS_NAME
+		or string.match(
+			stand.Name,
+			"^LemonadeStand_"
+		) then
 
-local function getBusinessConfig(
-	businessName: string
-)
-	return BusinessConfig[businessName]
+		return BUSINESS_NAME
+	end
+
+	return stand.Name
 end
 
 local function getUpgradeConfig(
 	businessName: string,
 	upgradeName: string
 )
-	local business =
-		getBusinessConfig(businessName)
+	local businessConfig =
+		BusinessConfig[businessName]
 
-	if not business
-		or not business.Upgrades then
+	if not businessConfig
+		or not businessConfig.Upgrades then
 
 		return nil
 	end
 
-	return business.Upgrades[upgradeName]
+	return businessConfig.Upgrades[
+		upgradeName
+	]
 end
 
 local function getMaximumLevel(
@@ -201,6 +173,7 @@ end
 local function buildUpgradeResult(
 	success: boolean,
 	message: string,
+	businessId: string,
 	businessName: string,
 	upgradeName: string,
 	currentLevel: number,
@@ -213,7 +186,9 @@ local function buildUpgradeResult(
 		Success = success,
 		Message = message,
 
+		BusinessId = businessId,
 		BusinessName = businessName,
+
 		UpgradeName = upgradeName,
 		DisplayName =
 			upgradeConfig.DisplayName,
@@ -221,7 +196,8 @@ local function buildUpgradeResult(
 		CurrentLevel = currentLevel,
 		MaximumLevel = maximumLevel,
 
-		NextCost = nextDefinition
+		NextCost =
+			nextDefinition
 			and nextDefinition.Cost
 			or nil,
 	}
@@ -234,57 +210,110 @@ local function buildUpgradeResult(
 	return result
 end
 
+local function getOwnedStand(
+	player: Player,
+	businessId: string
+): Model?
+	local stand =
+		DataService.FindOwnedBusinessById(
+			player,
+			businessId
+		)
+
+	if not stand then
+		return nil
+	end
+
+	if getBusinessType(stand)
+		~= BUSINESS_NAME then
+
+		return nil
+	end
+
+	return stand
+end
+
 function UpgradeService.ApplyStandUpgrades(
 	player: Player,
 	stand: Model
 ): boolean
 	if not stand
-		or not stand:IsA("Model")
-		or stand.Name ~= BUSINESS_NAME then
+		or not stand:IsA("Model") then
 
 		return false
 	end
 
-	if stand:GetAttribute("OwnerUserId")
-		~= player.UserId then
+	if stand:GetAttribute(
+		"OwnerUserId"
+	) ~= player.UserId then
 
 		return false
 	end
 
-	local business =
+	if getBusinessType(stand)
+		~= BUSINESS_NAME then
+
+		return false
+	end
+
+	local businessId =
+		stand:GetAttribute(
+			"BusinessId"
+		)
+
+	if typeof(businessId) ~= "string"
+		or businessId == "" then
+
+		businessId = stand.Name
+	end
+
+	local businessConfig =
 		BusinessConfig.LemonadeStand
 
 	local servingConfig =
-		business.Upgrades.ServingSpeed
+		businessConfig.Upgrades.ServingSpeed
 
 	local saleValueConfig =
-		business.Upgrades.SaleValue
+		businessConfig.Upgrades.SaleValue
 
 	local servingLevel =
-		DataService.GetUpgradeLevel(
+		DataService.GetBusinessUpgradeLevel(
 			player,
-			BUSINESS_NAME,
+			businessId,
 			"ServingSpeed"
 		)
 
 	local saleValueLevel =
-		DataService.GetUpgradeLevel(
+		DataService.GetBusinessUpgradeLevel(
 			player,
-			BUSINESS_NAME,
+			businessId,
 			"SaleValue"
 		)
 
-	servingLevel = math.clamp(
-		servingLevel,
-		0,
-		getMaximumLevel(servingConfig)
-	)
+	local queueCapacityLevel =
+		DataService.GetBusinessUpgradeLevel(
+			player,
+			businessId,
+			"QueueCapacity"
+		)
 
-	saleValueLevel = math.clamp(
-		saleValueLevel,
-		0,
-		getMaximumLevel(saleValueConfig)
-	)
+	servingLevel =
+		math.clamp(
+			servingLevel,
+			0,
+			getMaximumLevel(
+				servingConfig
+			)
+		)
+
+	saleValueLevel =
+		math.clamp(
+			saleValueLevel,
+			0,
+			getMaximumLevel(
+				saleValueConfig
+			)
+		)
 
 	local servingDefinition =
 		getLevelDefinition(
@@ -298,18 +327,8 @@ function UpgradeService.ApplyStandUpgrades(
 			saleValueLevel
 		)
 
-	if not servingDefinition then
-		warn(
-			`Missing ServingSpeed level {servingLevel}.`
-		)
-
-		return false
-	end
-
-	if not saleValueDefinition then
-		warn(
-			`Missing SaleValue level {saleValueLevel}.`
-		)
+	if not servingDefinition
+		or not saleValueDefinition then
 
 		return false
 	end
@@ -334,38 +353,27 @@ function UpgradeService.ApplyStandUpgrades(
 		saleValueDefinition.SaleValue
 	)
 
+	stand:SetAttribute(
+		"QueueCapacityLevel",
+		queueCapacityLevel
+	)
+
 	return true
 end
 
 function UpgradeService.GetUpgradeState(
 	player: Player,
-	businessName: string,
+	businessId: string,
 	upgradeName: string
 ): UpgradeResult
-	if type(businessName) ~= "string"
-		or type(upgradeName) ~= "string" then
+	if type(businessId) ~= "string"
+		or businessId == ""
+		or type(upgradeName) ~= "string"
+		or upgradeName == "" then
 
 		return createResult(
 			false,
 			"Invalid upgrade request."
-		)
-	end
-
-	local businessConfig =
-		getBusinessConfig(businessName)
-
-	local upgradeConfig =
-		getUpgradeConfig(
-			businessName,
-			upgradeName
-		)
-
-	if not businessConfig
-		or not upgradeConfig then
-
-		return createResult(
-			false,
-			"That upgrade does not exist."
 		)
 	end
 
@@ -376,21 +384,53 @@ function UpgradeService.GetUpgradeState(
 		)
 	end
 
-	local maximumLevel =
-		getMaximumLevel(upgradeConfig)
-
-	local currentLevel =
-		DataService.GetUpgradeLevel(
+	local stand =
+		getOwnedStand(
 			player,
+			businessId
+		)
+
+	if not stand then
+		return createResult(
+			false,
+			"The selected lemonade stand could not be found."
+		)
+	end
+
+	local businessName =
+		getBusinessType(stand)
+
+	local upgradeConfig =
+		getUpgradeConfig(
 			businessName,
 			upgradeName
 		)
 
-	currentLevel = math.clamp(
-		currentLevel,
-		0,
-		maximumLevel
-	)
+	if not upgradeConfig then
+		return createResult(
+			false,
+			"That upgrade does not exist."
+		)
+	end
+
+	local maximumLevel =
+		getMaximumLevel(
+			upgradeConfig
+		)
+
+	local currentLevel =
+		DataService.GetBusinessUpgradeLevel(
+			player,
+			businessId,
+			upgradeName
+		)
+
+	currentLevel =
+		math.clamp(
+			currentLevel,
+			0,
+			maximumLevel
+		)
 
 	local currentDefinition =
 		getLevelDefinition(
@@ -409,6 +449,7 @@ function UpgradeService.GetUpgradeState(
 		currentLevel >= maximumLevel
 			and "Maximum level reached."
 			or "Upgrade available.",
+		businessId,
 		businessName,
 		upgradeName,
 		currentLevel,
@@ -421,7 +462,7 @@ end
 
 function UpgradeService.PurchaseUpgrade(
 	player: Player,
-	businessName: string,
+	businessId: string,
 	upgradeName: string
 ): UpgradeResult
 	if purchaseLocks[player] then
@@ -440,21 +481,45 @@ function UpgradeService.PurchaseUpgrade(
 		return result
 	end
 
-	if type(businessName) ~= "string"
-		or type(upgradeName) ~= "string" then
+	if type(businessId) ~= "string"
+		or businessId == ""
+		or type(upgradeName) ~= "string"
+		or upgradeName == "" then
 
-		return finish(createResult(
-			false,
-			"Invalid upgrade request."
-		))
+		return finish(
+			createResult(
+				false,
+				"Invalid upgrade request."
+			)
+		)
 	end
 
-	if businessName ~= BUSINESS_NAME then
-		return finish(createResult(
-			false,
-			"That business is not available."
-		))
+	if not DataService.GetProfile(player) then
+		return finish(
+			createResult(
+				false,
+				"Your data has not loaded yet."
+			)
+		)
 	end
+
+	local stand =
+		getOwnedStand(
+			player,
+			businessId
+		)
+
+	if not stand then
+		return finish(
+			createResult(
+				false,
+				"The selected lemonade stand could not be found."
+			)
+		)
+	end
+
+	local businessName =
+		getBusinessType(stand)
 
 	local upgradeConfig =
 		getUpgradeConfig(
@@ -463,52 +528,32 @@ function UpgradeService.PurchaseUpgrade(
 		)
 
 	if not upgradeConfig then
-		return finish(createResult(
-			false,
-			"That upgrade is not available."
-		))
-	end
-
-	if not DataService.GetProfile(player) then
-		return finish(createResult(
-			false,
-			"Your data has not loaded yet."
-		))
-	end
-
-	local stand = getPlayerStand(player)
-
-	if not stand then
-		return finish(createResult(
-			false,
-			"Build your lemonade stand first."
-		))
-	end
-
-	if stand:GetAttribute("OwnerUserId")
-		~= player.UserId then
-
-		return finish(createResult(
-			false,
-			"You do not own this lemonade stand."
-		))
+		return finish(
+			createResult(
+				false,
+				"That upgrade is not available."
+			)
+		)
 	end
 
 	local maximumLevel =
-		getMaximumLevel(upgradeConfig)
+		getMaximumLevel(
+			upgradeConfig
+		)
 
 	local currentLevel =
-		DataService.GetUpgradeLevel(
+		DataService.GetBusinessUpgradeLevel(
 			player,
-			businessName,
+			businessId,
 			upgradeName
 		)
 
-	currentLevel = math.clamp(
-		currentLevel,
-		0,
-		maximumLevel
-	)
+	currentLevel =
+		math.clamp(
+			currentLevel,
+			0,
+			maximumLevel
+		)
 
 	local currentDefinition =
 		getLevelDefinition(
@@ -521,6 +566,7 @@ function UpgradeService.PurchaseUpgrade(
 			buildUpgradeResult(
 				false,
 				"This upgrade is already at maximum level.",
+				businessId,
 				businessName,
 				upgradeName,
 				currentLevel,
@@ -542,37 +588,46 @@ function UpgradeService.PurchaseUpgrade(
 		)
 
 	if not nextDefinition then
-		return finish(createResult(
-			false,
-			"The next upgrade level is not configured."
-		))
+		return finish(
+			createResult(
+				false,
+				"The next upgrade level is not configured."
+			)
+		)
 	end
 
-	local cost = nextDefinition.Cost
+	local cost =
+		nextDefinition.Cost
 
 	if typeof(cost) ~= "number"
 		or cost < 0 then
 
-		return finish(createResult(
-			false,
-			"The upgrade cost is invalid."
-		))
+		return finish(
+			createResult(
+				false,
+				"The upgrade cost is invalid."
+			)
+		)
 	end
 
-	local cash = getCashValue(player)
+	local cash =
+		getCashValue(player)
 
 	if not cash then
-		return finish(createResult(
-			false,
-			"Your cash value could not be found."
-		))
+		return finish(
+			createResult(
+				false,
+				"Your cash value could not be found."
+			)
+		)
 	end
 
 	if cash.Value < cost then
-		local result =
+		return finish(
 			buildUpgradeResult(
 				false,
 				`You need ${cost - cash.Value} more.`,
+				businessId,
 				businessName,
 				upgradeName,
 				currentLevel,
@@ -581,16 +636,15 @@ function UpgradeService.PurchaseUpgrade(
 				currentDefinition,
 				nextDefinition
 			)
-
-		return finish(result)
+		)
 	end
 
 	cash.Value -= cost
 
 	local levelUpdated =
-		DataService.SetUpgradeLevel(
+		DataService.SetBusinessUpgradeLevel(
 			player,
-			businessName,
+			businessId,
 			upgradeName,
 			nextLevel
 		)
@@ -598,10 +652,12 @@ function UpgradeService.PurchaseUpgrade(
 	if not levelUpdated then
 		cash.Value += cost
 
-		return finish(createResult(
-			false,
-			"The upgrade could not be saved."
-		))
+		return finish(
+			createResult(
+				false,
+				"The upgrade could not be saved."
+			)
+		)
 	end
 
 	local applied =
@@ -611,19 +667,21 @@ function UpgradeService.PurchaseUpgrade(
 		)
 
 	if not applied then
-		DataService.SetUpgradeLevel(
+		DataService.SetBusinessUpgradeLevel(
 			player,
-			businessName,
+			businessId,
 			upgradeName,
 			currentLevel
 		)
 
 		cash.Value += cost
 
-		return finish(createResult(
-			false,
-			"The upgrade could not be applied."
-		))
+		return finish(
+			createResult(
+				false,
+				"The upgrade could not be applied."
+			)
+		)
 	end
 
 	local followingDefinition =
@@ -636,6 +694,7 @@ function UpgradeService.PurchaseUpgrade(
 		buildUpgradeResult(
 			true,
 			`{upgradeConfig.DisplayName} upgraded to level {nextLevel}!`,
+			businessId,
 			businessName,
 			upgradeName,
 			nextLevel,
@@ -654,7 +713,7 @@ function UpgradeService.ReleasePlayer(
 end
 
 Players.PlayerRemoving:Connect(function(
-	player
+	player: Player
 )
 	UpgradeService.ReleasePlayer(player)
 end)

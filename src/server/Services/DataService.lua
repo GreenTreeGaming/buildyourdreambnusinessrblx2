@@ -22,6 +22,12 @@ local DEFAULT_UPGRADES = {
 	QueueCapacity = 0,
 }
 
+local UPGRADE_LEVEL_ATTRIBUTES = {
+	ServingSpeed = "ServingSpeedLevel",
+	SaleValue = "SaleValueLevel",
+	QueueCapacity = "QueueCapacityLevel",
+}
+
 local DEFAULT_PROFILE = {
 	Version = CURRENT_DATA_VERSION,
 
@@ -493,6 +499,63 @@ local function getPlayerPlot(
 	return nil
 end
 
+local function findOwnedBusinessModel(
+	player: Player,
+	businessId: string
+): Model?
+	if type(businessId) ~= "string"
+		or businessId == "" then
+
+		return nil
+	end
+
+	local plot =
+		getPlayerPlot(player)
+
+	if not plot then
+		return nil
+	end
+
+	local placedBusinesses =
+		plot:FindFirstChild(
+			"PlacedBusinesses"
+		)
+
+	if not placedBusinesses then
+		return nil
+	end
+
+	for _, child in
+		placedBusinesses:GetChildren() do
+
+		if not child:IsA("Model") then
+			continue
+		end
+
+		local childId =
+			child:GetAttribute(
+				"BusinessId"
+			)
+
+		if childId ~= businessId
+			and child.Name ~= businessId then
+
+			continue
+		end
+
+		if child:GetAttribute(
+			"OwnerUserId"
+		) ~= player.UserId then
+
+			return nil
+		end
+
+		return child
+	end
+
+	return nil
+end
+
 local function getCashValue(
 	player: Player
 ): IntValue?
@@ -641,21 +704,13 @@ local function getBusinessUpgradeSnapshot(
 			),
 	}
 
-	local globalUpgrades =
-		profile.Upgrades[businessType]
-
 	for upgradeName in DEFAULT_UPGRADES do
-		if type(savedUpgrades[upgradeName])
-			~= "number" then
+	if type(savedUpgrades[upgradeName])
+		~= "number" then
 
-			savedUpgrades[upgradeName] =
-				globalUpgrades
-				and globalUpgrades[
-					upgradeName
-				]
-				or 0
-		end
+		savedUpgrades[upgradeName] = 0
 	end
+end
 
 	return sanitizeUpgradeLevels(
 		savedUpgrades
@@ -1348,6 +1403,125 @@ function DataService.SaveAllPlayers()
 	end
 
 	completed:Destroy()
+end
+
+function DataService.FindOwnedBusinessById(
+	player: Player,
+	businessId: string
+): Model?
+	return findOwnedBusinessModel(
+		player,
+		businessId
+	)
+end
+
+function DataService.GetBusinessUpgradeLevel(
+	player: Player,
+	businessId: string,
+	upgradeName: string
+): number
+	local attributeName =
+		UPGRADE_LEVEL_ATTRIBUTES[
+			upgradeName
+		]
+
+	if not attributeName then
+		return 0
+	end
+
+	local business =
+		findOwnedBusinessModel(
+			player,
+			businessId
+		)
+
+	if not business then
+		return 0
+	end
+
+	local level =
+		business:GetAttribute(
+			attributeName
+		)
+
+	if typeof(level) ~= "number" then
+		return 0
+	end
+
+	return math.max(
+		0,
+		math.floor(level)
+	)
+end
+
+function DataService.SetBusinessUpgradeLevel(
+	player: Player,
+	businessId: string,
+	upgradeName: string,
+	level: number
+): boolean
+	if typeof(level) ~= "number" then
+		return false
+	end
+
+	local attributeName =
+		UPGRADE_LEVEL_ATTRIBUTES[
+			upgradeName
+		]
+
+	if not attributeName then
+		return false
+	end
+
+	local business =
+		findOwnedBusinessModel(
+			player,
+			businessId
+		)
+
+	if not business then
+		return false
+	end
+
+	local sanitizedLevel =
+		math.max(
+			0,
+			math.floor(level)
+		)
+
+	business:SetAttribute(
+		attributeName,
+		sanitizedLevel
+	)
+
+	local profile =
+		profiles[player]
+
+	if profile then
+		for _, savedBusiness in
+			profile.PlacedBusinesses do
+
+			if savedBusiness.Id
+				~= businessId then
+
+				continue
+			end
+
+			savedBusiness.Upgrades =
+				savedBusiness.Upgrades
+				or deepCopy(
+					DEFAULT_UPGRADES
+				)
+
+			savedBusiness.Upgrades[
+				upgradeName
+			] = sanitizedLevel
+
+			break
+		end
+	end
+
+	return true
 end
 
 return DataService

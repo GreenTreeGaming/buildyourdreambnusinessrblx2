@@ -7,6 +7,9 @@ local player = Players.LocalPlayer
 local playerGui =
 	player:WaitForChild("PlayerGui")
 
+local plotsFolder =
+Workspace:WaitForChild("Plots")
+
 local remotes =
 	ReplicatedStorage:WaitForChild("Remotes")
 
@@ -39,6 +42,7 @@ type UpgradeState = {
 	Success: boolean,
 	Message: string,
 
+	BusinessId: string?,
 	BusinessName: string?,
 	UpgradeName: string?,
 	DisplayName: string?,
@@ -63,6 +67,8 @@ type UpgradeCard = {
 }
 
 local requestPending: string? = nil
+local selectedBusinessId: string? = nil
+local selectedStand: Model? = nil
 local statusVersion = 0
 
 local cards: {
@@ -104,6 +110,191 @@ local function createTextLabel(
 	)
 
 	return label
+end
+
+local function getOwnedPlot(): Model?
+	local plotName =
+		player:GetAttribute("PlotName")
+
+	if typeof(plotName) == "string" then
+		local plot =
+			plotsFolder:FindFirstChild(
+				plotName
+			)
+
+		if plot
+			and plot:IsA("Model")
+			and plot:GetAttribute(
+				"OwnerUserId"
+			) == player.UserId then
+
+			return plot
+		end
+	end
+
+	for _, plot in
+		plotsFolder:GetChildren() do
+
+		if plot:IsA("Model")
+			and plot:GetAttribute(
+				"OwnerUserId"
+			) == player.UserId then
+
+			return plot
+		end
+	end
+
+	return nil
+end
+
+local function isLemonadeStand(
+	instance: Instance
+): boolean
+	if not instance:IsA("Model") then
+		return false
+	end
+
+	if instance:GetAttribute(
+		"BusinessType"
+	) == BUSINESS_NAME then
+
+		return true
+	end
+
+	return instance.Name == BUSINESS_NAME
+		or string.match(
+			instance.Name,
+			"^LemonadeStand_"
+		) ~= nil
+end
+
+local function getCharacterRoot(): BasePart?
+	local character =
+		player.Character
+
+	if not character then
+		return nil
+	end
+
+	local rootPart =
+		character:FindFirstChild(
+			"HumanoidRootPart"
+		)
+
+	if rootPart
+		and rootPart:IsA("BasePart") then
+
+		return rootPart
+	end
+
+	return nil
+end
+
+local function getClosestOwnedStand(): Model?
+	local plot =
+		getOwnedPlot()
+
+	local rootPart =
+		getCharacterRoot()
+
+	if not plot or not rootPart then
+		return nil
+	end
+
+	local placedBusinesses =
+		plot:FindFirstChild(
+			"PlacedBusinesses"
+		)
+
+	if not placedBusinesses then
+		return nil
+	end
+
+	local closestStand: Model? = nil
+	local closestDistance = math.huge
+
+	for _, child in
+		placedBusinesses:GetChildren() do
+
+		if not child:IsA("Model")
+			or not isLemonadeStand(
+				child
+			) then
+
+			continue
+		end
+
+		if child:GetAttribute(
+			"OwnerUserId"
+		) ~= player.UserId then
+
+			continue
+		end
+
+		local positionPart =
+			child:FindFirstChild(
+				"ManagementUIPosition",
+				true
+			)
+			or child.PrimaryPart
+
+		if not positionPart
+			or not positionPart:IsA(
+				"BasePart"
+			) then
+
+			continue
+		end
+
+		local distance =
+			(
+				rootPart.Position
+					- positionPart.Position
+			).Magnitude
+
+		if distance < closestDistance then
+			closestDistance = distance
+			closestStand = child
+		end
+	end
+
+	return closestStand
+end
+
+local function selectClosestStand(): boolean
+	local stand =
+		getClosestOwnedStand()
+
+	if not stand then
+		selectedStand = nil
+		selectedBusinessId = nil
+		return false
+	end
+
+	local businessId =
+		stand:GetAttribute(
+			"BusinessId"
+		)
+
+	if typeof(businessId) ~= "string"
+		or businessId == "" then
+
+		businessId = stand.Name
+	end
+
+	selectedStand = stand
+	selectedBusinessId = businessId
+
+	return true
+end
+
+local function getStandNumber(
+	businessId: string
+): string
+	return string.match(
+		businessId,
+		"_(%d+)$"
+	) or businessId
 end
 
 local function createUpgradeCard(
@@ -360,6 +551,10 @@ local function createUpgradeCard(
 			return
 		end
 
+		if not selectedBusinessId then
+			return
+		end
+
 		requestPending = upgradeName
 
 		purchaseButton.Text =
@@ -373,7 +568,7 @@ local function createUpgradeCard(
 		)
 
 		purchaseUpgradeRemote:FireServer(
-			BUSINESS_NAME,
+			selectedBusinessId,
 			upgradeName
 		)
 	end)
@@ -764,10 +959,18 @@ listPadding.Parent = scrollingFrame
 		CloseButton = closeButton,
 		CashLabel = cashLabel,
 		StatusLabel = statusLabel,
+		TitleLabel = title,
+		SubtitleLabel = subtitle,
 	}
 end
 
 local interface = createInterface()
+
+local titleLabel =
+	interface.TitleLabel
+
+local subtitleLabel =
+	interface.SubtitleLabel
 
 local function showStatus(
 	message: string,
@@ -908,10 +1111,24 @@ end
 local function requestUpgradeState(
 	upgradeName: string
 )
+	if not selectedBusinessId then
+		updateCard({
+			Success = false,
+			Message =
+				"No lemonade stand is selected.",
+			UpgradeName = upgradeName,
+		})
+
+		return
+	end
+
+	local requestedBusinessId =
+		selectedBusinessId
+
 	local success, result =
 		pcall(function()
 			return getUpgradeStateRemote:InvokeServer(
-				BUSINESS_NAME,
+				requestedBusinessId,
 				upgradeName
 			)
 		end)
@@ -929,6 +1146,13 @@ local function requestUpgradeState(
 		return
 	end
 
+	if result.BusinessId
+		and result.BusinessId
+			~= selectedBusinessId then
+
+		return
+	end
+
 	updateCard(result)
 end
 
@@ -939,6 +1163,32 @@ local function refreshAllCards()
 end
 
 interface.OpenButton.Activated:Connect(function()
+	if interface.Overlay.Visible then
+		return
+	end
+
+	if not selectClosestStand()
+		or not selectedBusinessId then
+
+		showStatus(
+			"Stand near a lemonade stand to upgrade it.",
+			true
+		)
+
+		return
+	end
+
+	local standNumber =
+		getStandNumber(
+			selectedBusinessId
+		)
+
+	titleLabel.Text =
+		`LEMONADE STAND #{standNumber}`
+
+	subtitleLabel.Text =
+		"Upgrades apply only to this stand."
+
 	interface.Overlay.Visible = true
 	interface.OpenButton.Visible = false
 
@@ -948,11 +1198,47 @@ end)
 interface.CloseButton.Activated:Connect(function()
 	interface.Overlay.Visible = false
 	interface.OpenButton.Visible = true
+
+	requestPending = nil
+	selectedStand = nil
+	selectedBusinessId = nil
+end)
+
+task.spawn(function()
+	while true do
+		if interface.Overlay.Visible then
+			if not selectedStand
+				or not selectedStand.Parent then
+
+				interface.Overlay.Visible = false
+				interface.OpenButton.Visible = true
+
+				requestPending = nil
+				selectedStand = nil
+				selectedBusinessId = nil
+
+				showStatus(
+					"The selected lemonade stand no longer exists.",
+					true
+				)
+			end
+		end
+
+		task.wait(0.25)
+	end
 end)
 
 upgradeResultRemote.OnClientEvent:Connect(function(
 	result: UpgradeState
 )
+	if result.BusinessId
+		and selectedBusinessId
+		and result.BusinessId
+			~= selectedBusinessId then
+
+		return
+	end
+
 	requestPending = nil
 
 	showStatus(

@@ -427,12 +427,22 @@ local function setPromptState(
 	for _, descendant in
 		model:GetDescendants() do
 
-		if descendant:IsA(
+		if not descendant:IsA(
 			"ProximityPrompt"
 		) then
 
-			descendant.Enabled = enabled
+			continue
 		end
+
+		if descendant:GetAttribute(
+			"IsLemonadePurchasePrompt"
+		) == true then
+
+			descendant.Enabled = false
+			continue
+		end
+
+		descendant.Enabled = enabled
 	end
 end
 
@@ -634,6 +644,18 @@ placeBusinessRemote.OnServerEvent:Connect(
 			local stand =
 				editState.stand
 
+			if getBusinessType(stand)
+	~= businessName then
+
+	placeBusinessRemote:FireClient(
+		player,
+		false,
+		"The selected business does not match."
+	)
+
+	return
+end
+
 			if not stand
 				or not stand.Parent
 				or editState.plot ~= plot then
@@ -786,29 +808,27 @@ placeBusinessRemote.OnServerEvent:Connect(
 
 		stand:SetAttribute(
 			"ServingSpeedLevel",
-			DataService.GetUpgradeLevel(
-				player,
-				businessName,
-				"ServingSpeed"
-			)
+			0
 		)
 
 		stand:SetAttribute(
 			"SaleValueLevel",
-			DataService.GetUpgradeLevel(
-				player,
-				businessName,
-				"SaleValue"
-			)
+			0
 		)
 
 		stand:SetAttribute(
 			"QueueCapacityLevel",
-			DataService.GetUpgradeLevel(
-				player,
-				businessName,
-				"QueueCapacity"
-			)
+			0
+		)
+
+		stand:SetAttribute(
+			"PurchaseCooldown",
+			lemonadeConfig.BaseServingCooldown
+		)
+
+		stand:SetAttribute(
+			"SaleValue",
+			lemonadeConfig.BaseSaleValue
 		)
 
 		setModelPlacedState(stand)

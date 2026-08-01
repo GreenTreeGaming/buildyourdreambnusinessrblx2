@@ -4,7 +4,7 @@ local BusinessConfig = {
 
 		FirstStandFree = true,
 		AdditionalStandCost = 750,
-		MaximumPlaced = 3,
+		MaximumPlaced = 15,
 
 		BaseSaleValue = 2,
 		BaseServingCooldown = 5,

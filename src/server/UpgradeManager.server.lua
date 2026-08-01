@@ -1,6 +1,11 @@
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Workspace = game:GetService("Workspace")
+local Players =
+	game:GetService("Players")
+
+local ReplicatedStorage =
+	game:GetService("ReplicatedStorage")
+
+local Workspace =
+	game:GetService("Workspace")
 
 local UpgradeService = require(
 	script.Parent
@@ -12,7 +17,9 @@ local plotsFolder =
 	Workspace:WaitForChild("Plots")
 
 local remotes =
-	ReplicatedStorage:FindFirstChild("Remotes")
+	ReplicatedStorage:FindFirstChild(
+		"Remotes"
+	)
 
 if not remotes then
 	remotes = Instance.new("Folder")
@@ -27,7 +34,10 @@ local function getOrCreateRemoteEvent(
 		remotes:FindFirstChild(name)
 
 	if existing then
-		if not existing:IsA("RemoteEvent") then
+		if not existing:IsA(
+			"RemoteEvent"
+		) then
+
 			error(
 				`ReplicatedStorage.Remotes.{name} must be a RemoteEvent.`
 			)
@@ -36,7 +46,9 @@ local function getOrCreateRemoteEvent(
 		return existing
 	end
 
-	local remote = Instance.new("RemoteEvent")
+	local remote =
+		Instance.new("RemoteEvent")
+
 	remote.Name = name
 	remote.Parent = remotes
 
@@ -50,7 +62,10 @@ local function getOrCreateRemoteFunction(
 		remotes:FindFirstChild(name)
 
 	if existing then
-		if not existing:IsA("RemoteFunction") then
+		if not existing:IsA(
+			"RemoteFunction"
+		) then
+
 			error(
 				`ReplicatedStorage.Remotes.{name} must be a RemoteFunction.`
 			)
@@ -59,7 +74,9 @@ local function getOrCreateRemoteFunction(
 		return existing
 	end
 
-	local remote = Instance.new("RemoteFunction")
+	local remote =
+		Instance.new("RemoteFunction")
+
 	remote.Name = name
 	remote.Parent = remotes
 
@@ -67,19 +84,51 @@ local function getOrCreateRemoteFunction(
 end
 
 local purchaseUpgradeRemote =
-	getOrCreateRemoteEvent("PurchaseUpgrade")
+	getOrCreateRemoteEvent(
+		"PurchaseUpgrade"
+	)
 
 local upgradeResultRemote =
-	getOrCreateRemoteEvent("UpgradeResult")
+	getOrCreateRemoteEvent(
+		"UpgradeResult"
+	)
 
 local getUpgradeStateRemote =
-	getOrCreateRemoteFunction("GetUpgradeState")
+	getOrCreateRemoteFunction(
+		"GetUpgradeState"
+	)
+
+local function isLemonadeStand(
+	instance: Instance
+): boolean
+	if not instance:IsA("Model") then
+		return false
+	end
+
+	local businessType =
+		instance:GetAttribute(
+			"BusinessType"
+		)
+
+	if businessType == "LemonadeStand" then
+		return true
+	end
+
+	return instance.Name
+			== "LemonadeStand"
+		or string.match(
+			instance.Name,
+			"^LemonadeStand_"
+		) ~= nil
+end
 
 local function getPlayerFromPlot(
 	plot: Model
 ): Player?
 	local ownerUserId =
-		plot:GetAttribute("OwnerUserId")
+		plot:GetAttribute(
+			"OwnerUserId"
+		)
 
 	if typeof(ownerUserId) ~= "number"
 		or ownerUserId <= 0 then
@@ -96,11 +145,12 @@ local function applyUpgradesToStand(
 	plot: Model,
 	stand: Instance
 )
-	if not stand:IsA("Model")
-		or stand.Name ~= "LemonadeStand" then
-
+	if not isLemonadeStand(stand) then
 		return
 	end
+
+	local standModel: Model =
+		stand :: Model
 
 	local player =
 		getPlayerFromPlot(plot)
@@ -109,49 +159,66 @@ local function applyUpgradesToStand(
 		return
 	end
 
-	local profileLoaded =
-		player:GetAttribute("DataLoaded")
+	local function apply()
+		if not standModel.Parent then
+			return
+		end
 
-	if profileLoaded ~= true then
-		local connection
+		UpgradeService.ApplyStandUpgrades(
+			player,
+			standModel
+		)
+	end
 
-		connection =
-			player:GetAttributeChangedSignal(
-				"DataLoaded"
-			):Connect(function()
-				if player:GetAttribute("DataLoaded")
-					~= true then
+	if player:GetAttribute(
+		"DataLoaded"
+	) == true then
 
-					return
-				end
-
-				connection:Disconnect()
-
-				if stand.Parent then
-					UpgradeService.ApplyStandUpgrades(
-						player,
-						stand
-					)
-				end
-			end)
-
+		apply()
 		return
 	end
 
-	UpgradeService.ApplyStandUpgrades(
-		player,
-		stand
-	)
+	local connection
+
+	connection =
+		player:GetAttributeChangedSignal(
+			"DataLoaded"
+		):Connect(function()
+
+			if player:GetAttribute(
+				"DataLoaded"
+			) ~= true then
+
+				return
+			end
+
+			connection:Disconnect()
+			apply()
+		end)
 end
 
-local function watchPlot(plot: Model)
+local function watchPlot(
+	plot: Model
+)
 	local placedBusinesses =
-		plot:FindFirstChild("PlacedBusinesses")
+		plot:FindFirstChild(
+			"PlacedBusinesses"
+		)
 
 	if not placedBusinesses then
-		warn(
-			`{plot.Name} is missing PlacedBusinesses.`
-		)
+		task.spawn(function()
+			placedBusinesses =
+				plot:WaitForChild(
+					"PlacedBusinesses",
+					15
+				)
+
+			if not placedBusinesses then
+				return
+			end
+
+			watchPlot(plot)
+		end)
 
 		return
 	end
@@ -177,13 +244,17 @@ local function watchPlot(plot: Model)
 	end
 end
 
-for _, plot in plotsFolder:GetChildren() do
+for _, plot in
+	plotsFolder:GetChildren() do
+
 	if plot:IsA("Model") then
 		watchPlot(plot)
 	end
 end
 
-plotsFolder.ChildAdded:Connect(function(child)
+plotsFolder.ChildAdded:Connect(function(
+	child: Instance
+)
 	if child:IsA("Model") then
 		watchPlot(child)
 	end
@@ -192,12 +263,12 @@ end)
 getUpgradeStateRemote.OnServerInvoke =
 	function(
 		player: Player,
-		businessName: string,
+		businessId: string,
 		upgradeName: string
 	)
 		return UpgradeService.GetUpgradeState(
 			player,
-			businessName,
+			businessId,
 			upgradeName
 		)
 	end
@@ -205,13 +276,13 @@ getUpgradeStateRemote.OnServerInvoke =
 purchaseUpgradeRemote.OnServerEvent:Connect(
 	function(
 		player: Player,
-		businessName: string,
+		businessId: string,
 		upgradeName: string
 	)
 		local result =
 			UpgradeService.PurchaseUpgrade(
 				player,
-				businessName,
+				businessId,
 				upgradeName
 			)
 
