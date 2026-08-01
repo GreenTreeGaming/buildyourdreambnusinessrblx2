@@ -14,6 +14,15 @@ local BusinessConfig = require(
 		:WaitForChild("BusinessConfig")
 )
 
+local UITheme = require(
+	ReplicatedStorage
+		:WaitForChild("Shared")
+		:WaitForChild("UITheme")
+)
+
+local Colors = UITheme.Colors
+local Fonts = UITheme.Fonts
+
 local lemonadeStandConfig =
 	BusinessConfig.LemonadeStand
 
@@ -184,6 +193,43 @@ local function getLemonadeCooldown(stand: Model): number
 	end
 
 	return DEFAULT_LEMONADE_COOLDOWN
+end
+
+local function setStandServingState(
+	stand: Model,
+	active: boolean,
+	duration: number?
+)
+	if not stand.Parent then
+		return
+	end
+
+	stand:SetAttribute(
+		"IsServingCustomer",
+		active
+	)
+
+	if active and duration then
+		stand:SetAttribute(
+			"ServiceStartedAt",
+			Workspace:GetServerTimeNow()
+		)
+
+		stand:SetAttribute(
+			"ServiceDuration",
+			duration
+		)
+	else
+		stand:SetAttribute(
+			"ServiceStartedAt",
+			nil
+		)
+
+		stand:SetAttribute(
+			"ServiceDuration",
+			nil
+		)
+	end
 end
 
 local function getLemonadeSaleValue(
@@ -581,74 +627,212 @@ local function showCashPopup(
 	stand: Model,
 	amount: number
 )
-	local effectPosition = stand:FindFirstChild(
-		"SaleEffectPosition",
-		true
-	) or stand:FindFirstChild(
-		"CooldownUIPosition",
-		true
-	)
+	local effectPosition =
+		stand:FindFirstChild(
+			"SaleEffectPosition",
+			true
+		)
+		or stand:FindFirstChild(
+			"CooldownUIPosition",
+			true
+		)
 
-	if not effectPosition or not effectPosition:IsA("BasePart") then
-		warn(`Could not find a sale effect position in {stand.Name}.`)
+	if not effectPosition
+		or not effectPosition:IsA("BasePart") then
+
+		warn(
+			`Could not find a sale effect position in {stand.Name}.`
+		)
+
 		return
 	end
 
-	local billboard = Instance.new("BillboardGui")
+	local billboard =
+		Instance.new("BillboardGui")
+
 	billboard.Name = "CashPopup"
 	billboard.Adornee = effectPosition
-	billboard.Size = UDim2.fromOffset(150, 55)
-	billboard.StudsOffsetWorldSpace = Vector3.new(0, 1.5, 0)
+
+	-- World-space scaling instead of pixel offsets.
+	billboard.Size =
+		UDim2.fromScale(4.2, 1.2)
+
+	billboard.StudsOffsetWorldSpace =
+		Vector3.new(0, 1.8, 0)
+
 	billboard.AlwaysOnTop = true
-	billboard.MaxDistance = 75
+	billboard.LightInfluence = 0
+	billboard.MaxDistance = 80
 	billboard.Parent = effectPosition
 
-	local label = Instance.new("TextLabel")
-	label.Name = "Amount"
-	label.AnchorPoint = Vector2.new(0.5, 0.5)
-	label.Position = UDim2.fromScale(0.5, 0.5)
-	label.Size = UDim2.fromScale(1, 1)
-	label.BackgroundTransparency = 1
-	label.Text = string.format("+$%d", amount)
-	label.TextColor3 = Color3.fromRGB(90, 255, 110)
-	label.TextStrokeColor3 = Color3.fromRGB(20, 70, 25)
-	label.TextStrokeTransparency = 0
-	label.Font = Enum.Font.GothamBold
-	label.TextScaled = true
-	label.Parent = billboard
+	local container = Instance.new("Frame")
+	container.Name = "Container"
+	container.AnchorPoint =
+		Vector2.new(0.5, 0.5)
+
+	container.Position =
+		UDim2.fromScale(0.5, 0.5)
+
+	container.Size =
+		UDim2.fromScale(0.94, 0.86)
+
+	container.BackgroundColor3 =
+		Colors.Success
+
+	container.BorderSizePixel = 0
+	container.Parent = billboard
+
+	UITheme.AddCorner(container, 0.25)
+
+	local stroke = UITheme.AddStroke(
+		container,
+		Colors.Success,
+		2,
+		0.12
+	)
+
+	UITheme.AddGradient(
+		container,
+		Colors.Success,
+		Colors.SuccessDark
+	)
+
+	local amountLabel =
+		Instance.new("TextLabel")
+
+	amountLabel.Name = "Amount"
+	amountLabel.Position =
+		UDim2.fromScale(0.08, 0.08)
+
+	amountLabel.Size =
+		UDim2.fromScale(0.84, 0.55)
+
+	amountLabel.BackgroundTransparency = 1
+	amountLabel.Text =
+		string.format("+$%d", amount)
+
+	amountLabel.TextXAlignment =
+		Enum.TextXAlignment.Center
+
+	amountLabel.Parent = container
+
+	UITheme.StyleText(
+		amountLabel,
+		15,
+		27,
+		Colors.Text,
+		Fonts.Black
+	)
+
+	local saleLabel =
+		Instance.new("TextLabel")
+
+	saleLabel.Name = "SaleLabel"
+	saleLabel.Position =
+		UDim2.fromScale(0.08, 0.61)
+
+	saleLabel.Size =
+		UDim2.fromScale(0.84, 0.24)
+
+	saleLabel.BackgroundTransparency = 1
+	saleLabel.Text = "SALE COMPLETE"
+	saleLabel.TextXAlignment =
+		Enum.TextXAlignment.Center
+
+	saleLabel.Parent = container
+
+	UITheme.StyleText(
+		saleLabel,
+		8,
+		13,
+		Colors.Text,
+		Fonts.Bold
+	)
 
 	local moveTween = TweenService:Create(
 		billboard,
 		TweenInfo.new(
-			0.8,
-			Enum.EasingStyle.Quad,
+			1,
+			Enum.EasingStyle.Back,
 			Enum.EasingDirection.Out
 		),
 		{
-			StudsOffsetWorldSpace = Vector3.new(0, 4, 0),
+			StudsOffsetWorldSpace =
+				Vector3.new(0, 4.3, 0),
 		}
 	)
 
-	local fadeTween = TweenService:Create(
-		label,
-		TweenInfo.new(
-			0.3,
-			Enum.EasingStyle.Linear,
-			Enum.EasingDirection.Out,
-			0,
-			false,
-			0.5
-		),
-		{
-			TextTransparency = 1,
-			TextStrokeTransparency = 1,
-		}
-	)
+	local amountFadeTween =
+		TweenService:Create(
+			amountLabel,
+			TweenInfo.new(
+				0.3,
+				Enum.EasingStyle.Linear,
+				Enum.EasingDirection.Out,
+				0,
+				false,
+				0.68
+			),
+			{
+				TextTransparency = 1,
+			}
+		)
+
+	local saleFadeTween =
+		TweenService:Create(
+			saleLabel,
+			TweenInfo.new(
+				0.3,
+				Enum.EasingStyle.Linear,
+				Enum.EasingDirection.Out,
+				0,
+				false,
+				0.68
+			),
+			{
+				TextTransparency = 1,
+			}
+		)
+
+	local containerFadeTween =
+		TweenService:Create(
+			container,
+			TweenInfo.new(
+				0.3,
+				Enum.EasingStyle.Linear,
+				Enum.EasingDirection.Out,
+				0,
+				false,
+				0.68
+			),
+			{
+				BackgroundTransparency = 1,
+			}
+		)
+
+	local strokeFadeTween =
+		TweenService:Create(
+			stroke,
+			TweenInfo.new(
+				0.3,
+				Enum.EasingStyle.Linear,
+				Enum.EasingDirection.Out,
+				0,
+				false,
+				0.68
+			),
+			{
+				Transparency = 1,
+			}
+		)
 
 	moveTween:Play()
-	fadeTween:Play()
+	amountFadeTween:Play()
+	saleFadeTween:Play()
+	containerFadeTween:Play()
+	strokeFadeTween:Play()
 
-	Debris:AddItem(billboard, 1)
+	Debris:AddItem(billboard, 1.15)
 end
 
 local function playSaleSound(stand: Model)
@@ -995,22 +1179,37 @@ local function processQueue(plot: Model)
 			stand
 		)
 
-		local transactionTime = getLemonadeCooldown(stand)
+		local transactionTime =
+	getLemonadeCooldown(stand)
 
-		firstEntry.customer:SetAttribute(
-			"TransactionTime",
-			transactionTime
-		)
+firstEntry.customer:SetAttribute(
+	"TransactionTime",
+	transactionTime
+)
 
-		local transactionEndsAt = time() + transactionTime
+setStandServingState(
+	stand,
+	true,
+	transactionTime
+)
+
+local transactionEndsAt =
+	time() + transactionTime
 
 		while time() < transactionEndsAt do
-			if firstEntry.isLeaving
-				or not firstEntry.customer.Parent
-				or not standIsAvailable(plot) then
+			local transactionCompleted =
+	not firstEntry.isLeaving
+	and firstEntry.customer.Parent ~= nil
+	and standIsAvailable(plot)
 
-				break
-			end
+setStandServingState(
+	stand,
+	false
+)
+
+if not transactionCompleted then
+	break
+end
 
 			task.wait(0.05)
 		end

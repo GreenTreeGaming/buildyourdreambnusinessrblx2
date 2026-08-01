@@ -1,5 +1,7 @@
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ReplicatedStorage =
+	game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
 
 local player = Players.LocalPlayer
 local playerGui =
@@ -16,6 +18,15 @@ local upgradeResultRemote =
 
 local getUpgradeStateRemote =
 	remotes:WaitForChild("GetUpgradeState")
+
+local UITheme = require(
+	ReplicatedStorage
+		:WaitForChild("Shared")
+		:WaitForChild("UITheme")
+)
+
+local Colors = UITheme.Colors
+local Fonts = UITheme.Fonts
 
 local BUSINESS_NAME = "LemonadeStand"
 local UPGRADE_NAME = "ServingSpeed"
@@ -34,32 +45,46 @@ type UpgradeState = {
 	CurrentCooldown: number?,
 }
 
-local function addCorner(
-	instance: GuiObject,
-	radius: number
-)
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius =
-		UDim.new(0, radius)
-	corner.Parent = instance
-end
+local function createTextLabel(
+	parent: Instance,
+	name: string,
+	text: string,
+	position: UDim2,
+	size: UDim2,
+	minimumTextSize: number,
+	maximumTextSize: number,
+	font: Enum.Font?,
+	color: Color3?
+): TextLabel
+	local label = Instance.new("TextLabel")
 
-local function addStroke(
-	instance: GuiObject,
-	thickness: number
-)
-	local stroke = Instance.new("UIStroke")
-	stroke.Color =
-		Color3.fromRGB(72, 77, 90)
-	stroke.Thickness = thickness
-	stroke.Parent = instance
+	label.Name = name
+	label.Position = position
+	label.Size = size
+	label.BackgroundTransparency = 1
+	label.Text = text
+	label.TextXAlignment =
+		Enum.TextXAlignment.Left
+
+	label.TextYAlignment =
+		Enum.TextYAlignment.Center
+
+	label.Parent = parent
+
+	UITheme.StyleText(
+		label,
+		minimumTextSize,
+		maximumTextSize,
+		color,
+		font
+	)
+
+	return label
 end
 
 local function createInterface()
 	local existing =
-		playerGui:FindFirstChild(
-			"UpgradeMenu"
-		)
+		playerGui:FindFirstChild("UpgradeMenu")
 
 	if existing then
 		existing:Destroy()
@@ -71,6 +96,7 @@ local function createInterface()
 	screenGui.Name = "UpgradeMenu"
 	screenGui.ResetOnSpawn = false
 	screenGui.IgnoreGuiInset = false
+	screenGui.DisplayOrder = 30
 	screenGui.Parent = playerGui
 
 	local openButton =
@@ -78,29 +104,63 @@ local function createInterface()
 
 	openButton.Name = "OpenButton"
 	openButton.AnchorPoint =
-		Vector2.new(1, 0.5)
+		Vector2.new(1, 0)
 
 	openButton.Position =
-		UDim2.new(1, -25, 0.5, 0)
+		UDim2.fromScale(0.975, 0.075)
 
 	openButton.Size =
-		UDim2.fromOffset(155, 52)
+		UDim2.fromScale(0.18, 0.075)
 
-	openButton.BackgroundColor3 =
-		Color3.fromRGB(255, 183, 55)
-
-	openButton.BorderSizePixel = 0
-	openButton.Text = "Upgrades"
-	openButton.TextColor3 =
-		Color3.fromRGB(35, 30, 20)
-
-	openButton.Font =
-		Enum.Font.GothamBold
-
-	openButton.TextSize = 17
+	openButton.Text = "★  UPGRADES"
 	openButton.Parent = screenGui
 
-	addCorner(openButton, 10)
+	UITheme.StyleText(
+	openButton,
+	11,
+	17,
+	Colors.Text,
+	Fonts.Black
+)
+
+	UITheme.StyleButton(
+	openButton,
+	Colors.Primary,
+	Colors.PrimaryDark,
+	Colors.Text
+)
+
+	local overlay = Instance.new("Frame")
+	overlay.Name = "Overlay"
+	overlay.Size = UDim2.fromScale(1, 1)
+	overlay.BackgroundColor3 =
+	Colors.Background
+
+overlay.BackgroundTransparency = 1
+	overlay.BorderSizePixel = 0
+	overlay.Visible = false
+	overlay.Active = true
+	overlay.Parent = screenGui
+
+	local panelShadow = Instance.new("Frame")
+	panelShadow.Name = "PanelShadow"
+	panelShadow.AnchorPoint =
+		Vector2.new(0.5, 0.5)
+
+	panelShadow.Position =
+		UDim2.fromScale(0.505, 0.515)
+
+	panelShadow.Size =
+		UDim2.fromScale(0.47, 0.64)
+
+	panelShadow.BackgroundColor3 =
+		Colors.Shadow
+
+	panelShadow.BackgroundTransparency = 0.25
+	panelShadow.BorderSizePixel = 0
+	panelShadow.Parent = overlay
+
+	UITheme.AddCorner(panelShadow, 0.06)
 
 	local panel = Instance.new("Frame")
 	panel.Name = "Panel"
@@ -111,39 +171,63 @@ local function createInterface()
 		UDim2.fromScale(0.5, 0.5)
 
 	panel.Size =
-		UDim2.fromOffset(430, 330)
+		UDim2.fromScale(0.47, 0.64)
 
 	panel.BackgroundColor3 =
-		Color3.fromRGB(30, 32, 38)
+		Colors.Surface
 
 	panel.BorderSizePixel = 0
-	panel.Visible = false
-	panel.Parent = screenGui
+	panel.Parent = overlay
 
-	addCorner(panel, 14)
-	addStroke(panel, 1.5)
+	UITheme.AddCorner(panel, 0.06)
 
-	local title = Instance.new("TextLabel")
-	title.Name = "Title"
-	title.Position =
-		UDim2.fromOffset(20, 15)
+	UITheme.AddStroke(
+		panel,
+		Colors.Stroke,
+		2,
+		0.08
+	)
 
-	title.Size =
-		UDim2.new(1, -75, 0, 38)
+	UITheme.AddGradient(
+	panel,
+	Color3.fromRGB(39, 57, 80),
+	Color3.fromRGB(23, 37, 57)
+)
 
-	title.BackgroundTransparency = 1
-	title.Text = "Lemonade Stand Upgrades"
-	title.TextColor3 =
-		Color3.fromRGB(255, 255, 255)
+	local header = Instance.new("Frame")
+	header.Name = "Header"
+	header.Position =
+		UDim2.fromScale(0.045, 0.04)
 
-	title.Font =
-		Enum.Font.GothamBold
+	header.Size =
+		UDim2.fromScale(0.91, 0.17)
 
-	title.TextSize = 21
-	title.TextXAlignment =
-		Enum.TextXAlignment.Left
+	header.BackgroundTransparency = 1
+	header.Parent = panel
 
-	title.Parent = panel
+	local title = createTextLabel(
+	header,
+	"Title",
+	"LEMONADE UPGRADES",
+	UDim2.fromScale(0, 0.05),
+	UDim2.fromScale(0.8, 0.42),
+	15,
+	25,
+	Fonts.Black,
+	Colors.Text
+)
+
+	local subtitle = createTextLabel(
+	header,
+	"Subtitle",
+	"Grow faster and serve more customers.",
+	UDim2.fromScale(0, 0.5),
+	UDim2.fromScale(0.8, 0.3),
+	10,
+	15,
+	Fonts.Medium,
+	Colors.Text
+)
 
 	local closeButton =
 		Instance.new("TextButton")
@@ -153,201 +237,373 @@ local function createInterface()
 		Vector2.new(1, 0)
 
 	closeButton.Position =
-		UDim2.new(1, -15, 0, 15)
+		UDim2.fromScale(1, 0.08)
 
 	closeButton.Size =
-		UDim2.fromOffset(38, 38)
+		UDim2.fromScale(0.11, 0.64)
 
-	closeButton.BackgroundColor3 =
-		Color3.fromRGB(64, 67, 76)
-
-	closeButton.BorderSizePixel = 0
 	closeButton.Text = "×"
-	closeButton.TextColor3 =
-		Color3.fromRGB(255, 255, 255)
+	closeButton.Parent = header
 
-	closeButton.Font =
-		Enum.Font.GothamBold
+	closeButton.TextColor3 = Colors.Text
+closeButton.TextTransparency = 0
 
-	closeButton.TextSize = 25
-	closeButton.Parent = panel
+	UITheme.StyleText(
+		closeButton,
+		18,
+		28,
+		Colors.Text,
+		Fonts.Bold
+	)
 
-	addCorner(closeButton, 8)
+	UITheme.StyleButton(
+		closeButton,
+		Colors.SurfaceLight,
+		Colors.SurfaceRaised
+	)
 
-	local upgradeCard =
-		Instance.new("Frame")
+	local card = Instance.new("Frame")
+	card.Name = "ServingSpeedCard"
+	card.Position =
+		UDim2.fromScale(0.045, 0.23)
 
-	upgradeCard.Name = "ServingSpeedCard"
-	upgradeCard.Position =
-		UDim2.fromOffset(20, 70)
+	card.Size =
+		UDim2.fromScale(0.91, 0.59)
 
-	upgradeCard.Size =
-		UDim2.new(1, -40, 0, 185)
+	card.BackgroundColor3 =
+		Colors.SurfaceRaised
 
-	upgradeCard.BackgroundColor3 =
-		Color3.fromRGB(42, 45, 53)
+	card.BorderSizePixel = 0
+	card.Parent = panel
 
-	upgradeCard.BorderSizePixel = 0
-	upgradeCard.Parent = panel
+	UITheme.AddCorner(card, 0.06)
 
-	addCorner(upgradeCard, 11)
+	UITheme.AddStroke(
+		card,
+		Colors.Info,
+		1.5,
+		0.45
+	)
 
-	local upgradeTitle =
-		Instance.new("TextLabel")
+	UITheme.AddGradient(
+	card,
+	Color3.fromRGB(48, 68, 94),
+	Color3.fromRGB(31, 48, 71)
+)
 
-	upgradeTitle.Name = "UpgradeTitle"
-	upgradeTitle.Position =
-		UDim2.fromOffset(16, 13)
+	local upgradeTitle = createTextLabel(
+	card,
+	"UpgradeTitle",
+	"FASTER SERVICE",
+	UDim2.fromScale(0.05, 0.06),
+	UDim2.fromScale(0.6, 0.095),
+	14,
+	22,
+	Fonts.Black,
+	Colors.Text
+)
 
-	upgradeTitle.Size =
-		UDim2.new(1, -32, 0, 30)
+	local cashLabel = createTextLabel(
+	card,
+	"CashLabel",
+	"CASH  $0",
+	UDim2.fromScale(0.71, 0.07),
+	UDim2.fromScale(0.24, 0.08),
+	11,
+	16,
+	Fonts.Bold,
+	Colors.Primary
+)
 
-	upgradeTitle.BackgroundTransparency = 1
-	upgradeTitle.Text = "Faster Service"
-	upgradeTitle.TextColor3 =
-		Color3.fromRGB(255, 255, 255)
+cashLabel.TextXAlignment =
+	Enum.TextXAlignment.Right
 
-	upgradeTitle.Font =
-		Enum.Font.GothamBold
+	local description = createTextLabel(
+	card,
+	"Description",
+	"Reduce the time each customer spends at the counter.",
+	UDim2.fromScale(0.05, 0.16),
+	UDim2.fromScale(0.68, 0.1),
+	10,
+	15,
+	Fonts.Medium,
+	Colors.Text
+)
 
-	upgradeTitle.TextSize = 19
-	upgradeTitle.TextXAlignment =
-		Enum.TextXAlignment.Left
+	local statRow = Instance.new("Frame")
+	statRow.Name = "Stats"
+	statRow.Position =
+		UDim2.fromScale(0.05, 0.31)
 
-	upgradeTitle.Parent = upgradeCard
+	statRow.Size =
+		UDim2.fromScale(0.9, 0.22)
 
-	local description =
-		Instance.new("TextLabel")
+	statRow.BackgroundTransparency = 1
+	statRow.Parent = card
 
-	description.Name = "Description"
-	description.Position =
-		UDim2.fromOffset(16, 45)
+	local statLayout =
+		Instance.new("UIListLayout")
 
-	description.Size =
-		UDim2.new(1, -32, 0, 35)
+	statLayout.FillDirection =
+		Enum.FillDirection.Horizontal
 
-	description.BackgroundTransparency = 1
-	description.Text =
-		"Reduces how long each customer takes to purchase lemonade."
+	statLayout.HorizontalAlignment =
+		Enum.HorizontalAlignment.Center
 
-	description.TextWrapped = true
-	description.TextColor3 =
-		Color3.fromRGB(195, 200, 212)
+	statLayout.VerticalAlignment =
+		Enum.VerticalAlignment.Center
 
-	description.Font =
-		Enum.Font.Gotham
+	statLayout.Padding = UDim.new(0.04, 0)
+	statLayout.Parent = statRow
 
-	description.TextSize = 14
-	description.TextXAlignment =
-		Enum.TextXAlignment.Left
+	local levelCard = Instance.new("Frame")
+	levelCard.Name = "LevelCard"
+	levelCard.Size =
+		UDim2.fromScale(0.48, 1)
 
-	description.Parent = upgradeCard
+	levelCard.BackgroundColor3 =
+		Colors.Background
 
-	local levelLabel =
-		Instance.new("TextLabel")
+	levelCard.BackgroundTransparency = 0.2
+	levelCard.BorderSizePixel = 0
+	levelCard.Parent = statRow
 
-	levelLabel.Name = "LevelLabel"
-	levelLabel.Position =
-		UDim2.fromOffset(16, 86)
+	UITheme.AddCorner(levelCard, 0.12)
+	UITheme.AddStroke(levelCard, Colors.Stroke, 1, 0.45)
 
-	levelLabel.Size =
-		UDim2.new(0.5, -20, 0, 26)
+	local levelCaption = createTextLabel(
+		levelCard,
+		"Caption",
+		"CURRENT LEVEL",
+		UDim2.fromScale(0.08, 0.1),
+		UDim2.fromScale(0.84, 0.3),
+		9,
+		13,
+		Fonts.Bold,
+		Colors.TextMuted
+	)
 
-	levelLabel.BackgroundTransparency = 1
-	levelLabel.Text = "Level: --"
-	levelLabel.TextColor3 =
-		Color3.fromRGB(225, 228, 235)
+	levelCaption.TextXAlignment =
+		Enum.TextXAlignment.Center
 
-	levelLabel.Font =
-		Enum.Font.GothamSemibold
+	local levelLabel = createTextLabel(
+		levelCard,
+		"LevelLabel",
+		"-- / --",
+		UDim2.fromScale(0.08, 0.45),
+		UDim2.fromScale(0.84, 0.4),
+		14,
+		23,
+		Fonts.Black,
+		Colors.Text
+	)
 
-	levelLabel.TextSize = 15
 	levelLabel.TextXAlignment =
-		Enum.TextXAlignment.Left
+		Enum.TextXAlignment.Center
 
-	levelLabel.Parent = upgradeCard
+	local speedCard = Instance.new("Frame")
+	speedCard.Name = "SpeedCard"
+	speedCard.Size =
+		UDim2.fromScale(0.48, 1)
 
-	local cooldownLabel =
-		Instance.new("TextLabel")
+	speedCard.BackgroundColor3 =
+		Colors.Background
 
-	cooldownLabel.Name = "CooldownLabel"
-	cooldownLabel.Position =
-		UDim2.new(0.5, 5, 0, 86)
+	speedCard.BackgroundTransparency = 0.2
+	speedCard.BorderSizePixel = 0
+	speedCard.Parent = statRow
 
-	cooldownLabel.Size =
-		UDim2.new(0.5, -21, 0, 26)
+	UITheme.AddCorner(speedCard, 0.12)
+	UITheme.AddStroke(speedCard, Colors.Stroke, 1, 0.45)
 
-	cooldownLabel.BackgroundTransparency = 1
-	cooldownLabel.Text = "Service time: --"
-	cooldownLabel.TextColor3 =
-		Color3.fromRGB(225, 228, 235)
+	local speedCaption = createTextLabel(
+		speedCard,
+		"Caption",
+		"SERVICE TIME",
+		UDim2.fromScale(0.08, 0.1),
+		UDim2.fromScale(0.84, 0.3),
+		9,
+		13,
+		Fonts.Bold,
+		Colors.TextMuted
+	)
 
-	cooldownLabel.Font =
-		Enum.Font.GothamSemibold
+	speedCaption.TextXAlignment =
+		Enum.TextXAlignment.Center
 
-	cooldownLabel.TextSize = 15
+	local cooldownLabel = createTextLabel(
+		speedCard,
+		"CooldownLabel",
+		"--",
+		UDim2.fromScale(0.08, 0.45),
+		UDim2.fromScale(0.84, 0.4),
+		14,
+		23,
+		Fonts.Black,
+		Colors.Success
+	)
+
 	cooldownLabel.TextXAlignment =
-		Enum.TextXAlignment.Right
+		Enum.TextXAlignment.Center
 
-	cooldownLabel.Parent = upgradeCard
+	local progressCaption = createTextLabel(
+		card,
+		"ProgressCaption",
+		"UPGRADE PROGRESS",
+		UDim2.fromScale(0.05, 0.57),
+		UDim2.fromScale(0.9, 0.07),
+		9,
+		13,
+		Fonts.Bold,
+		Colors.TextMuted
+	)
+
+	local progressTrack = Instance.new("Frame")
+	progressTrack.Name = "ProgressTrack"
+	progressTrack.Position =
+		UDim2.fromScale(0.05, 0.66)
+
+	progressTrack.Size =
+		UDim2.fromScale(0.9, 0.07)
+
+	progressTrack.BackgroundColor3 =
+		Colors.ProgressTrack
+
+	progressTrack.BorderSizePixel = 0
+	progressTrack.ClipsDescendants = true
+	progressTrack.Parent = card
+
+	UITheme.AddCorner(progressTrack, 0.5)
+
+	local progressFill = Instance.new("Frame")
+	progressFill.Name = "ProgressFill"
+	progressFill.Size =
+		UDim2.fromScale(0, 1)
+
+	progressFill.BackgroundColor3 =
+		Colors.Primary
+
+	progressFill.BorderSizePixel = 0
+	progressFill.Parent = progressTrack
+
+	UITheme.AddCorner(progressFill, 0.5)
+
+	UITheme.AddGradient(
+		progressFill,
+		Colors.Primary,
+		Colors.Success,
+		0
+	)
 
 	local purchaseButton =
 		Instance.new("TextButton")
 
 	purchaseButton.Name = "PurchaseButton"
 	purchaseButton.Position =
-		UDim2.fromOffset(16, 126)
+		UDim2.fromScale(0.05, 0.78)
 
 	purchaseButton.Size =
-		UDim2.new(1, -32, 0, 44)
+		UDim2.fromScale(0.9, 0.16)
 
-	purchaseButton.BackgroundColor3 =
-		Color3.fromRGB(85, 210, 105)
+	purchaseButton.Text = "LOADING..."
+	purchaseButton.Parent = card
 
-	purchaseButton.BorderSizePixel = 0
-	purchaseButton.Text = "Loading..."
-	purchaseButton.TextColor3 =
-		Color3.fromRGB(255, 255, 255)
+	UITheme.StyleText(
+		purchaseButton,
+		12,
+		19,
+		Colors.Text,
+		Fonts.Black
+	)
 
-	purchaseButton.Font =
-		Enum.Font.GothamBold
+	UITheme.StyleButton(
+		purchaseButton,
+		Colors.Success,
+		Colors.SuccessDark
+	)
 
-	purchaseButton.TextSize = 16
-	purchaseButton.AutoButtonColor = true
-	purchaseButton.Parent = upgradeCard
+	local statusLabel = createTextLabel(
+		panel,
+		"StatusLabel",
+		"",
+		UDim2.fromScale(0.06, 0.85),
+		UDim2.fromScale(0.88, 0.1),
+		10,
+		15,
+		Fonts.Semibold,
+		Colors.TextMuted
+	)
 
-	addCorner(purchaseButton, 9)
+	statusLabel.TextXAlignment =
+		Enum.TextXAlignment.Center
 
-	local statusLabel =
-		Instance.new("TextLabel")
+	local function updateResponsiveLayout()
+		local camera = Workspace.CurrentCamera
 
-	statusLabel.Name = "StatusLabel"
-	statusLabel.Position =
-		UDim2.fromOffset(20, 268)
+		if not camera then
+			return
+		end
 
-	statusLabel.Size =
-		UDim2.new(1, -40, 0, 42)
+		local viewport = camera.ViewportSize
+		local portrait =
+			viewport.Y > viewport.X
 
-	statusLabel.BackgroundTransparency = 1
-	statusLabel.Text = ""
-	statusLabel.TextWrapped = true
-	statusLabel.TextColor3 =
-		Color3.fromRGB(220, 223, 232)
+		local compact =
+			viewport.X < 800
+			or viewport.Y < 550
 
-	statusLabel.Font =
-		Enum.Font.GothamSemibold
+		if portrait then
+	panel.Size =
+		UDim2.fromScale(0.92, 0.68)
 
-	statusLabel.TextSize = 14
-	statusLabel.Parent = panel
+	panelShadow.Size =
+		UDim2.fromScale(0.92, 0.68)
+
+	openButton.Size =
+		UDim2.fromScale(0.28, 0.065)
+elseif compact then
+	panel.Size =
+		UDim2.fromScale(0.7, 0.82)
+
+	panelShadow.Size =
+		UDim2.fromScale(0.7, 0.82)
+
+	openButton.Size =
+		UDim2.fromScale(0.18, 0.08)
+else
+	panel.Size =
+		UDim2.fromScale(0.47, 0.64)
+
+	panelShadow.Size =
+		UDim2.fromScale(0.47, 0.64)
+
+	openButton.Size =
+		UDim2.fromScale(0.135, 0.065)
+end
+	end
+
+	updateResponsiveLayout()
+
+	local camera = Workspace.CurrentCamera
+
+	if camera then
+		camera:GetPropertyChangedSignal(
+			"ViewportSize"
+		):Connect(updateResponsiveLayout)
+	end
 
 	return {
 		ScreenGui = screenGui,
 		OpenButton = openButton,
+		Overlay = overlay,
 		Panel = panel,
 		CloseButton = closeButton,
 
+		CashLabel = cashLabel,
 		LevelLabel = levelLabel,
 		CooldownLabel = cooldownLabel,
+		ProgressFill = progressFill,
+
 		PurchaseButton = purchaseButton,
 		StatusLabel = statusLabel,
 	}
@@ -361,15 +617,13 @@ local function showStatus(
 )
 	statusVersion += 1
 
-	local currentVersion =
-		statusVersion
+	local currentVersion = statusVersion
 
 	interface.StatusLabel.Text = message
-
 	interface.StatusLabel.TextColor3 =
 		isError
-		and Color3.fromRGB(255, 115, 115)
-		or Color3.fromRGB(130, 235, 145)
+		and Colors.Danger
+		or Colors.Success
 
 	task.delay(4, function()
 		if statusVersion == currentVersion then
@@ -382,25 +636,22 @@ local function updateInterface(
 	state: UpgradeState
 )
 	if not state.Success then
-		interface.LevelLabel.Text =
-			"Level: --"
-
-		interface.CooldownLabel.Text =
-			"Service time: --"
+		interface.LevelLabel.Text = "-- / --"
+		interface.CooldownLabel.Text = "--"
+		interface.ProgressFill.Size =
+			UDim2.fromScale(0, 1)
 
 		interface.PurchaseButton.Text =
-			"Unavailable"
+			"UNAVAILABLE"
 
-		interface.PurchaseButton.Active = false
-		interface.PurchaseButton.AutoButtonColor = false
-
-		interface.PurchaseButton.BackgroundColor3 =
-			Color3.fromRGB(90, 92, 100)
-
-		showStatus(
-			state.Message,
-			true
+		UITheme.SetButtonEnabled(
+			interface.PurchaseButton,
+			false,
+			Colors.Success,
+			Colors.SuccessDark
 		)
+
+		showStatus(state.Message, true)
 
 		return
 	end
@@ -412,45 +663,54 @@ local function updateInterface(
 		state.MaximumLevel or 0
 
 	interface.LevelLabel.Text =
-		`Level: {currentLevel}/{maximumLevel}`
+		`{currentLevel} / {maximumLevel}`
 
 	if state.CurrentCooldown then
 		interface.CooldownLabel.Text =
 			string.format(
-				"Service time: %.2fs",
+				"%.2fs",
 				state.CurrentCooldown
 			)
 	else
-		interface.CooldownLabel.Text =
-			"Service time: --"
+		interface.CooldownLabel.Text = "--"
 	end
+
+	local progress = 0
+
+	if maximumLevel > 0 then
+		progress = math.clamp(
+			currentLevel / maximumLevel,
+			0,
+			1
+		)
+	end
+
+	interface.ProgressFill.Size =
+		UDim2.fromScale(progress, 1)
 
 	if currentLevel >= maximumLevel then
 		interface.PurchaseButton.Text =
-			"Maximum Level"
+			"MAXIMUM LEVEL"
 
-		interface.PurchaseButton.Active = false
-		interface.PurchaseButton.AutoButtonColor = false
-
-		interface.PurchaseButton.BackgroundColor3 =
-			Color3.fromRGB(90, 92, 100)
+		UITheme.SetButtonEnabled(
+			interface.PurchaseButton,
+			false,
+			Colors.Success,
+			Colors.SuccessDark
+		)
 
 		return
 	end
 
 	interface.PurchaseButton.Text =
-		`Upgrade for ${state.NextCost or 0}`
+		`UPGRADE  •  ${state.NextCost or 0}`
 
-	interface.PurchaseButton.Active =
-		not requestPending
-
-	interface.PurchaseButton.AutoButtonColor =
-		not requestPending
-
-	interface.PurchaseButton.BackgroundColor3 =
-		requestPending
-		and Color3.fromRGB(90, 92, 100)
-		or Color3.fromRGB(85, 210, 105)
+	UITheme.SetButtonEnabled(
+		interface.PurchaseButton,
+		not requestPending,
+		Colors.Success,
+		Colors.SuccessDark
+	)
 end
 
 local function requestUpgradeState()
@@ -462,7 +722,9 @@ local function requestUpgradeState()
 			)
 		end)
 
-	if not success then
+	if not success
+		or type(result) ~= "table" then
+
 		updateInterface({
 			Success = false,
 			Message =
@@ -476,12 +738,15 @@ local function requestUpgradeState()
 end
 
 interface.OpenButton.Activated:Connect(function()
-	interface.Panel.Visible = true
+	interface.Overlay.Visible = true
+	interface.OpenButton.Visible = false
+
 	requestUpgradeState()
 end)
 
 interface.CloseButton.Activated:Connect(function()
-	interface.Panel.Visible = false
+	interface.Overlay.Visible = false
+	interface.OpenButton.Visible = true
 end)
 
 interface.PurchaseButton.Activated:Connect(function()
@@ -494,12 +759,14 @@ interface.PurchaseButton.Activated:Connect(function()
 	requestPending = true
 
 	interface.PurchaseButton.Text =
-		"Purchasing..."
+		"PURCHASING..."
 
-	interface.PurchaseButton.Active = false
-	interface.PurchaseButton.AutoButtonColor = false
-	interface.PurchaseButton.BackgroundColor3 =
-		Color3.fromRGB(90, 92, 100)
+	UITheme.SetButtonEnabled(
+		interface.PurchaseButton,
+		false,
+		Colors.Success,
+		Colors.SuccessDark
+	)
 
 	purchaseUpgradeRemote:FireServer(
 		BUSINESS_NAME,
@@ -530,8 +797,17 @@ local leaderstats =
 local cash =
 	leaderstats:WaitForChild("Cash")
 
+local function updateCashLabel()
+	interface.CashLabel.Text =
+		`CASH  ${cash.Value}`
+end
+
+updateCashLabel()
+
 cash:GetPropertyChangedSignal("Value"):Connect(function()
-	if interface.Panel.Visible then
+	updateCashLabel()
+
+	if interface.Overlay.Visible then
 		requestUpgradeState()
 	end
 end)

@@ -7,6 +7,18 @@ local Workspace = game:GetService("Workspace")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
+local UITheme = require(
+	ReplicatedStorage
+		:WaitForChild("Shared")
+		:WaitForChild("UITheme")
+)
+
+local Colors = UITheme.Colors
+local Fonts = UITheme.Fonts
+
+local IS_TOUCH_DEVICE =
+	UserInputService.TouchEnabled
+
 local businessModels =
 	ReplicatedStorage:WaitForChild("BusinessModels")
 
@@ -15,9 +27,6 @@ local remotes =
 
 local placeBusinessRemote =
 	remotes:WaitForChild("PlaceBusiness")
-
-local requestRemoveRemote =
-	remotes:WaitForChild("RequestRemoveBusiness")
 
 local interactionResultRemote =
 	remotes:WaitForChild("BusinessInteractionResult")
@@ -38,6 +47,7 @@ local ownedPlot: Model? = nil
 local originalStand: Model? = nil
 
 local currentPlacementCFrame: CFrame? = nil
+local lastTouchPosition: Vector2? = nil
 
 local rotationY = 0
 
@@ -47,10 +57,12 @@ local placementValid = false
 local waitingForServer = false
 
 local function getOwnedPlot(): Model?
-	local plotName = player:GetAttribute("PlotName")
+	local plotName =
+		player:GetAttribute("PlotName")
 
 	if typeof(plotName) == "string" then
-		local plot = plotsFolder:FindFirstChild(plotName)
+		local plot =
+			plotsFolder:FindFirstChild(plotName)
 
 		if plot
 			and plot:IsA("Model")
@@ -86,7 +98,9 @@ local function getExistingStand(): Model?
 	end
 
 	local stand =
-		placedBusinesses:FindFirstChild(BUSINESS_NAME)
+		placedBusinesses:FindFirstChild(
+			BUSINESS_NAME
+		)
 
 	if stand and stand:IsA("Model") then
 		return stand
@@ -96,103 +110,529 @@ local function getExistingStand(): Model?
 end
 
 local function createInterface()
-	local existing = playerGui:FindFirstChild("BuildMenu")
+	local existing =
+		playerGui:FindFirstChild("BuildMenu")
 
 	if existing then
 		existing:Destroy()
 	end
 
-	local screenGui = Instance.new("ScreenGui")
+	local screenGui =
+		Instance.new("ScreenGui")
+
 	screenGui.Name = "BuildMenu"
 	screenGui.ResetOnSpawn = false
-	screenGui.IgnoreGuiInset = true
+	screenGui.IgnoreGuiInset = false
+	screenGui.DisplayOrder = 20
 	screenGui.Parent = playerGui
+
+	local menuShadow = Instance.new("Frame")
+	menuShadow.Name = "MenuShadow"
+	menuShadow.AnchorPoint =
+		Vector2.new(0, 1)
+
+	menuShadow.Position =
+		UDim2.fromScale(0.033, 0.967)
+
+	menuShadow.Size =
+		UDim2.fromScale(0.3, 0.24)
+
+	menuShadow.BackgroundColor3 =
+		Colors.Shadow
+
+	menuShadow.BackgroundTransparency = 0.28
+	menuShadow.BorderSizePixel = 0
+	menuShadow.Parent = screenGui
+
+	UITheme.AddCorner(menuShadow, 0.07)
 
 	local menu = Instance.new("Frame")
 	menu.Name = "Menu"
-	menu.AnchorPoint = Vector2.new(0, 0.5)
-	menu.Position = UDim2.new(0, 25, 0.5, 0)
-	menu.Size = UDim2.fromOffset(245, 160)
-	menu.BackgroundColor3 = Color3.fromRGB(30, 32, 38)
+	menu.AnchorPoint =
+		Vector2.new(0, 1)
+
+	menu.Position =
+		UDim2.fromScale(0.025, 0.955)
+
+	menu.Size =
+		UDim2.fromScale(0.3, 0.24)
+
+	menu.BackgroundColor3 =
+		Colors.Surface
+
 	menu.BorderSizePixel = 0
 	menu.Parent = screenGui
 
-	local menuCorner = Instance.new("UICorner")
-	menuCorner.CornerRadius = UDim.new(0, 12)
-	menuCorner.Parent = menu
+	UITheme.AddCorner(menu, 0.07)
 
-	local menuStroke = Instance.new("UIStroke")
-	menuStroke.Color = Color3.fromRGB(65, 69, 80)
-	menuStroke.Thickness = 1.5
-	menuStroke.Parent = menu
+	UITheme.AddStroke(
+		menu,
+		Colors.Primary,
+		2,
+		0.2
+	)
+
+	UITheme.AddGradient(
+		menu,
+		Colors.SurfaceRaised,
+		Colors.Background
+	)
+
+	local accent = Instance.new("Frame")
+	accent.Name = "Accent"
+	accent.Position =
+		UDim2.fromScale(0.035, 0.08)
+
+	accent.Size =
+		UDim2.fromScale(0.025, 0.84)
+
+	accent.BackgroundColor3 =
+		Colors.Primary
+
+	accent.BorderSizePixel = 0
+	accent.Parent = menu
+
+	UITheme.AddCorner(accent, 0.5)
+
+	local icon = Instance.new("TextLabel")
+	icon.Name = "Icon"
+	icon.Position =
+		UDim2.fromScale(0.09, 0.08)
+
+	icon.Size =
+		UDim2.fromScale(0.17, 0.23)
+
+	icon.BackgroundColor3 =
+		Colors.Primary
+
+	icon.BorderSizePixel = 0
+	icon.Text = "L"
+	icon.Parent = menu
+
+	UITheme.AddCorner(icon, 0.5)
+
+	UITheme.AddGradient(
+		icon,
+		Colors.Primary,
+		Colors.PrimaryDark
+	)
+
+	UITheme.StyleText(
+		icon,
+		16,
+		27,
+		Colors.TextDark,
+		Fonts.Black
+	)
 
 	local title = Instance.new("TextLabel")
 	title.Name = "Title"
-	title.Position = UDim2.fromOffset(15, 10)
-	title.Size = UDim2.new(1, -30, 0, 35)
+	title.Position =
+		UDim2.fromScale(0.31, 0.07)
+
+	title.Size =
+		UDim2.fromScale(0.62, 0.13)
+
 	title.BackgroundTransparency = 1
-	title.Text = "Build Your Business"
-	title.TextColor3 = Color3.fromRGB(255, 255, 255)
-	title.Font = Enum.Font.GothamBold
-	title.TextSize = 20
-	title.TextXAlignment = Enum.TextXAlignment.Left
+	title.Text = "BUILD YOUR BUSINESS"
+	title.TextXAlignment =
+		Enum.TextXAlignment.Left
+
 	title.Parent = menu
 
-	local buildButton = Instance.new("TextButton")
-	buildButton.Name = "LemonadeStandButton"
-	buildButton.Position = UDim2.fromOffset(15, 55)
-	buildButton.Size = UDim2.new(1, -30, 0, 55)
-	buildButton.BackgroundColor3 = Color3.fromRGB(85, 210, 105)
-	buildButton.BorderSizePixel = 0
-	buildButton.Text = "Build Lemonade Stand"
-	buildButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-	buildButton.Font = Enum.Font.GothamBold
-	buildButton.TextSize = 16
-	buildButton.AutoButtonColor = true
+	UITheme.StyleText(
+		title,
+		12,
+		20,
+		Colors.Text,
+		Fonts.Black
+	)
+
+	local subtitle = Instance.new("TextLabel")
+	subtitle.Name = "Subtitle"
+	subtitle.Position =
+		UDim2.fromScale(0.31, 0.21)
+
+	subtitle.Size =
+		UDim2.fromScale(0.62, 0.1)
+
+	subtitle.BackgroundTransparency = 1
+	subtitle.Text =
+		"Start earning with your first stand."
+
+	subtitle.TextXAlignment =
+		Enum.TextXAlignment.Left
+
+	subtitle.Parent = menu
+
+	UITheme.StyleText(
+		subtitle,
+		9,
+		13,
+		Colors.TextMuted,
+		Fonts.Medium
+	)
+
+	local buildButton =
+		Instance.new("TextButton")
+
+	buildButton.Name =
+		"LemonadeStandButton"
+
+	buildButton.Position =
+		UDim2.fromScale(0.09, 0.42)
+
+	buildButton.Size =
+		UDim2.fromScale(0.84, 0.3)
+
+	buildButton.Text =
+		"BUILD LEMONADE STAND"
+
 	buildButton.Parent = menu
 
-	local buttonCorner = Instance.new("UICorner")
-	buttonCorner.CornerRadius = UDim.new(0, 9)
-	buttonCorner.Parent = buildButton
+	UITheme.StyleText(
+		buildButton,
+		11,
+		18,
+		Colors.TextDark,
+		Fonts.Black
+	)
 
-	local instructions = Instance.new("TextLabel")
+	UITheme.StyleButton(
+		buildButton,
+		Colors.Primary,
+		Colors.PrimaryDark,
+		Colors.TextDark
+	)
+
+	local instructions =
+		Instance.new("TextLabel")
+
 	instructions.Name = "Instructions"
-	instructions.Position = UDim2.fromOffset(15, 117)
-	instructions.Size = UDim2.new(1, -30, 0, 28)
+	instructions.Position =
+		UDim2.fromScale(0.09, 0.78)
+
+	instructions.Size =
+		UDim2.fromScale(0.84, 0.12)
+
 	instructions.BackgroundTransparency = 1
-	instructions.Text = "Click place  •  R rotate  •  Esc cancel"
-	instructions.TextColor3 = Color3.fromRGB(190, 195, 205)
-	instructions.Font = Enum.Font.Gotham
-	instructions.TextSize = 12
+
+	instructions.Text =
+		IS_TOUCH_DEVICE
+		and "Tap the plot, then use the controls."
+		or "Click to place  •  R rotate  •  Esc cancel"
+
+	instructions.TextXAlignment =
+		Enum.TextXAlignment.Center
+
 	instructions.Parent = menu
+
+	UITheme.StyleText(
+		instructions,
+		8,
+		12,
+		Colors.TextMuted,
+		Fonts.Medium
+	)
 
 	local status = Instance.new("TextLabel")
 	status.Name = "Status"
-	status.AnchorPoint = Vector2.new(0.5, 1)
-	status.Position = UDim2.new(0.5, 0, 1, -25)
-	status.Size = UDim2.fromOffset(470, 45)
-	status.BackgroundColor3 = Color3.fromRGB(30, 32, 38)
-	status.BackgroundTransparency = 0.08
+	status.AnchorPoint =
+		Vector2.new(0.5, 0)
+
+	status.Position =
+		UDim2.fromScale(0.5, 0.055)
+
+	status.Size =
+		UDim2.fromScale(0.52, 0.075)
+
+	status.BackgroundColor3 =
+		Colors.Surface
+
+	status.BackgroundTransparency = 0.03
 	status.BorderSizePixel = 0
 	status.Text = ""
-	status.TextColor3 = Color3.fromRGB(255, 255, 255)
-	status.Font = Enum.Font.GothamBold
-	status.TextSize = 17
 	status.Visible = false
-	status.ZIndex = 10
+	status.ZIndex = 15
 	status.Parent = screenGui
 
-	local statusCorner = Instance.new("UICorner")
-	statusCorner.CornerRadius = UDim.new(0, 10)
-	statusCorner.Parent = status
+	UITheme.AddCorner(status, 0.25)
 
-	return screenGui, menu, buildButton, status
+	UITheme.AddStroke(
+		status,
+		Colors.Stroke,
+		1.5,
+		0.2
+	)
+
+	UITheme.StyleText(
+		status,
+		11,
+		17,
+		Colors.Text,
+		Fonts.Bold
+	)
+
+	local controls = Instance.new("Frame")
+	controls.Name = "PlacementControls"
+	controls.AnchorPoint =
+		Vector2.new(0.5, 1)
+
+	controls.Position =
+		UDim2.fromScale(0.5, 0.96)
+
+	controls.Size =
+		UDim2.fromScale(0.5, 0.095)
+
+	controls.BackgroundColor3 =
+		Colors.Surface
+
+	controls.BackgroundTransparency = 0.02
+	controls.BorderSizePixel = 0
+	controls.Visible = false
+	controls.ZIndex = 20
+	controls.Parent = screenGui
+
+	UITheme.AddCorner(controls, 0.18)
+
+	UITheme.AddStroke(
+		controls,
+		Colors.Primary,
+		1.5,
+		0.25
+	)
+
+	UITheme.AddPadding(
+		controls,
+		0.035,
+		0.035,
+		0.14,
+		0.14
+	)
+
+	local controlLayout =
+		Instance.new("UIListLayout")
+
+	controlLayout.FillDirection =
+		Enum.FillDirection.Horizontal
+
+	controlLayout.HorizontalAlignment =
+		Enum.HorizontalAlignment.Center
+
+	controlLayout.VerticalAlignment =
+		Enum.VerticalAlignment.Center
+
+	controlLayout.Padding =
+		UDim.new(0.035, 0)
+
+	controlLayout.Parent = controls
+
+	local function createControlButton(
+		name: string,
+		text: string,
+		topColor: Color3,
+		bottomColor: Color3
+	): TextButton
+		local button =
+			Instance.new("TextButton")
+
+		button.Name = name
+		button.Size =
+			UDim2.fromScale(0.31, 1)
+
+		button.Text = text
+		button.ZIndex = 21
+		button.Parent = controls
+
+		button.TextColor3 = Colors.Text
+		button.TextTransparency = 0
+
+		UITheme.StyleText(
+			button,
+			10,
+			16,
+			Colors.Text,
+			Fonts.Black
+		)
+
+		UITheme.StyleButton(
+			button,
+			topColor,
+			bottomColor
+		)
+
+		button.TextColor3 = Colors.Text
+button.TextTransparency = 0
+
+		return button
+	end
+
+	local rotateButton = createControlButton(
+	"RotateButton",
+	"ROTATE",
+	Colors.Info,
+	Colors.InfoDark
+)
+
+local placeButton = createControlButton(
+	"PlaceButton",
+	"PLACE",
+	Colors.Success,
+	Colors.SuccessDark
+)
+
+local cancelButton = createControlButton(
+	"CancelButton",
+	"CANCEL",
+	Colors.Danger,
+	Colors.DangerDark
+)
+
+	local function updateResponsiveLayout()
+		local camera = Workspace.CurrentCamera
+
+		if not camera then
+			return
+		end
+
+		local viewport = camera.ViewportSize
+
+		local portrait =
+			viewport.Y > viewport.X
+
+		local compact =
+			viewport.X < 800
+			or viewport.Y < 550
+
+		if portrait then
+			menu.AnchorPoint =
+				Vector2.new(0.5, 1)
+
+			menu.Position =
+				UDim2.fromScale(0.5, 0.96)
+
+			menu.Size =
+				UDim2.fromScale(0.92, 0.22)
+
+			menuShadow.AnchorPoint =
+				Vector2.new(0.5, 1)
+
+			menuShadow.Position =
+				UDim2.fromScale(0.51, 0.97)
+
+			menuShadow.Size =
+				UDim2.fromScale(0.92, 0.22)
+
+			controls.Size =
+				UDim2.fromScale(0.94, 0.1)
+
+			status.Size =
+				UDim2.fromScale(0.9, 0.07)
+		elseif compact then
+			menu.AnchorPoint =
+				Vector2.new(0, 1)
+
+			menu.Position =
+				UDim2.fromScale(0.025, 0.955)
+
+			menu.Size =
+				UDim2.fromScale(0.4, 0.34)
+
+			menuShadow.AnchorPoint =
+				Vector2.new(0, 1)
+
+			menuShadow.Position =
+				UDim2.fromScale(0.033, 0.967)
+
+			menuShadow.Size =
+				UDim2.fromScale(0.4, 0.34)
+
+			controls.Size =
+				UDim2.fromScale(0.68, 0.13)
+
+			status.Size =
+				UDim2.fromScale(0.65, 0.1)
+		else
+			menu.AnchorPoint =
+				Vector2.new(0, 1)
+
+			menu.Position =
+				UDim2.fromScale(0.025, 0.955)
+
+			menu.Size =
+				UDim2.fromScale(0.3, 0.24)
+
+			menuShadow.AnchorPoint =
+				Vector2.new(0, 1)
+
+			menuShadow.Position =
+				UDim2.fromScale(0.033, 0.967)
+
+			menuShadow.Size =
+				UDim2.fromScale(0.3, 0.24)
+
+			controls.Size =
+				UDim2.fromScale(0.5, 0.095)
+
+			status.Size =
+				UDim2.fromScale(0.52, 0.075)
+		end
+	end
+
+	updateResponsiveLayout()
+
+	local camera = Workspace.CurrentCamera
+
+	if camera then
+		camera:GetPropertyChangedSignal(
+			"ViewportSize"
+		):Connect(updateResponsiveLayout)
+	end
+
+	return {
+		ScreenGui = screenGui,
+		Menu = menu,
+		MenuShadow = menuShadow,
+
+		BuildButton = buildButton,
+		StatusLabel = status,
+
+		PlacementControls = controls,
+		RotateButton = rotateButton,
+		PlaceButton = placeButton,
+		CancelButton = cancelButton,
+	}
 end
 
-local screenGui, menu, buildButton, statusLabel =
-	createInterface()
+local interface = createInterface()
+
+local screenGui = interface.ScreenGui
+local menu = interface.Menu
+local menuShadow = interface.MenuShadow
+
+local buildButton = interface.BuildButton
+local statusLabel = interface.StatusLabel
+
+local placementControls =
+	interface.PlacementControls
+
+local rotateButton =
+	interface.RotateButton
+
+local placeButton =
+	interface.PlaceButton
+
+local cancelPlacementButton =
+	interface.CancelButton
 
 local statusVersion = 0
+
+local function setBuildMenuVisible(
+	visible: boolean
+)
+	menu.Visible = visible
+	menuShadow.Visible = visible
+end
 
 local function showStatus(
 	message: string,
@@ -214,116 +654,16 @@ local function showStatus(
 	end
 end
 
-local function createRemoveConfirmation(): Frame
-	local overlay = Instance.new("Frame")
-	overlay.Name = "RemoveConfirmation"
-	overlay.Size = UDim2.fromScale(1, 1)
-	overlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-	overlay.BackgroundTransparency = 0.45
-	overlay.Visible = false
-	overlay.Active = true
-	overlay.ZIndex = 20
-	overlay.Parent = screenGui
-
-	local window = Instance.new("Frame")
-	window.Name = "Window"
-	window.AnchorPoint = Vector2.new(0.5, 0.5)
-	window.Position = UDim2.fromScale(0.5, 0.5)
-	window.Size = UDim2.fromOffset(380, 205)
-	window.BackgroundColor3 = Color3.fromRGB(35, 37, 44)
-	window.BorderSizePixel = 0
-	window.ZIndex = 21
-	window.Parent = overlay
-
-	local windowCorner = Instance.new("UICorner")
-	windowCorner.CornerRadius = UDim.new(0, 13)
-	windowCorner.Parent = window
-
-	local windowStroke = Instance.new("UIStroke")
-	windowStroke.Color = Color3.fromRGB(75, 79, 92)
-	windowStroke.Thickness = 1.5
-	windowStroke.Parent = window
-
-	local title = Instance.new("TextLabel")
-	title.Position = UDim2.fromOffset(20, 16)
-	title.Size = UDim2.new(1, -40, 0, 38)
-	title.BackgroundTransparency = 1
-	title.Text = "Remove Lemonade Stand?"
-	title.TextColor3 = Color3.fromRGB(255, 255, 255)
-	title.Font = Enum.Font.GothamBold
-	title.TextSize = 21
-	title.ZIndex = 22
-	title.Parent = window
-
-	local description = Instance.new("TextLabel")
-	description.Position = UDim2.fromOffset(28, 61)
-	description.Size = UDim2.new(1, -56, 0, 55)
-	description.BackgroundTransparency = 1
-	description.Text =
-		"Customers will leave and no new customers will arrive until you build it again."
-
-	description.TextWrapped = true
-	description.TextColor3 = Color3.fromRGB(202, 206, 216)
-	description.Font = Enum.Font.Gotham
-	description.TextSize = 14
-	description.ZIndex = 22
-	description.Parent = window
-
-	local cancelButton = Instance.new("TextButton")
-	cancelButton.Name = "CancelButton"
-	cancelButton.Position = UDim2.fromOffset(20, 138)
-	cancelButton.Size = UDim2.fromOffset(160, 47)
-	cancelButton.BackgroundColor3 = Color3.fromRGB(75, 78, 88)
-	cancelButton.BorderSizePixel = 0
-	cancelButton.Text = "Cancel"
-	cancelButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-	cancelButton.Font = Enum.Font.GothamBold
-	cancelButton.TextSize = 16
-	cancelButton.ZIndex = 22
-	cancelButton.Parent = window
-
-	local removeButton = Instance.new("TextButton")
-	removeButton.Name = "RemoveButton"
-	removeButton.Position = UDim2.new(1, -180, 0, 138)
-	removeButton.Size = UDim2.fromOffset(160, 47)
-	removeButton.BackgroundColor3 = Color3.fromRGB(220, 65, 65)
-	removeButton.BorderSizePixel = 0
-	removeButton.Text = "Remove"
-	removeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-	removeButton.Font = Enum.Font.GothamBold
-	removeButton.TextSize = 16
-	removeButton.ZIndex = 22
-	removeButton.Parent = window
-
-	for _, button in {cancelButton, removeButton} do
-		local corner = Instance.new("UICorner")
-		corner.CornerRadius = UDim.new(0, 9)
-		corner.Parent = button
-	end
-
-	cancelButton.Activated:Connect(function()
-		overlay.Visible = false
-	end)
-
-	removeButton.Activated:Connect(function()
-		overlay.Visible = false
-		requestRemoveRemote:FireServer()
-
-		showStatus("Removing lemonade stand...")
-	end)
-
-	return overlay
-end
-
-local removeConfirmation =
-	createRemoveConfirmation()
-
-local function setOriginalStandVisible(visible: boolean)
+local function setOriginalStandVisible(
+	visible: boolean
+)
 	if not originalStand then
 		return
 	end
 
-	for _, descendant in originalStand:GetDescendants() do
+	for _, descendant in
+		originalStand:GetDescendants() do
+
 		if descendant:IsA("BasePart") then
 			descendant.LocalTransparencyModifier =
 				visible and 0 or 1
@@ -333,7 +673,9 @@ local function setOriginalStandVisible(visible: boolean)
 	end
 end
 
-local function createPlacementBox(model: Model)
+local function createPlacementBox(
+	model: Model
+)
 	local placementBounds =
 		model:FindFirstChild(
 			"PlacementBounds",
@@ -350,18 +692,29 @@ local function createPlacementBox(model: Model)
 		return
 	end
 
-	local selectionBox = Instance.new("SelectionBox")
+	local selectionBox =
+		Instance.new("SelectionBox")
+
 	selectionBox.Name = "PlacementBox"
 	selectionBox.Adornee = placementBounds
 	selectionBox.LineThickness = 0.08
 	selectionBox.SurfaceTransparency = 0.82
-	selectionBox.Color3 = Color3.fromRGB(80, 230, 110)
-	selectionBox.SurfaceColor3 = Color3.fromRGB(80, 230, 110)
+
+	selectionBox.Color3 =
+		Colors.Success
+
+	selectionBox.SurfaceColor3 =
+		Colors.Success
+
 	selectionBox.Parent = model
 end
 
-local function preparePreview(model: Model)
-	for _, descendant in model:GetDescendants() do
+local function preparePreview(
+	model: Model
+)
+	for _, descendant in
+		model:GetDescendants() do
+
 		if descendant:IsA("BasePart") then
 			descendant.Anchored = true
 			descendant.CanCollide = false
@@ -384,10 +737,13 @@ local function preparePreview(model: Model)
 		end
 	end
 
-	local highlight = Instance.new("Highlight")
+	local highlight =
+		Instance.new("Highlight")
+
 	highlight.Name = "PlacementHighlight"
 	highlight.FillTransparency = 0.7
 	highlight.OutlineTransparency = 0
+
 	highlight.DepthMode =
 		Enum.HighlightDepthMode.AlwaysOnTop
 
@@ -396,7 +752,9 @@ local function preparePreview(model: Model)
 	createPlacementBox(model)
 end
 
-local function setPreviewColor(valid: boolean)
+local function setPreviewColor(
+	valid: boolean
+)
 	if not previewModel then
 		return
 	end
@@ -415,28 +773,37 @@ local function setPreviewColor(valid: boolean)
 	local outlineColor
 
 	if valid then
-		fillColor = Color3.fromRGB(70, 235, 105)
-		outlineColor = Color3.fromRGB(25, 155, 55)
+		fillColor = Colors.Success
+		outlineColor =
+			Colors.SuccessDark
 	else
-		fillColor = Color3.fromRGB(240, 70, 70)
-		outlineColor = Color3.fromRGB(170, 25, 25)
+		fillColor = Colors.Danger
+		outlineColor =
+			Colors.DangerDark
 	end
 
-	if highlight and highlight:IsA("Highlight") then
+	if highlight
+		and highlight:IsA("Highlight") then
+
 		highlight.FillColor = fillColor
-		highlight.OutlineColor = outlineColor
+		highlight.OutlineColor =
+			outlineColor
 	end
 
 	if placementBox
 		and placementBox:IsA("SelectionBox") then
 
 		placementBox.Color3 = fillColor
-		placementBox.SurfaceColor3 = fillColor
+		placementBox.SurfaceColor3 =
+			fillColor
 	end
 end
 
-local function snapToGrid(value: number): number
-	return math.round(value / GRID_SIZE) * GRID_SIZE
+local function snapToGrid(
+	value: number
+): number
+	return math.round(value / GRID_SIZE)
+		* GRID_SIZE
 end
 
 local function getPlacementCFrame(
@@ -444,10 +811,15 @@ local function getPlacementCFrame(
 	ground: BasePart
 ): CFrame
 	local groundPosition =
-		ground.CFrame:PointToObjectSpace(hitPosition)
+		ground.CFrame:PointToObjectSpace(
+			hitPosition
+		)
 
-	local localX = snapToGrid(groundPosition.X)
-	local localZ = snapToGrid(groundPosition.Z)
+	local localX =
+		snapToGrid(groundPosition.X)
+
+	local localZ =
+		snapToGrid(groundPosition.Z)
 
 	return ground.CFrame
 		* CFrame.new(
@@ -478,8 +850,11 @@ local function isPreviewInsideGround(
 		return false
 	end
 
-	local halfX = placementBounds.Size.X / 2
-	local halfZ = placementBounds.Size.Z / 2
+	local halfX =
+		placementBounds.Size.X / 2
+
+	local halfZ =
+		placementBounds.Size.Z / 2
 
 	local corners = {
 		Vector3.new(-halfX, 0, -halfZ),
@@ -490,14 +865,16 @@ local function isPreviewInsideGround(
 
 	for _, cornerOffset in corners do
 		local worldCorner =
-			placementBounds.CFrame:PointToWorldSpace(
-				cornerOffset
-			)
+			placementBounds.CFrame
+				:PointToWorldSpace(
+					cornerOffset
+				)
 
 		local groundSpace =
-			ground.CFrame:PointToObjectSpace(
-				worldCorner
-			)
+			ground.CFrame
+				:PointToObjectSpace(
+					worldCorner
+				)
 
 		if math.abs(groundSpace.X)
 			> ground.Size.X / 2
@@ -530,9 +907,13 @@ local function finishPlacementMode()
 
 	originalStand = nil
 	isEditingExistingStand = false
+
+	placementControls.Visible = false
 end
 
-local function startPlacement(editingExisting: boolean)
+local function startPlacement(
+	editingExisting: boolean
+)
 	if isPlacementActive then
 		return
 	end
@@ -540,23 +921,32 @@ local function startPlacement(editingExisting: boolean)
 	ownedPlot = getOwnedPlot()
 
 	if not ownedPlot then
-		showStatus("Waiting for your plot...", 2)
+		showStatus(
+			"Waiting for your plot...",
+			2
+		)
+
 		return
 	end
 
-	local existingStand = getExistingStand()
+	local existingStand =
+		getExistingStand()
 
-	if not editingExisting and existingStand then
+	if not editingExisting
+		and existingStand then
+
 		showStatus(
 			"You already built the lemonade stand.",
 			2
 		)
 
-		menu.Visible = false
+		setBuildMenuVisible(false)
 		return
 	end
 
-	if editingExisting and not existingStand then
+	if editingExisting
+		and not existingStand then
+
 		showStatus(
 			"Your lemonade stand could not be found.",
 			2
@@ -567,9 +957,13 @@ local function startPlacement(editingExisting: boolean)
 	end
 
 	local template =
-		businessModels:FindFirstChild(BUSINESS_NAME)
+		businessModels:FindFirstChild(
+			BUSINESS_NAME
+		)
 
-	if not template or not template:IsA("Model") then
+	if not template
+		or not template:IsA("Model") then
+
 		warn(
 			"LemonadeStand was not found in ReplicatedStorage.BusinessModels."
 		)
@@ -586,13 +980,15 @@ local function startPlacement(editingExisting: boolean)
 	end
 
 	previewModel = template:Clone()
-	previewModel.Name = "LemonadeStandPreview"
+	previewModel.Name =
+		"LemonadeStandPreview"
 
 	preparePreview(previewModel)
 
 	previewModel.Parent = Workspace
 
-	isEditingExistingStand = editingExisting
+	isEditingExistingStand =
+		editingExisting
 
 	if editingExisting then
 		originalStand = existingStand
@@ -602,7 +998,9 @@ local function startPlacement(editingExisting: boolean)
 		rotationY = math.deg(
 			select(
 				2,
-				existingStand:GetPivot():ToOrientation()
+				existingStand
+					:GetPivot()
+					:ToOrientation()
 			)
 		)
 
@@ -618,15 +1016,103 @@ local function startPlacement(editingExisting: boolean)
 	waitingForServer = false
 	placementValid = false
 
-	menu.Visible = false
+	setBuildMenuVisible(false)
+	placementControls.Visible = true
 
 	showStatus(
-		"Click to place  •  R to rotate  •  Esc to cancel"
+		IS_TOUCH_DEVICE
+			and "Move the preview, then tap Place."
+			or "Click to place  •  R rotate  •  Esc cancel"
+	)
+end
+
+local function rotatePlacement()
+	if not isPlacementActive then
+		return
+	end
+
+	rotationY =
+		(rotationY + ROTATION_INCREMENT)
+		% 360
+end
+
+local function cancelPlacement()
+	if not isPlacementActive then
+		return
+	end
+
+	local wasEditing =
+		isEditingExistingStand
+
+	finishPlacementMode()
+	statusLabel.Visible = false
+
+	if wasEditing then
+		cancelEditRemote:FireServer()
+	else
+		setBuildMenuVisible(true)
+	end
+end
+
+local function requestCurrentPlacement()
+	if not isPlacementActive
+		or waitingForServer then
+
+		return
+	end
+
+	if not placementValid
+		or not currentPlacementCFrame then
+
+		showStatus(
+			"The full stand must be inside your plot.",
+			1.75
+		)
+
+		return
+	end
+
+	waitingForServer = true
+
+	placeBusinessRemote:FireServer(
+		BUSINESS_NAME,
+		currentPlacementCFrame
+	)
+
+	showStatus(
+		isEditingExistingStand
+			and "Moving lemonade stand..."
+			or "Building lemonade stand..."
 	)
 end
 
 buildButton.Activated:Connect(function()
 	startPlacement(false)
+end)
+
+rotateButton.Activated:Connect(
+	rotatePlacement
+)
+
+placeButton.Activated:Connect(
+	requestCurrentPlacement
+)
+
+cancelPlacementButton.Activated:Connect(
+	cancelPlacement
+)
+
+UserInputService.InputChanged:Connect(function(
+	input: InputObject
+)
+	if input.UserInputType
+		== Enum.UserInputType.Touch then
+
+		lastTouchPosition = Vector2.new(
+			input.Position.X,
+			input.Position.Y
+		)
+	end
 end)
 
 RunService.RenderStepped:Connect(function()
@@ -637,9 +1123,12 @@ RunService.RenderStepped:Connect(function()
 		return
 	end
 
-	local ground = ownedPlot:FindFirstChild("Ground")
+	local ground =
+		ownedPlot:FindFirstChild("Ground")
 
-	if not ground or not ground:IsA("BasePart") then
+	if not ground
+		or not ground:IsA("BasePart") then
+
 		placementValid = false
 		setPreviewColor(false)
 		return
@@ -651,15 +1140,19 @@ RunService.RenderStepped:Connect(function()
 		return
 	end
 
-	local mousePosition =
-		UserInputService:GetMouseLocation()
+	local pointerPosition =
+		lastTouchPosition
+		or UserInputService:GetMouseLocation()
 
-	local ray = camera:ViewportPointToRay(
-		mousePosition.X,
-		mousePosition.Y
-	)
+	local ray =
+		camera:ViewportPointToRay(
+			pointerPosition.X,
+			pointerPosition.Y
+		)
 
-	local raycastParams = RaycastParams.new()
+	local raycastParams =
+		RaycastParams.new()
+
 	raycastParams.FilterType =
 		Enum.RaycastFilterType.Include
 
@@ -702,64 +1195,40 @@ UserInputService.InputBegan:Connect(function(
 	input: InputObject,
 	gameProcessed: boolean
 )
-	if gameProcessed or not isPlacementActive then
-		return
-	end
-
-	if input.KeyCode == Enum.KeyCode.R then
-		rotationY =
-			(rotationY + ROTATION_INCREMENT) % 360
-
-		return
-	end
-
-	if input.KeyCode == Enum.KeyCode.Escape then
-		local wasEditing = isEditingExistingStand
-
-		finishPlacementMode()
-		statusLabel.Visible = false
-
-		if wasEditing then
-			cancelEditRemote:FireServer()
-		else
-			menu.Visible = true
-		end
+	if gameProcessed
+		or not isPlacementActive then
 
 		return
 	end
 
 	if input.UserInputType
-		~= Enum.UserInputType.MouseButton1 then
+		== Enum.UserInputType.Touch then
+
+		lastTouchPosition = Vector2.new(
+			input.Position.X,
+			input.Position.Y
+		)
 
 		return
 	end
 
-	if waitingForServer
-		or not placementValid
-		or not currentPlacementCFrame then
-
-		if not placementValid then
-			showStatus(
-				"The full placement box must be inside your plot.",
-				1.5
-			)
-		end
-
+	if input.KeyCode == Enum.KeyCode.R then
+		rotatePlacement()
 		return
 	end
 
-	waitingForServer = true
+	if input.KeyCode
+		== Enum.KeyCode.Escape then
 
-	placeBusinessRemote:FireServer(
-		BUSINESS_NAME,
-		currentPlacementCFrame
-	)
+		cancelPlacement()
+		return
+	end
 
-	showStatus(
-		isEditingExistingStand
-			and "Moving lemonade stand..."
-			or "Building lemonade stand..."
-	)
+	if input.UserInputType
+		== Enum.UserInputType.MouseButton1 then
+
+		requestCurrentPlacement()
+	end
 end)
 
 placeBusinessRemote.OnClientEvent:Connect(function(
@@ -770,7 +1239,7 @@ placeBusinessRemote.OnClientEvent:Connect(function(
 
 	if success then
 		finishPlacementMode()
-		menu.Visible = false
+		setBuildMenuVisible(false)
 
 		showStatus(
 			message ~= ""
@@ -795,7 +1264,7 @@ interactionResultRemote.OnClientEvent:Connect(function(
 	message: any
 )
 	if action == "ShowRemoveConfirmation" then
-		removeConfirmation.Visible = true
+		-- BusinessManagementClient owns this interface.
 		return
 	end
 
@@ -805,10 +1274,8 @@ interactionResultRemote.OnClientEvent:Connect(function(
 	end
 
 	if action == "Removed" then
-		removeConfirmation.Visible = false
 		finishPlacementMode()
-
-		menu.Visible = true
+		setBuildMenuVisible(true)
 
 		showStatus(
 			typeof(message) == "string"
@@ -821,8 +1288,6 @@ interactionResultRemote.OnClientEvent:Connect(function(
 	end
 
 	if action == "RemoveFailed" then
-		removeConfirmation.Visible = false
-
 		showStatus(
 			typeof(message) == "string"
 				and message
@@ -836,8 +1301,9 @@ interactionResultRemote.OnClientEvent:Connect(function(
 	if action == "EditCancelled" then
 		finishPlacementMode()
 
-		menu.Visible =
+		setBuildMenuVisible(
 			getExistingStand() == nil
+		)
 
 		showStatus(
 			typeof(message) == "string"
@@ -859,9 +1325,11 @@ task.spawn(function()
 			local standExists =
 				getExistingStand() ~= nil
 
-			menu.Visible = not standExists
+			setBuildMenuVisible(
+				not standExists
+			)
 		else
-			menu.Visible = false
+			setBuildMenuVisible(false)
 		end
 
 		task.wait(0.5)

@@ -1,12 +1,17 @@
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ReplicatedStorage =
+	game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local player = Players.LocalPlayer
-local playerGui = player:WaitForChild("PlayerGui")
+local playerGui =
+	player:WaitForChild("PlayerGui")
 
-local plotsFolder = Workspace:WaitForChild("Plots")
-local remotes = ReplicatedStorage:WaitForChild("Remotes")
+local plotsFolder =
+	Workspace:WaitForChild("Plots")
+
+local remotes =
+	ReplicatedStorage:WaitForChild("Remotes")
 
 local requestEditRemote =
 	remotes:WaitForChild("RequestEditBusiness")
@@ -17,6 +22,15 @@ local requestRemoveRemote =
 local interactionResultRemote =
 	remotes:WaitForChild("BusinessInteractionResult")
 
+local UITheme = require(
+	ReplicatedStorage
+		:WaitForChild("Shared")
+		:WaitForChild("UITheme")
+)
+
+local Colors = UITheme.Colors
+local Fonts = UITheme.Fonts
+
 local BUSINESS_NAME = "LemonadeStand"
 
 local MANAGEMENT_DISTANCE = 22
@@ -25,18 +39,24 @@ local UPDATE_INTERVAL = 0.1
 local managementGui: BillboardGui? = nil
 local managementStand: Model? = nil
 local confirmationOverlay: Frame? = nil
+local confirmationWindow: Frame? = nil
+local toastLabel: TextLabel? = nil
 
 local removeRequestPending = false
+local toastVersion = 0
 
 local function getOwnedPlot(): Model?
-	local plotName = player:GetAttribute("PlotName")
+	local plotName =
+		player:GetAttribute("PlotName")
 
 	if typeof(plotName) == "string" then
-		local plot = plotsFolder:FindFirstChild(plotName)
+		local plot =
+			plotsFolder:FindFirstChild(plotName)
 
 		if plot
 			and plot:IsA("Model")
-			and plot:GetAttribute("OwnerUserId") == player.UserId then
+			and plot:GetAttribute("OwnerUserId")
+			== player.UserId then
 
 			return plot
 		end
@@ -44,7 +64,8 @@ local function getOwnedPlot(): Model?
 
 	for _, plot in plotsFolder:GetChildren() do
 		if plot:IsA("Model")
-			and plot:GetAttribute("OwnerUserId") == player.UserId then
+			and plot:GetAttribute("OwnerUserId")
+			== player.UserId then
 
 			return plot
 		end
@@ -68,13 +89,17 @@ local function getOwnedStand(): Model?
 	end
 
 	local stand =
-		placedBusinesses:FindFirstChild(BUSINESS_NAME)
+		placedBusinesses:FindFirstChild(
+			BUSINESS_NAME
+		)
 
 	if not stand or not stand:IsA("Model") then
 		return nil
 	end
 
-	if stand:GetAttribute("OwnerUserId") ~= player.UserId then
+	if stand:GetAttribute("OwnerUserId")
+		~= player.UserId then
+
 		return nil
 	end
 
@@ -89,18 +114,27 @@ local function getCharacterRoot(): BasePart?
 	end
 
 	local rootPart =
-		character:FindFirstChild("HumanoidRootPart")
+		character:FindFirstChild(
+			"HumanoidRootPart"
+		)
 
-	if rootPart and rootPart:IsA("BasePart") then
+	if rootPart
+		and rootPart:IsA("BasePart") then
+
 		return rootPart
 	end
 
 	return nil
 end
 
-local function getUIAdornee(stand: Model): BasePart?
+local function getUIAdornee(
+	stand: Model
+): BasePart?
 	local managementPosition =
-		stand:FindFirstChild("ManagementUIPosition", true)
+		stand:FindFirstChild(
+			"ManagementUIPosition",
+			true
+		)
 
 	if managementPosition
 		and managementPosition:IsA("BasePart") then
@@ -109,7 +143,10 @@ local function getUIAdornee(stand: Model): BasePart?
 	end
 
 	local cooldownPosition =
-		stand:FindFirstChild("CooldownUIPosition", true)
+		stand:FindFirstChild(
+			"CooldownUIPosition",
+			true
+		)
 
 	if cooldownPosition
 		and cooldownPosition:IsA("BasePart") then
@@ -121,83 +158,76 @@ local function getUIAdornee(stand: Model): BasePart?
 		return stand.PrimaryPart
 	end
 
-	return stand:FindFirstChildWhichIsA("BasePart", true)
+	return stand:FindFirstChildWhichIsA(
+		"BasePart",
+		true
+	)
 end
 
-local function addCorner(
-	parent: Instance,
-	radius: number
-): UICorner
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, radius)
-	corner.Parent = parent
+local function showToast(
+	message: string,
+	isError: boolean?
+)
+	if not toastLabel then
+		return
+	end
 
-	return corner
+	toastVersion += 1
+	local currentVersion = toastVersion
+
+	toastLabel.Text = message
+	toastLabel.TextColor3 =
+		isError
+		and Colors.Danger
+		or Colors.Success
+
+	toastLabel.Visible = true
+
+	task.delay(4, function()
+		if toastVersion == currentVersion
+			and toastLabel then
+
+			toastLabel.Visible = false
+		end
+	end)
 end
 
-local function addStroke(
-	parent: Instance,
-	thickness: number,
-	transparency: number
-): UIStroke
-	local stroke = Instance.new("UIStroke")
-	stroke.Color = Color3.fromRGB(20, 22, 27)
-	stroke.Thickness = thickness
-	stroke.Transparency = transparency
-	stroke.Parent = parent
-
-	return stroke
-end
-
-local function createButton(
+local function createActionButton(
 	parent: Instance,
 	name: string,
 	text: string,
-	icon: string,
-	backgroundColor: Color3
+	topColor: Color3,
+	bottomColor: Color3
 ): TextButton
 	local button = Instance.new("TextButton")
+
 	button.Name = name
-	button.Size = UDim2.new(0.5, -5, 1, 0)
-	button.BackgroundColor3 = backgroundColor
-	button.BorderSizePixel = 0
-	button.AutoButtonColor = true
+	button.Size =
+		UDim2.fromScale(0.48, 1)
 
-	-- Put the text directly on the button so nothing sits
-	-- in front of its clickable area.
-	button.Text = icon .. "  " .. text
-	button.TextColor3 = Color3.fromRGB(255, 255, 255)
-	button.Font = Enum.Font.GothamBold
-	button.TextSize = 13
-
-	button.Active = true
-	button.Selectable = true
-	button.Interactable = true
+	button.Text = text
+	button.TextColor3 = Colors.Text
+	button.TextTransparency = 0
 	button.ZIndex = 10
 	button.Parent = parent
 
-	addCorner(button, 9)
-	addStroke(button, 1.5, 0.25)
+	UITheme.StyleText(
+		button,
+		11,
+		17,
+		Colors.Text,
+		Fonts.Black
+	)
 
-	local scale = Instance.new("UIScale")
-	scale.Scale = 1
-	scale.Parent = button
+	UITheme.StyleButton(
+		button,
+		topColor,
+		bottomColor,
+		Colors.Text
+	)
 
-	button.MouseEnter:Connect(function()
-		scale.Scale = 1.04
-	end)
-
-	button.MouseLeave:Connect(function()
-		scale.Scale = 1
-	end)
-
-	button.MouseButton1Down:Connect(function()
-		scale.Scale = 0.96
-	end)
-
-	button.MouseButton1Up:Connect(function()
-		scale.Scale = 1.04
-	end)
+	button.TextColor3 = Colors.Text
+	button.TextTransparency = 0
 
 	return button
 end
@@ -211,107 +241,198 @@ local function destroyManagementUI()
 	managementStand = nil
 end
 
-local function createManagementUI(stand: Model)
+local function createManagementUI(
+	stand: Model
+)
 	destroyManagementUI()
 
 	local adornee = getUIAdornee(stand)
 
 	if not adornee then
 		warn(
-			"LemonadeStand does not contain a part for its management UI."
+			"LemonadeStand is missing a management UI position."
 		)
 
 		return
 	end
 
-	local billboard = Instance.new("BillboardGui")
-	billboard.Name = "BusinessManagementUI"
+	local billboard =
+		Instance.new("BillboardGui")
+
+	billboard.Name =
+		"BusinessManagementUI"
+
 	billboard.Adornee = adornee
-	billboard.Size = UDim2.fromOffset(270, 76)
-	billboard.StudsOffsetWorldSpace = Vector3.new(0, 2.7, 0)
+
+	-- Scale values on BillboardGui are world-space studs.
+	billboard.Size =
+		UDim2.fromScale(7.4, 2.25)
+
+	billboard.StudsOffsetWorldSpace =
+		Vector3.new(0, 3.1, 0)
 
 	billboard.AlwaysOnTop = true
 	billboard.LightInfluence = 0
-	billboard.MaxDistance = MANAGEMENT_DISTANCE + 3
+	billboard.MaxDistance =
+		MANAGEMENT_DISTANCE + 5
 
-	-- Required for buttons inside a BillboardGui to receive input.
 	billboard.Active = true
 	billboard.Enabled = false
-
 	billboard.ResetOnSpawn = false
 	billboard.Parent = playerGui
 
+	local shadow = Instance.new("Frame")
+	shadow.Name = "Shadow"
+	shadow.AnchorPoint =
+		Vector2.new(0.5, 0.5)
+
+	shadow.Position =
+		UDim2.fromScale(0.51, 0.54)
+
+	shadow.Size =
+		UDim2.fromScale(0.98, 0.96)
+
+	shadow.BackgroundColor3 =
+		Colors.Shadow
+
+	shadow.BackgroundTransparency = 0.28
+	shadow.BorderSizePixel = 0
+	shadow.Parent = billboard
+
+	UITheme.AddCorner(shadow, 0.12)
+
 	local container = Instance.new("Frame")
 	container.Name = "Container"
-	container.AnchorPoint = Vector2.new(0.5, 0.5)
-	container.Position = UDim2.fromScale(0.5, 0.5)
-	container.Size = UDim2.new(1, -4, 1, -4)
-	container.BackgroundColor3 = Color3.fromRGB(30, 33, 40)
-	container.BackgroundTransparency = 0.04
+	container.AnchorPoint =
+		Vector2.new(0.5, 0.5)
+
+	container.Position =
+		UDim2.fromScale(0.5, 0.5)
+
+	container.Size =
+		UDim2.fromScale(0.98, 0.96)
+
+	container.BackgroundColor3 =
+		Colors.Surface
+
 	container.BorderSizePixel = 0
 	container.Active = true
 	container.ZIndex = 2
 	container.Parent = billboard
 
-	addCorner(container, 12)
-	addStroke(container, 2, 0.1)
+	UITheme.AddCorner(container, 0.12)
+
+	UITheme.AddStroke(
+		container,
+		Colors.Primary,
+		2,
+		0.18
+	)
+
+	UITheme.AddGradient(
+		container,
+		Colors.SurfaceRaised,
+		Colors.Background
+	)
+
+	local accent = Instance.new("Frame")
+	accent.Name = "Accent"
+	accent.Position =
+		UDim2.fromScale(0.03, 0.08)
+
+	accent.Size =
+		UDim2.fromScale(0.025, 0.84)
+
+	accent.BackgroundColor3 =
+		Colors.Primary
+
+	accent.BorderSizePixel = 0
+	accent.ZIndex = 3
+	accent.Parent = container
+
+	UITheme.AddCorner(accent, 0.5)
 
 	local title = Instance.new("TextLabel")
 	title.Name = "Title"
-	title.Position = UDim2.fromOffset(10, 4)
-	title.Size = UDim2.new(1, -20, 0, 21)
+	title.Position =
+		UDim2.fromScale(0.09, 0.08)
+
+	title.Size =
+		UDim2.fromScale(0.82, 0.23)
+
 	title.BackgroundTransparency = 1
 	title.Text = "LEMONADE STAND"
-	title.TextColor3 = Color3.fromRGB(245, 247, 250)
-	title.Font = Enum.Font.GothamBold
-	title.TextSize = 12
-	title.TextTransparency = 0.08
+	title.TextXAlignment =
+		Enum.TextXAlignment.Left
+
 	title.ZIndex = 3
 	title.Parent = container
 
-	local buttonHolder = Instance.new("Frame")
-	buttonHolder.Name = "Buttons"
-	buttonHolder.Position = UDim2.fromOffset(8, 27)
-	buttonHolder.Size = UDim2.new(1, -16, 0, 40)
-	buttonHolder.BackgroundTransparency = 1
-	buttonHolder.Active = true
-	buttonHolder.ClipsDescendants = false
-	buttonHolder.ZIndex = 3
-	buttonHolder.Parent = container
-
-	local layout = Instance.new("UIListLayout")
-	layout.FillDirection = Enum.FillDirection.Horizontal
-	layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-	layout.VerticalAlignment = Enum.VerticalAlignment.Center
-	layout.Padding = UDim.new(0, 10)
-	layout.Parent = buttonHolder
-
-	local editButton = createButton(
-		buttonHolder,
-		"EditButton",
-		"Edit Position",
-		"✎",
-		Color3.fromRGB(65, 130, 230)
+	UITheme.StyleText(
+		title,
+		11,
+		17,
+		Colors.Text,
+		Fonts.Black
 	)
 
-	local removeButton = createButton(
-		buttonHolder,
-		"RemoveButton",
-		"Remove",
-		"×",
-		Color3.fromRGB(215, 67, 67)
-	)
+	local buttons = Instance.new("Frame")
+	buttons.Name = "Buttons"
+	buttons.Position =
+		UDim2.fromScale(0.09, 0.5)
+
+	buttons.Size =
+		UDim2.fromScale(0.82, 0.36)
+
+	buttons.BackgroundTransparency = 1
+	buttons.Active = true
+	buttons.ZIndex = 4
+	buttons.Parent = container
+
+	local layout =
+		Instance.new("UIListLayout")
+
+	layout.FillDirection =
+		Enum.FillDirection.Horizontal
+
+	layout.HorizontalAlignment =
+		Enum.HorizontalAlignment.Center
+
+	layout.VerticalAlignment =
+		Enum.VerticalAlignment.Center
+
+	layout.Padding = UDim.new(0.04, 0)
+	layout.Parent = buttons
+
+	local editButton = createActionButton(
+	buttons,
+	"EditButton",
+	"MOVE",
+	Colors.Info,
+	Colors.InfoDark
+)
+
+local removeButton = createActionButton(
+	buttons,
+	"RemoveButton",
+	"REMOVE",
+	Colors.Danger,
+	Colors.DangerDark
+)
 
 	editButton.Activated:Connect(function()
-		print("Edit button clicked")
-
 		if stand ~= getOwnedStand() then
-			warn("Edit blocked: owned stand did not match")
+			showToast(
+				"Your lemonade stand could not be found.",
+				true
+			)
+
 			return
 		end
 
-		if stand:GetAttribute("IsBeingEdited") == true then
-			warn("Edit blocked: stand is already being edited")
+		if stand:GetAttribute("IsBeingEdited")
+			== true then
+
 			return
 		end
 
@@ -320,15 +441,16 @@ local function createManagementUI(stand: Model)
 	end)
 
 	removeButton.Activated:Connect(function()
-		print("Remove button clicked")
-
 		if removeRequestPending then
-			warn("Remove blocked: request already pending")
 			return
 		end
 
 		if stand ~= getOwnedStand() then
-			warn("Remove blocked: owned stand did not match")
+			showToast(
+				"Your lemonade stand could not be found.",
+				true
+			)
+
 			return
 		end
 
@@ -354,137 +476,259 @@ end
 
 local function createRemoveConfirmation()
 	local existing =
-		playerGui:FindFirstChild("RemoveBusinessConfirmation")
+		playerGui:FindFirstChild(
+			"RemoveBusinessConfirmation"
+		)
 
 	if existing then
 		existing:Destroy()
 	end
 
-	local screenGui = Instance.new("ScreenGui")
-	screenGui.Name = "RemoveBusinessConfirmation"
-	screenGui.IgnoreGuiInset = true
+	local screenGui =
+		Instance.new("ScreenGui")
+
+	screenGui.Name =
+		"RemoveBusinessConfirmation"
+
+	screenGui.IgnoreGuiInset = false
 	screenGui.ResetOnSpawn = false
 	screenGui.DisplayOrder = 100
 	screenGui.Parent = playerGui
 
 	local overlay = Instance.new("Frame")
 	overlay.Name = "Overlay"
-	overlay.Size = UDim2.fromScale(1, 1)
-	overlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-	overlay.BackgroundTransparency = 0.42
+	overlay.Size =
+		UDim2.fromScale(1, 1)
+
+	overlay.BackgroundColor3 =
+		Colors.Shadow
+
+	overlay.BackgroundTransparency = 0.2
 	overlay.BorderSizePixel = 0
 	overlay.Visible = false
 	overlay.Active = true
-	overlay.ZIndex = 20
 	overlay.Parent = screenGui
+
+	local shadow = Instance.new("Frame")
+	shadow.Name = "Shadow"
+	shadow.AnchorPoint =
+		Vector2.new(0.5, 0.5)
+
+	shadow.Position =
+		UDim2.fromScale(0.51, 0.52)
+
+	shadow.Size =
+		UDim2.fromScale(0.45, 0.48)
+
+	shadow.BackgroundColor3 =
+		Colors.Shadow
+
+	shadow.BackgroundTransparency = 0.25
+	shadow.BorderSizePixel = 0
+	shadow.Parent = overlay
+
+	UITheme.AddCorner(shadow, 0.07)
 
 	local window = Instance.new("Frame")
 	window.Name = "Window"
-	window.AnchorPoint = Vector2.new(0.5, 0.5)
-	window.Position = UDim2.fromScale(0.5, 0.5)
-	window.Size = UDim2.fromOffset(390, 220)
-	window.BackgroundColor3 = Color3.fromRGB(31, 34, 41)
+	window.AnchorPoint =
+		Vector2.new(0.5, 0.5)
+
+	window.Position =
+		UDim2.fromScale(0.5, 0.5)
+
+	window.Size =
+		UDim2.fromScale(0.45, 0.48)
+
+	window.BackgroundColor3 =
+		Colors.Surface
+
 	window.BorderSizePixel = 0
 	window.Active = true
-	window.ZIndex = 21
 	window.Parent = overlay
 
-	addCorner(window, 14)
-	addStroke(window, 2, 0.08)
+	UITheme.AddCorner(window, 0.07)
 
-	local warningIcon = Instance.new("TextLabel")
+	UITheme.AddStroke(
+		window,
+		Colors.Danger,
+		2,
+		0.18
+	)
+
+	UITheme.AddGradient(
+		window,
+		Colors.SurfaceRaised,
+		Colors.Background
+	)
+
+	local warningIcon =
+		Instance.new("TextLabel")
+
 	warningIcon.Name = "WarningIcon"
-	warningIcon.AnchorPoint = Vector2.new(0.5, 0)
-	warningIcon.Position = UDim2.new(0.5, 0, 0, 15)
-	warningIcon.Size = UDim2.fromOffset(44, 44)
-	warningIcon.BackgroundColor3 = Color3.fromRGB(215, 67, 67)
+	warningIcon.Position =
+		UDim2.fromScale(0.08, 0.08)
+
+	warningIcon.Size =
+		UDim2.fromScale(0.14, 0.22)
+
+	warningIcon.BackgroundColor3 =
+		Colors.Danger
+
 	warningIcon.BorderSizePixel = 0
 	warningIcon.Text = "!"
-	warningIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
-	warningIcon.Font = Enum.Font.GothamBold
-	warningIcon.TextSize = 27
-	warningIcon.ZIndex = 22
 	warningIcon.Parent = window
 
-	addCorner(warningIcon, 22)
+	UITheme.AddCorner(warningIcon, 0.5)
+
+	UITheme.AddGradient(
+		warningIcon,
+		Colors.Danger,
+		Colors.DangerDark
+	)
+
+	UITheme.StyleText(
+		warningIcon,
+		18,
+		30,
+		Colors.Text,
+		Fonts.Black
+	)
 
 	local title = Instance.new("TextLabel")
 	title.Name = "Title"
-	title.Position = UDim2.fromOffset(20, 66)
-	title.Size = UDim2.new(1, -40, 0, 32)
+	title.Position =
+	UDim2.fromScale(0.09, 0.12)
+
+title.Size =
+	UDim2.fromScale(0.82, 0.28)
+
 	title.BackgroundTransparency = 1
-	title.Text = "Remove Lemonade Stand?"
-	title.TextColor3 = Color3.fromRGB(255, 255, 255)
-	title.Font = Enum.Font.GothamBold
-	title.TextSize = 21
-	title.ZIndex = 22
+	title.Text =
+		"REMOVE LEMONADE STAND?"
+
+	title.TextXAlignment =
+		Enum.TextXAlignment.Left
+
 	title.Parent = window
 
-	local description = Instance.new("TextLabel")
-	description.Name = "Description"
-	description.Position = UDim2.fromOffset(30, 101)
-	description.Size = UDim2.new(1, -60, 0, 47)
-	description.BackgroundTransparency = 1
-	description.Text =
-		"All waiting customers will leave. You can build the stand again later."
+	UITheme.StyleText(
+		title,
+		14,
+		23,
+		Colors.Text,
+		Fonts.Black
+	)
 
-	description.TextWrapped = true
-	description.TextColor3 = Color3.fromRGB(196, 201, 211)
-	description.Font = Enum.Font.Gotham
-	description.TextSize = 14
-	description.ZIndex = 22
+	local subtitle =
+		Instance.new("TextLabel")
+
+	subtitle.Name = "Subtitle"
+	subtitle.Position =
+		UDim2.fromScale(0.27, 0.2)
+
+	subtitle.Size =
+		UDim2.fromScale(0.65, 0.08)
+
+	subtitle.BackgroundTransparency = 1
+	subtitle.Text =
+		"This action can be reversed by building it again."
+
+	subtitle.TextXAlignment =
+		Enum.TextXAlignment.Left
+
+	subtitle.Parent = window
+
+	UITheme.StyleText(
+		subtitle,
+		9,
+		14,
+		Colors.TextMuted,
+		Fonts.Medium
+	)
+
+	local description =
+		Instance.new("TextLabel")
+
+	description.Name = "Description"
+	description.Position =
+		UDim2.fromScale(0.08, 0.37)
+
+	description.Size =
+		UDim2.fromScale(0.84, 0.2)
+
+	description.BackgroundColor3 =
+		Colors.Background
+
+	description.BackgroundTransparency = 0.3
+	description.BorderSizePixel = 0
+
+	description.Text =
+		"All waiting customers will leave and sales will stop until another stand is built."
+
+	description.TextXAlignment =
+		Enum.TextXAlignment.Center
+
 	description.Parent = window
+
+	UITheme.AddCorner(description, 0.12)
+
+	UITheme.AddStroke(
+		description,
+		Colors.Stroke,
+		1,
+		0.5
+	)
+
+	UITheme.StyleText(
+		description,
+		10,
+		15,
+		Colors.TextMuted,
+		Fonts.Medium
+	)
 
 	local buttons = Instance.new("Frame")
 	buttons.Name = "Buttons"
-	buttons.Position = UDim2.fromOffset(20, 160)
-	buttons.Size = UDim2.new(1, -40, 0, 43)
+	buttons.Position =
+	UDim2.fromScale(0.09, 0.48)
+
+buttons.Size =
+	UDim2.fromScale(0.82, 0.4)
+
 	buttons.BackgroundTransparency = 1
-	buttons.ZIndex = 22
 	buttons.Parent = window
 
-	local buttonLayout = Instance.new("UIListLayout")
-	buttonLayout.FillDirection = Enum.FillDirection.Horizontal
-	buttonLayout.HorizontalAlignment =
+	local layout =
+		Instance.new("UIListLayout")
+
+	layout.FillDirection =
+		Enum.FillDirection.Horizontal
+
+	layout.HorizontalAlignment =
 		Enum.HorizontalAlignment.Center
 
-	buttonLayout.VerticalAlignment =
+	layout.VerticalAlignment =
 		Enum.VerticalAlignment.Center
 
-	buttonLayout.Padding = UDim.new(0, 12)
-	buttonLayout.Parent = buttons
+	layout.Padding = UDim.new(0.04, 0)
+	layout.Parent = buttons
 
-	local cancelButton = Instance.new("TextButton")
-	cancelButton.Name = "CancelButton"
-	cancelButton.Size = UDim2.new(0.5, -6, 1, 0)
-	cancelButton.BackgroundColor3 = Color3.fromRGB(72, 76, 88)
-	cancelButton.BorderSizePixel = 0
-	cancelButton.Text = "Cancel"
-	cancelButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-	cancelButton.Font = Enum.Font.GothamBold
-	cancelButton.TextSize = 15
-	cancelButton.AutoButtonColor = true
-	cancelButton.ZIndex = 23
-	cancelButton.Parent = buttons
+	local cancelButton = createActionButton(
+		buttons,
+		"CancelButton",
+		"KEEP STAND",
+		Colors.SurfaceLight,
+		Colors.SurfaceRaised
+	)
 
-	addCorner(cancelButton, 9)
-	addStroke(cancelButton, 1.5, 0.3)
-
-	local removeButton = Instance.new("TextButton")
-	removeButton.Name = "ConfirmRemoveButton"
-	removeButton.Size = UDim2.new(0.5, -6, 1, 0)
-	removeButton.BackgroundColor3 = Color3.fromRGB(215, 67, 67)
-	removeButton.BorderSizePixel = 0
-	removeButton.Text = "Remove Stand"
-	removeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-	removeButton.Font = Enum.Font.GothamBold
-	removeButton.TextSize = 15
-	removeButton.AutoButtonColor = true
-	removeButton.ZIndex = 23
-	removeButton.Parent = buttons
-
-	addCorner(removeButton, 9)
-	addStroke(removeButton, 1.5, 0.25)
+	local removeButton = createActionButton(
+		buttons,
+		"ConfirmRemoveButton",
+		"REMOVE STAND",
+		Colors.Danger,
+		Colors.DangerDark
+	)
 
 	cancelButton.Activated:Connect(function()
 		hideRemoveConfirmation()
@@ -505,7 +749,95 @@ local function createRemoveConfirmation()
 		end)
 	end)
 
+	local toast = Instance.new("TextLabel")
+	toast.Name = "Toast"
+	toast.AnchorPoint =
+		Vector2.new(0.5, 0)
+
+	toast.Position =
+		UDim2.fromScale(0.5, 0.05)
+
+	toast.Size =
+		UDim2.fromScale(0.52, 0.075)
+
+	toast.BackgroundColor3 =
+		Colors.Surface
+
+	toast.BackgroundTransparency = 0.05
+	toast.BorderSizePixel = 0
+	toast.Text = ""
+	toast.Visible = false
+	toast.Parent = screenGui
+
+	UITheme.AddCorner(toast, 0.25)
+	UITheme.AddStroke(toast, Colors.Stroke, 1.5, 0.2)
+
+	UITheme.StyleText(
+		toast,
+		11,
+		17,
+		Colors.Text,
+		Fonts.Bold
+	)
+
+	local function updateResponsiveLayout()
+		local camera = Workspace.CurrentCamera
+
+		if not camera then
+			return
+		end
+
+		local viewport = camera.ViewportSize
+		local portrait =
+			viewport.Y > viewport.X
+
+		local compact =
+			viewport.X < 800
+			or viewport.Y < 550
+
+		if portrait then
+			window.Size =
+				UDim2.fromScale(0.9, 0.46)
+
+			shadow.Size =
+				UDim2.fromScale(0.9, 0.46)
+
+			toast.Size =
+				UDim2.fromScale(0.88, 0.075)
+		elseif compact then
+			window.Size =
+				UDim2.fromScale(0.62, 0.7)
+
+			shadow.Size =
+				UDim2.fromScale(0.62, 0.7)
+
+			toast.Size =
+				UDim2.fromScale(0.62, 0.1)
+		else
+			window.Size =
+				UDim2.fromScale(0.45, 0.48)
+
+			shadow.Size =
+				UDim2.fromScale(0.45, 0.48)
+
+			toast.Size =
+				UDim2.fromScale(0.52, 0.075)
+		end
+	end
+
+	updateResponsiveLayout()
+
+	local camera = Workspace.CurrentCamera
+
+	if camera then
+		camera:GetPropertyChangedSignal(
+			"ViewportSize"
+		):Connect(updateResponsiveLayout)
+	end
+
 	confirmationOverlay = overlay
+	confirmationWindow = window
+	toastLabel = toast
 end
 
 createRemoveConfirmation()
@@ -537,16 +869,24 @@ interactionResultRemote.OnClientEvent:Connect(function(
 	if action == "Removed" then
 		hideRemoveConfirmation()
 		destroyManagementUI()
+
+		showToast(
+			typeof(message) == "string"
+				and message
+				or "Lemonade stand removed."
+		)
+
 		return
 	end
 
 	if action == "RemoveFailed" then
 		hideRemoveConfirmation()
 
-		warn(
+		showToast(
 			typeof(message) == "string"
 				and message
-				or "The lemonade stand could not be removed."
+				or "The stand could not be removed.",
+			true
 		)
 
 		return
@@ -562,10 +902,11 @@ interactionResultRemote.OnClientEvent:Connect(function(
 			managementGui.Enabled = false
 		end
 
-		warn(
+		showToast(
 			typeof(message) == "string"
 				and message
-				or "The lemonade stand could not be edited."
+				or "The stand could not be edited.",
+			true
 		)
 	end
 end)
@@ -596,14 +937,19 @@ task.spawn(function()
 		if stand
 			and rootPart
 			and managementGui
-			and stand:GetAttribute("IsBeingEdited") ~= true
-			and stand:GetAttribute("StandUnavailable") ~= true then
+			and stand:GetAttribute("IsBeingEdited")
+			~= true
+			and stand:GetAttribute("StandUnavailable")
+			~= true then
 
 			local adornee = getUIAdornee(stand)
 
 			if adornee then
 				local distance =
-					(rootPart.Position - adornee.Position).Magnitude
+					(
+						rootPart.Position
+						- adornee.Position
+					).Magnitude
 
 				shouldShow =
 					distance <= MANAGEMENT_DISTANCE
