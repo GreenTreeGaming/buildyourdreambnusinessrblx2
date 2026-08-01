@@ -657,7 +657,10 @@ function DataService.GetUpgradeLevel(
 		return 0
 	end
 
-	return math.max(0, math.floor(level))
+	return math.max(
+		0,
+		math.floor(level)
+	)
 end
 
 function DataService.SetUpgradeLevel(
@@ -680,10 +683,14 @@ function DataService.SetUpgradeLevel(
 	end
 
 	profile.Upgrades[businessName] =
-		profile.Upgrades[businessName] or {}
+		profile.Upgrades[businessName]
+		or {}
 
 	profile.Upgrades[businessName][upgradeName] =
-		math.max(0, math.floor(level))
+		math.max(
+			0,
+			math.floor(level)
+		)
 
 	return true
 end

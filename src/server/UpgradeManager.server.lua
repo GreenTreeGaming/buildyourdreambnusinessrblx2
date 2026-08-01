@@ -1,0 +1,225 @@
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
+
+local UpgradeService = require(
+	script.Parent
+		:WaitForChild("Services")
+		:WaitForChild("UpgradeService")
+)
+
+local plotsFolder =
+	Workspace:WaitForChild("Plots")
+
+local remotes =
+	ReplicatedStorage:FindFirstChild("Remotes")
+
+if not remotes then
+	remotes = Instance.new("Folder")
+	remotes.Name = "Remotes"
+	remotes.Parent = ReplicatedStorage
+end
+
+local function getOrCreateRemoteEvent(
+	name: string
+): RemoteEvent
+	local existing =
+		remotes:FindFirstChild(name)
+
+	if existing then
+		if not existing:IsA("RemoteEvent") then
+			error(
+				`ReplicatedStorage.Remotes.{name} must be a RemoteEvent.`
+			)
+		end
+
+		return existing
+	end
+
+	local remote = Instance.new("RemoteEvent")
+	remote.Name = name
+	remote.Parent = remotes
+
+	return remote
+end
+
+local function getOrCreateRemoteFunction(
+	name: string
+): RemoteFunction
+	local existing =
+		remotes:FindFirstChild(name)
+
+	if existing then
+		if not existing:IsA("RemoteFunction") then
+			error(
+				`ReplicatedStorage.Remotes.{name} must be a RemoteFunction.`
+			)
+		end
+
+		return existing
+	end
+
+	local remote = Instance.new("RemoteFunction")
+	remote.Name = name
+	remote.Parent = remotes
+
+	return remote
+end
+
+local purchaseUpgradeRemote =
+	getOrCreateRemoteEvent("PurchaseUpgrade")
+
+local upgradeResultRemote =
+	getOrCreateRemoteEvent("UpgradeResult")
+
+local getUpgradeStateRemote =
+	getOrCreateRemoteFunction("GetUpgradeState")
+
+local function getPlayerFromPlot(
+	plot: Model
+): Player?
+	local ownerUserId =
+		plot:GetAttribute("OwnerUserId")
+
+	if typeof(ownerUserId) ~= "number"
+		or ownerUserId <= 0 then
+
+		return nil
+	end
+
+	return Players:GetPlayerByUserId(
+		ownerUserId
+	)
+end
+
+local function applyUpgradesToStand(
+	plot: Model,
+	stand: Instance
+)
+	if not stand:IsA("Model")
+		or stand.Name ~= "LemonadeStand" then
+
+		return
+	end
+
+	local player =
+		getPlayerFromPlot(plot)
+
+	if not player then
+		return
+	end
+
+	local profileLoaded =
+		player:GetAttribute("DataLoaded")
+
+	if profileLoaded ~= true then
+		local connection
+
+		connection =
+			player:GetAttributeChangedSignal(
+				"DataLoaded"
+			):Connect(function()
+				if player:GetAttribute("DataLoaded")
+					~= true then
+
+					return
+				end
+
+				connection:Disconnect()
+
+				if stand.Parent then
+					UpgradeService.ApplyStandUpgrades(
+						player,
+						stand
+					)
+				end
+			end)
+
+		return
+	end
+
+	UpgradeService.ApplyStandUpgrades(
+		player,
+		stand
+	)
+end
+
+local function watchPlot(plot: Model)
+	local placedBusinesses =
+		plot:FindFirstChild("PlacedBusinesses")
+
+	if not placedBusinesses then
+		warn(
+			`{plot.Name} is missing PlacedBusinesses.`
+		)
+
+		return
+	end
+
+	placedBusinesses.ChildAdded:Connect(
+		function(child)
+			task.defer(
+				applyUpgradesToStand,
+				plot,
+				child
+			)
+		end
+	)
+
+	for _, child in
+		placedBusinesses:GetChildren() do
+
+		task.defer(
+			applyUpgradesToStand,
+			plot,
+			child
+		)
+	end
+end
+
+for _, plot in plotsFolder:GetChildren() do
+	if plot:IsA("Model") then
+		watchPlot(plot)
+	end
+end
+
+plotsFolder.ChildAdded:Connect(function(child)
+	if child:IsA("Model") then
+		watchPlot(child)
+	end
+end)
+
+getUpgradeStateRemote.OnServerInvoke =
+	function(
+		player: Player,
+		businessName: string,
+		upgradeName: string
+	)
+		return UpgradeService.GetUpgradeState(
+			player,
+			businessName,
+			upgradeName
+		)
+	end
+
+purchaseUpgradeRemote.OnServerEvent:Connect(
+	function(
+		player: Player,
+		businessName: string,
+		upgradeName: string
+	)
+		local result =
+			UpgradeService.PurchaseUpgrade(
+				player,
+				businessName,
+				upgradeName
+			)
+
+		upgradeResultRemote:FireClient(
+			player,
+			result
+		)
+	end
+)
+
+print("UpgradeManager started.")

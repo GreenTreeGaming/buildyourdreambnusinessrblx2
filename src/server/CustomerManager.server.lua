@@ -1,4 +1,5 @@
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 local Workspace = game:GetService("Workspace")
 local PathfindingService = game:GetService("PathfindingService")
@@ -8,11 +9,19 @@ local PhysicsService = game:GetService("PhysicsService")
 local RunService = game:GetService("RunService")
 
 local BusinessConfig = require(
-	ServerStorage:WaitForChild("BusinessConfig")
+	ReplicatedStorage
+		:WaitForChild("Shared")
+		:WaitForChild("BusinessConfig")
 )
 
+local lemonadeStandConfig =
+	BusinessConfig.LemonadeStand
+
 local DEFAULT_LEMONADE_COOLDOWN =
-	BusinessConfig.LemonadeStand.Cooldown
+	lemonadeStandConfig.BaseServingCooldown
+
+local DEFAULT_LEMONADE_SALE_VALUE =
+	lemonadeStandConfig.BaseSaleValue
 
 local CUSTOMER_COLLISION_GROUP = "Customers"
 
@@ -29,8 +38,6 @@ end
 
 local businessAvailabilityEvent =
 	ServerStorage:FindFirstChild("BusinessAvailabilityChanged")
-
-local CUP_PRICE = 2
 
 -- Arrival timing. Customers arrive faster than some transactions complete,
 -- allowing a visible queue to form naturally.
@@ -177,6 +184,21 @@ local function getLemonadeCooldown(stand: Model): number
 	end
 
 	return DEFAULT_LEMONADE_COOLDOWN
+end
+
+local function getLemonadeSaleValue(
+	stand: Model
+): number
+	local standSaleValue =
+		stand:GetAttribute("SaleValue")
+
+	if typeof(standSaleValue) == "number"
+		and standSaleValue >= 0 then
+
+		return math.floor(standSaleValue)
+	end
+
+	return DEFAULT_LEMONADE_SALE_VALUE
 end
 
 local function getQueuePositions(plot: Model): {BasePart}
@@ -653,13 +675,23 @@ local function rewardPlotOwner(
 	local cash = getCashValue(player)
 
 	if not cash then
-		warn(`Cash value was not found for {player.Name}.`)
+		warn(
+			`Cash value was not found for {player.Name}.`
+		)
+
 		return false
 	end
 
-	cash.Value += CUP_PRICE
+	local saleValue =
+		getLemonadeSaleValue(stand)
 
-	showCashPopup(stand, CUP_PRICE)
+	cash.Value += saleValue
+
+	showCashPopup(
+		stand,
+		saleValue
+	)
+
 	playSaleSound(stand)
 
 	return true
