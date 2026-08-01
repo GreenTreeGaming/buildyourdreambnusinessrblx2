@@ -2,6 +2,10 @@ local BusinessConfig = {
 	LemonadeStand = {
 		DisplayName = "Lemonade Stand",
 
+		FirstStandFree = true,
+		AdditionalStandCost = 750,
+		MaximumPlaced = 3,
+
 		BaseSaleValue = 2,
 		BaseServingCooldown = 5,
 

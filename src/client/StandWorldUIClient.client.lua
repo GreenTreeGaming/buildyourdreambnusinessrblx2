@@ -52,6 +52,29 @@ local watchedFolders: {
 	[Instance]: boolean
 } = {}
 
+local BUSINESS_NAME = "LemonadeStand"
+
+local function isLemonadeStand(
+	stand: Instance
+): boolean
+	if not stand:IsA("Model") then
+		return false
+	end
+
+	local businessType =
+		stand:GetAttribute("BusinessType")
+
+	if businessType == BUSINESS_NAME then
+		return true
+	end
+
+	return stand.Name == BUSINESS_NAME
+		or string.match(
+			stand.Name,
+			"^LemonadeStand_"
+		) ~= nil
+end
+
 local function disableLegacyWorldUI(
 	instance: Instance
 )
@@ -162,10 +185,10 @@ local function createStandUI(
 	stand: Model
 )
 	if standStates[stand]
-		or stand.Name ~= "LemonadeStand" then
+	or not isLemonadeStand(stand) then
 
-		return
-	end
+	return
+end
 
 	local positionPart =
 	getTimerPosition(

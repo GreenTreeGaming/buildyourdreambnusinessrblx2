@@ -97,7 +97,9 @@ type PlotState = {
 	nextSpawnTime: number,
 }
 
-local plotStates: {[Model]: PlotState} = {}
+local plotStates: {
+	[Model]: PlotState
+} = {}
 
 local function getPlotState(plot: Model): PlotState
 	local existingState = plotStates[plot]
@@ -1193,25 +1195,31 @@ setStandServingState(
 	transactionTime
 )
 
-local transactionEndsAt =
-	time() + transactionTime
+		local transactionEndsAt =
+			time() + transactionTime
+
+		local transactionCompleted = true
 
 		while time() < transactionEndsAt do
-			local transactionCompleted =
-	not firstEntry.isLeaving
-	and firstEntry.customer.Parent ~= nil
-	and standIsAvailable(plot)
+			transactionCompleted =
+				not firstEntry.isLeaving
+				and firstEntry.customer.Parent ~= nil
+				and standIsAvailable(plot)
 
-setStandServingState(
-	stand,
-	false
-)
-
-if not transactionCompleted then
-	break
-end
+			if not transactionCompleted then
+				break
+			end
 
 			task.wait(0.05)
+		end
+
+		setStandServingState(
+			stand,
+			false
+		)
+
+		if not transactionCompleted then
+			break
 		end
 
 		if firstEntry.isLeaving

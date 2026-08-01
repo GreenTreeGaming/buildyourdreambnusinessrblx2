@@ -13,6 +13,21 @@ local UITheme = require(
 		:WaitForChild("UITheme")
 )
 
+local BusinessConfig = require(
+	ReplicatedStorage
+		:WaitForChild("Shared")
+		:WaitForChild("BusinessConfig")
+)
+
+local lemonadeConfig =
+	BusinessConfig.LemonadeStand
+
+local MAXIMUM_STANDS =
+	lemonadeConfig.MaximumPlaced or 3
+
+local ADDITIONAL_STAND_COST =
+	lemonadeConfig.AdditionalStandCost or 750
+
 local Colors = UITheme.Colors
 local Fonts = UITheme.Fonts
 
@@ -85,28 +100,72 @@ local function getOwnedPlot(): Model?
 	return nil
 end
 
-local function getExistingStand(): Model?
+local function getBusinessType(
+	business: Model
+): string
+	local businessType =
+		business:GetAttribute("BusinessType")
+
+	if typeof(businessType) == "string"
+		and businessType ~= "" then
+
+		return businessType
+	end
+
+	if string.match(
+		business.Name,
+		"^LemonadeStand"
+	) then
+
+		return BUSINESS_NAME
+	end
+
+	return business.Name
+end
+
+
+local function getLemonadeStands(): {Model}
 	if not ownedPlot then
-		return nil
+		return {}
 	end
 
 	local placedBusinesses =
-		ownedPlot:FindFirstChild("PlacedBusinesses")
-
-	if not placedBusinesses then
-		return nil
-	end
-
-	local stand =
-		placedBusinesses:FindFirstChild(
-			BUSINESS_NAME
+		ownedPlot:FindFirstChild(
+			"PlacedBusinesses"
 		)
 
-	if stand and stand:IsA("Model") then
-		return stand
+	if not placedBusinesses then
+		return {}
 	end
 
-	return nil
+	local stands = {}
+
+	for _, child in
+		placedBusinesses:GetChildren() do
+
+		if not child:IsA("Model") then
+			continue
+		end
+
+		if getBusinessType(child)
+			== BUSINESS_NAME then
+
+			table.insert(stands, child)
+		end
+	end
+
+	return stands
+end
+
+local function getExistingStand(): Model?
+	local stands =
+		getLemonadeStands()
+
+	return stands[1]
+end
+
+local function getStandCount(): number
+	return #getLemonadeStands()
 end
 
 local function createInterface()
@@ -129,13 +188,13 @@ local function createInterface()
 	local menuShadow = Instance.new("Frame")
 	menuShadow.Name = "MenuShadow"
 	menuShadow.AnchorPoint =
-		Vector2.new(0, 1)
+	Vector2.new(0.5, 1)
 
-	menuShadow.Position =
-		UDim2.fromScale(0.033, 0.967)
+menuShadow.Position =
+	UDim2.fromScale(0.508, 0.975)
 
-	menuShadow.Size =
-		UDim2.fromScale(0.3, 0.24)
+menuShadow.Size =
+	UDim2.fromScale(0.32, 0.22)
 
 	menuShadow.BackgroundColor3 =
 		Colors.Shadow
@@ -149,13 +208,13 @@ local function createInterface()
 	local menu = Instance.new("Frame")
 	menu.Name = "Menu"
 	menu.AnchorPoint =
-		Vector2.new(0, 1)
+	Vector2.new(0.5, 1)
 
-	menu.Position =
-		UDim2.fromScale(0.025, 0.955)
+menu.Position =
+	UDim2.fromScale(0.5, 0.965)
 
-	menu.Size =
-		UDim2.fromScale(0.3, 0.24)
+menu.Size =
+	UDim2.fromScale(0.32, 0.22)
 
 	menu.BackgroundColor3 =
 		Colors.Surface
@@ -194,45 +253,14 @@ local function createInterface()
 
 	UITheme.AddCorner(accent, 0.5)
 
-	local icon = Instance.new("TextLabel")
-	icon.Name = "Icon"
-	icon.Position =
-		UDim2.fromScale(0.09, 0.08)
-
-	icon.Size =
-		UDim2.fromScale(0.17, 0.23)
-
-	icon.BackgroundColor3 =
-		Colors.Primary
-
-	icon.BorderSizePixel = 0
-	icon.Text = "L"
-	icon.Parent = menu
-
-	UITheme.AddCorner(icon, 0.5)
-
-	UITheme.AddGradient(
-		icon,
-		Colors.Primary,
-		Colors.PrimaryDark
-	)
-
-	UITheme.StyleText(
-		icon,
-		16,
-		27,
-		Colors.TextDark,
-		Fonts.Black
-	)
-
 	local title = Instance.new("TextLabel")
 	title.Name = "Title"
 	title.Position =
-		UDim2.fromScale(0.31, 0.07)
+	UDim2.fromScale(0.09, 0.07)
 
-	title.Size =
-		UDim2.fromScale(0.62, 0.13)
-
+title.Size =
+	UDim2.fromScale(0.84, 0.13)
+	
 	title.BackgroundTransparency = 1
 	title.Text = "BUILD YOUR BUSINESS"
 	title.TextXAlignment =
@@ -251,10 +279,10 @@ local function createInterface()
 	local subtitle = Instance.new("TextLabel")
 	subtitle.Name = "Subtitle"
 	subtitle.Position =
-		UDim2.fromScale(0.31, 0.21)
+	UDim2.fromScale(0.09, 0.21)
 
-	subtitle.Size =
-		UDim2.fromScale(0.62, 0.1)
+subtitle.Size =
+	UDim2.fromScale(0.84, 0.1)
 
 	subtitle.BackgroundTransparency = 1
 	subtitle.Text =
@@ -320,7 +348,7 @@ local function createInterface()
 	instructions.Text =
 		IS_TOUCH_DEVICE
 		and "Tap the plot, then use the controls."
-		or "Click to place  •  R rotate  •  Esc cancel"
+		or "Click to place  •  R rotate"
 
 	instructions.TextXAlignment =
 		Enum.TextXAlignment.Center
@@ -489,95 +517,84 @@ local cancelButton = createControlButton(
 )
 
 	local function updateResponsiveLayout()
-		local camera = Workspace.CurrentCamera
+	local camera = Workspace.CurrentCamera
 
-		if not camera then
-			return
-		end
-
-		local viewport = camera.ViewportSize
-
-		local portrait =
-			viewport.Y > viewport.X
-
-		local compact =
-			viewport.X < 800
-			or viewport.Y < 550
-
-		if portrait then
-			menu.AnchorPoint =
-				Vector2.new(0.5, 1)
-
-			menu.Position =
-				UDim2.fromScale(0.5, 0.96)
-
-			menu.Size =
-				UDim2.fromScale(0.92, 0.22)
-
-			menuShadow.AnchorPoint =
-				Vector2.new(0.5, 1)
-
-			menuShadow.Position =
-				UDim2.fromScale(0.51, 0.97)
-
-			menuShadow.Size =
-				UDim2.fromScale(0.92, 0.22)
-
-			controls.Size =
-				UDim2.fromScale(0.94, 0.1)
-
-			status.Size =
-				UDim2.fromScale(0.9, 0.07)
-		elseif compact then
-			menu.AnchorPoint =
-				Vector2.new(0, 1)
-
-			menu.Position =
-				UDim2.fromScale(0.025, 0.955)
-
-			menu.Size =
-				UDim2.fromScale(0.4, 0.34)
-
-			menuShadow.AnchorPoint =
-				Vector2.new(0, 1)
-
-			menuShadow.Position =
-				UDim2.fromScale(0.033, 0.967)
-
-			menuShadow.Size =
-				UDim2.fromScale(0.4, 0.34)
-
-			controls.Size =
-				UDim2.fromScale(0.68, 0.13)
-
-			status.Size =
-				UDim2.fromScale(0.65, 0.1)
-		else
-			menu.AnchorPoint =
-				Vector2.new(0, 1)
-
-			menu.Position =
-				UDim2.fromScale(0.025, 0.955)
-
-			menu.Size =
-				UDim2.fromScale(0.3, 0.24)
-
-			menuShadow.AnchorPoint =
-				Vector2.new(0, 1)
-
-			menuShadow.Position =
-				UDim2.fromScale(0.033, 0.967)
-
-			menuShadow.Size =
-				UDim2.fromScale(0.3, 0.24)
-
-			controls.Size =
-				UDim2.fromScale(0.5, 0.095)
-
-			status.Size =
-				UDim2.fromScale(0.52, 0.075)
-		end
+	if not camera then
+		return
 	end
+
+	local viewport =
+		camera.ViewportSize
+
+	local portrait =
+		viewport.Y > viewport.X
+
+	local compact =
+		viewport.X < 800
+		or viewport.Y < 550
+
+	menu.AnchorPoint =
+		Vector2.new(0.5, 1)
+
+	menuShadow.AnchorPoint =
+		Vector2.new(0.5, 1)
+
+	if portrait then
+		menu.Position =
+			UDim2.fromScale(0.5, 0.965)
+
+		menu.Size =
+			UDim2.fromScale(0.92, 0.21)
+
+		menuShadow.Position =
+			UDim2.fromScale(0.508, 0.975)
+
+		menuShadow.Size =
+			UDim2.fromScale(0.92, 0.21)
+
+		controls.Size =
+			UDim2.fromScale(0.94, 0.1)
+
+		status.Size =
+			UDim2.fromScale(0.9, 0.07)
+	elseif compact then
+		menu.Position =
+			UDim2.fromScale(0.5, 0.965)
+
+		menu.Size =
+			UDim2.fromScale(0.48, 0.32)
+
+		menuShadow.Position =
+			UDim2.fromScale(0.508, 0.975)
+
+		menuShadow.Size =
+			UDim2.fromScale(0.48, 0.32)
+
+		controls.Size =
+			UDim2.fromScale(0.68, 0.13)
+
+		status.Size =
+			UDim2.fromScale(0.65, 0.1)
+	else
+		menu.Position =
+			UDim2.fromScale(0.5, 0.965)
+
+		menu.Size =
+			UDim2.fromScale(0.32, 0.22)
+
+		menuShadow.Position =
+			UDim2.fromScale(0.508, 0.975)
+
+		menuShadow.Size =
+			UDim2.fromScale(0.32, 0.22)
+
+		controls.Size =
+			UDim2.fromScale(0.5, 0.095)
+
+		status.Size =
+			UDim2.fromScale(0.52, 0.075)
+	end
+end
 
 	updateResponsiveLayout()
 
@@ -590,18 +607,19 @@ local cancelButton = createControlButton(
 	end
 
 	return {
-		ScreenGui = screenGui,
-		Menu = menu,
-		MenuShadow = menuShadow,
+	ScreenGui = screenGui,
+	Menu = menu,
+	MenuShadow = menuShadow,
 
-		BuildButton = buildButton,
-		StatusLabel = status,
+	BuildButton = buildButton,
+	Subtitle = subtitle,
+	StatusLabel = status,
 
-		PlacementControls = controls,
-		RotateButton = rotateButton,
-		PlaceButton = placeButton,
-		CancelButton = cancelButton,
-	}
+	PlacementControls = controls,
+	RotateButton = rotateButton,
+	PlaceButton = placeButton,
+	CancelButton = cancelButton,
+}
 end
 
 local interface = createInterface()
@@ -611,6 +629,8 @@ local menu = interface.Menu
 local menuShadow = interface.MenuShadow
 
 local buildButton = interface.BuildButton
+local buildSubtitle =
+	interface.Subtitle
 local statusLabel = interface.StatusLabel
 
 local placementControls =
@@ -632,6 +652,51 @@ local function setBuildMenuVisible(
 )
 	menu.Visible = visible
 	menuShadow.Visible = visible
+end
+
+local function updateBuildMenu()
+	local standCount =
+		getStandCount()
+
+	local remaining =
+		math.max(
+			0,
+			MAXIMUM_STANDS - standCount
+		)
+
+	if standCount == 0 then
+		buildButton.Text =
+			"BUILD FIRST STAND — FREE"
+
+		buildSubtitle.Text =
+			`0 / {MAXIMUM_STANDS} stands placed`
+	elseif standCount
+		< MAXIMUM_STANDS then
+
+		buildButton.Text =
+			`BUILD ANOTHER — ${ADDITIONAL_STAND_COST}`
+
+		buildSubtitle.Text =
+			`{standCount} / {MAXIMUM_STANDS} stands placed`
+	else
+		buildButton.Text =
+			"MAXIMUM STANDS PLACED"
+
+		buildSubtitle.Text =
+			`{MAXIMUM_STANDS} / {MAXIMUM_STANDS} stands placed`
+	end
+
+	UITheme.SetButtonEnabled(
+		buildButton,
+		remaining > 0,
+		Colors.Primary,
+		Colors.PrimaryDark
+	)
+
+	buildButton.TextColor3 =
+		Color3.fromRGB(255, 255, 255)
+
+	buildButton.TextTransparency = 0
 end
 
 local function showStatus(
@@ -888,6 +953,165 @@ local function isPreviewInsideGround(
 	return true
 end
 
+local function rectanglesOverlapXZ(
+	firstCFrame: CFrame,
+	firstSize: Vector3,
+	secondCFrame: CFrame,
+	secondSize: Vector3
+): boolean
+	local firstRight =
+		Vector3.new(
+			firstCFrame.RightVector.X,
+			0,
+			firstCFrame.RightVector.Z
+		).Unit
+
+	local firstForward =
+		Vector3.new(
+			firstCFrame.LookVector.X,
+			0,
+			firstCFrame.LookVector.Z
+		).Unit
+
+	local secondRight =
+		Vector3.new(
+			secondCFrame.RightVector.X,
+			0,
+			secondCFrame.RightVector.Z
+		).Unit
+
+	local secondForward =
+		Vector3.new(
+			secondCFrame.LookVector.X,
+			0,
+			secondCFrame.LookVector.Z
+		).Unit
+
+	local offset =
+		Vector3.new(
+			secondCFrame.Position.X
+				- firstCFrame.Position.X,
+			0,
+			secondCFrame.Position.Z
+				- firstCFrame.Position.Z
+		)
+
+	local axes = {
+		firstRight,
+		firstForward,
+		secondRight,
+		secondForward,
+	}
+
+	local firstHalfX =
+		firstSize.X / 2
+
+	local firstHalfZ =
+		firstSize.Z / 2
+
+	local secondHalfX =
+		secondSize.X / 2
+
+	local secondHalfZ =
+		secondSize.Z / 2
+
+	for _, axis in axes do
+		local distance =
+			math.abs(
+				offset:Dot(axis)
+			)
+
+		local firstRadius =
+			math.abs(
+				firstRight:Dot(axis)
+			) * firstHalfX
+			+ math.abs(
+				firstForward:Dot(axis)
+			) * firstHalfZ
+
+		local secondRadius =
+			math.abs(
+				secondRight:Dot(axis)
+			) * secondHalfX
+			+ math.abs(
+				secondForward:Dot(axis)
+			) * secondHalfZ
+
+		if distance >=
+			firstRadius + secondRadius then
+
+			return false
+		end
+	end
+
+	return true
+end
+
+local function isPreviewOverlappingBusiness(
+	model: Model
+): boolean
+	if not ownedPlot then
+		return false
+	end
+
+	local placedBusinesses =
+		ownedPlot:FindFirstChild(
+			"PlacedBusinesses"
+		)
+
+	if not placedBusinesses then
+		return false
+	end
+
+	local previewBounds =
+		model:FindFirstChild(
+			"PlacementBounds",
+			true
+		)
+
+	if not previewBounds
+		or not previewBounds:IsA("BasePart") then
+
+		return true
+	end
+
+	for _, business in
+		placedBusinesses:GetChildren() do
+
+		if not business:IsA("Model")
+			or business == originalStand then
+
+			continue
+		end
+
+		local existingBounds =
+			business:FindFirstChild(
+				"PlacementBounds",
+				true
+			)
+
+		if not existingBounds
+			or not existingBounds:IsA(
+				"BasePart"
+			) then
+
+			continue
+		end
+
+		if rectanglesOverlapXZ(
+			previewBounds.CFrame,
+			previewBounds.Size,
+			existingBounds.CFrame,
+			existingBounds.Size
+		) then
+
+			return true
+		end
+	end
+
+	return false
+end
+
 local function destroyPreview()
 	if previewModel then
 		previewModel:Destroy()
@@ -933,16 +1157,16 @@ local function startPlacement(
 		getExistingStand()
 
 	if not editingExisting
-		and existingStand then
+	and getStandCount()
+		>= MAXIMUM_STANDS then
 
-		showStatus(
-			"You already built the lemonade stand.",
-			2
-		)
+	showStatus(
+		`You can only place {MAXIMUM_STANDS} Lemonade Stands.`,
+		2
+	)
 
-		setBuildMenuVisible(false)
-		return
-	end
+	return
+end
 
 	if editingExisting
 		and not existingStand then
@@ -1065,9 +1289,9 @@ local function requestCurrentPlacement()
 		or not currentPlacementCFrame then
 
 		showStatus(
-			"The full stand must be inside your plot.",
-			1.75
-		)
+	"The stand must be inside your plot and cannot overlap another business.",
+	1.75
+)
 
 		return
 	end
@@ -1182,13 +1406,22 @@ RunService.RenderStepped:Connect(function()
 		currentPlacementCFrame
 	)
 
-	placementValid =
-		isPreviewInsideGround(
-			previewModel,
-			ground
-		)
+	local insideGround =
+	isPreviewInsideGround(
+		previewModel,
+		ground
+	)
 
-	setPreviewColor(placementValid)
+local overlapping =
+	isPreviewOverlappingBusiness(
+		previewModel
+	)
+
+placementValid =
+	insideGround
+	and not overlapping
+
+setPreviewColor(placementValid)
 end)
 
 UserInputService.InputBegan:Connect(function(
@@ -1239,7 +1472,17 @@ placeBusinessRemote.OnClientEvent:Connect(function(
 
 	if success then
 		finishPlacementMode()
-		setBuildMenuVisible(false)
+
+		ownedPlot = getOwnedPlot()
+
+		task.defer(function()
+			updateBuildMenu()
+
+			setBuildMenuVisible(
+				getStandCount()
+					< MAXIMUM_STANDS
+			)
+		end)
 
 		showStatus(
 			message ~= ""
@@ -1274,18 +1517,28 @@ interactionResultRemote.OnClientEvent:Connect(function(
 	end
 
 	if action == "Removed" then
-		finishPlacementMode()
-		setBuildMenuVisible(true)
+	finishPlacementMode()
 
-		showStatus(
-			typeof(message) == "string"
-				and message
-				or "Lemonade stand removed.",
-			2
+	ownedPlot = getOwnedPlot()
+
+	task.defer(function()
+		updateBuildMenu()
+
+		setBuildMenuVisible(
+			getStandCount()
+				< MAXIMUM_STANDS
 		)
+	end)
 
-		return
-	end
+	showStatus(
+		typeof(message) == "string"
+			and message
+			or "Lemonade stand removed.",
+		2
+	)
+
+	return
+end
 
 	if action == "RemoveFailed" then
 		showStatus(
@@ -1301,8 +1554,12 @@ interactionResultRemote.OnClientEvent:Connect(function(
 	if action == "EditCancelled" then
 		finishPlacementMode()
 
+		ownedPlot = getOwnedPlot()
+		updateBuildMenu()
+
 		setBuildMenuVisible(
-			getExistingStand() == nil
+			getStandCount()
+				< MAXIMUM_STANDS
 		)
 
 		showStatus(
@@ -1322,11 +1579,11 @@ task.spawn(function()
 			and not isPlacementActive
 			and not isEditingExistingStand then
 
-			local standExists =
-				getExistingStand() ~= nil
+			updateBuildMenu()
 
 			setBuildMenuVisible(
-				not standExists
+				getStandCount()
+					< MAXIMUM_STANDS
 			)
 		else
 			setBuildMenuVisible(false)

@@ -75,7 +75,28 @@ local function getOwnedPlot(): Model?
 	return nil
 end
 
-local function getOwnedStand(): Model?
+local function isLemonadeStand(
+	stand: Instance
+): boolean
+	if not stand:IsA("Model") then
+		return false
+	end
+
+	local businessType =
+		stand:GetAttribute("BusinessType")
+
+	if businessType == BUSINESS_NAME then
+		return true
+	end
+
+	return stand.Name == BUSINESS_NAME
+		or string.match(
+			stand.Name,
+			"^LemonadeStand_"
+		) ~= nil
+end
+
+local function getClosestOwnedStand(): Model?
 	local plot = getOwnedPlot()
 
 	if not plot then
@@ -83,28 +104,65 @@ local function getOwnedStand(): Model?
 	end
 
 	local placedBusinesses =
-		plot:FindFirstChild("PlacedBusinesses")
+		plot:FindFirstChild(
+			"PlacedBusinesses"
+		)
 
 	if not placedBusinesses then
 		return nil
 	end
 
-	local stand =
-		placedBusinesses:FindFirstChild(
-			BUSINESS_NAME
-		)
+	local rootPart =
+		getCharacterRoot()
 
-	if not stand or not stand:IsA("Model") then
+	if not rootPart then
 		return nil
 	end
 
-	if stand:GetAttribute("OwnerUserId")
-		~= player.UserId then
+	local closestStand: Model? = nil
+	local closestDistance = math.huge
 
-		return nil
+	for _, child in
+		placedBusinesses:GetChildren() do
+
+		if not isLemonadeStand(child) then
+			continue
+		end
+
+		if child:GetAttribute("OwnerUserId")
+			~= player.UserId then
+
+			continue
+		end
+
+		local positionPart =
+			child:FindFirstChild(
+				"ManagementUIPosition",
+				true
+			)
+			or child.PrimaryPart
+
+		if not positionPart
+			or not positionPart:IsA(
+				"BasePart"
+			) then
+
+			continue
+		end
+
+		local distance =
+			(
+				rootPart.Position
+				- positionPart.Position
+			).Magnitude
+
+		if distance < closestDistance then
+			closestDistance = distance
+			closestStand = child
+		end
 	end
 
-	return stand
+	return closestStand
 end
 
 local function getCharacterRoot(): BasePart?
@@ -463,7 +521,7 @@ local removeButton = createActionButton(
 )
 
 	editButton.Activated:Connect(function()
-		if stand ~= getOwnedStand() then
+		if stand ~= getClosestOwnedStand() then
 			showToast(
 				"Your lemonade stand could not be found.",
 				true
@@ -487,7 +545,7 @@ local removeButton = createActionButton(
 			return
 		end
 
-		if stand ~= getOwnedStand() then
+		if stand ~= getClosestOwnedStand() then
 			showToast(
 				"Your lemonade stand could not be found.",
 				true
@@ -963,7 +1021,7 @@ end)
 
 task.spawn(function()
 	while true do
-		local stand = getOwnedStand()
+		local stand = getClosestOwnedStand()
 		local rootPart = getCharacterRoot()
 
 		if stand ~= managementStand then

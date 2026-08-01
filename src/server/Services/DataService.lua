@@ -1,28 +1,41 @@
-local DataStoreService = game:GetService("DataStoreService")
+local DataStoreService =
+	game:GetService("DataStoreService")
+
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ReplicatedStorage =
+	game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local DATA_STORE_NAME = "PlayerData_v1"
-local CURRENT_DATA_VERSION = 1
+
+-- Version 2 changes Businesses from one fixed stand
+-- into a list of uniquely identified placed businesses.
+local CURRENT_DATA_VERSION = 2
 
 local MAX_RETRIES = 3
 local RETRY_DELAY_SECONDS = 2
-
 local SAVE_LOCK_TIMEOUT_SECONDS = 15
+
+local DEFAULT_UPGRADES = {
+	ServingSpeed = 0,
+	SaleValue = 0,
+	QueueCapacity = 0,
+}
 
 local DEFAULT_PROFILE = {
 	Version = CURRENT_DATA_VERSION,
 
 	Cash = 0,
 
-	Businesses = {
-		LemonadeStand = {
-			Owned = false,
-			Transform = nil,
-		},
-	},
+	-- Every placed business receives a unique ID.
+	PlacedBusinesses = {},
 
+	-- Used when generating the next permanent business ID.
+	NextBusinessNumber = 1,
+
+	-- Keep this temporarily because the current UpgradeService
+	-- still stores upgrades globally by business type.
+	-- We will move these into individual stand entries later.
 	Upgrades = {
 		LemonadeStand = {
 			ServingSpeed = 0,
@@ -40,23 +53,31 @@ type SerializedCFrame = {
 	number
 }
 
-type SavedBusiness = {
-	Owned: boolean,
-	Transform: SerializedCFrame?,
-}
-
 type UpgradeLevels = {
 	[string]: number,
+}
+
+type SavedPlacedBusiness = {
+	Id: string,
+	Type: string,
+
+	Transform: SerializedCFrame?,
+	TransformSpace: string,
+
+	Upgrades: UpgradeLevels,
 }
 
 type PlayerProfile = {
 	Version: number,
 	Cash: number,
 
-	Businesses: {
-		[string]: SavedBusiness,
+	PlacedBusinesses: {
+		SavedPlacedBusiness
 	},
 
+	NextBusinessNumber: number,
+
+	-- Temporary compatibility field.
 	Upgrades: {
 		[string]: UpgradeLevels,
 	},
@@ -67,21 +88,35 @@ type PlayerProfile = {
 }
 
 local playerDataStore =
-	DataStoreService:GetDataStore(DATA_STORE_NAME)
+	DataStoreService:GetDataStore(
+		DATA_STORE_NAME
+	)
 
 local businessModels =
-	ReplicatedStorage:WaitForChild("BusinessModels")
+	ReplicatedStorage:WaitForChild(
+		"BusinessModels"
+	)
 
 local plotsFolder =
 	Workspace:WaitForChild("Plots")
 
-local profiles: {[Player]: PlayerProfile} = {}
-local loadingPlayers: {[Player]: boolean} = {}
-local savingPlayers: {[Player]: boolean} = {}
+local profiles: {
+	[Player]: PlayerProfile
+} = {}
+
+local loadingPlayers: {
+	[Player]: boolean
+} = {}
+
+local savingPlayers: {
+	[Player]: boolean
+} = {}
 
 local DataService = {}
 
-local function deepCopy<T>(value: T): T
+local function deepCopy<T>(
+	value: T
+): T
 	if type(value) ~= "table" then
 		return value
 	end
@@ -89,7 +124,8 @@ local function deepCopy<T>(value: T): T
 	local copiedTable = {}
 
 	for key, childValue in value do
-		copiedTable[deepCopy(key)] = deepCopy(childValue)
+		copiedTable[deepCopy(key)] =
+			deepCopy(childValue)
 	end
 
 	return copiedTable :: any
@@ -103,58 +139,29 @@ local function reconcileTable(
 		local loadedValue = loaded[key]
 
 		if loadedValue == nil then
-			loaded[key] = deepCopy(defaultValue)
+			loaded[key] =
+				deepCopy(defaultValue)
+
 			continue
 		end
 
 		if type(defaultValue) == "table" then
 			if type(loadedValue) ~= "table" then
-				loaded[key] = deepCopy(defaultValue)
+				loaded[key] =
+					deepCopy(defaultValue)
 			else
-				reconcileTable(loadedValue, defaultValue)
+				reconcileTable(
+					loadedValue,
+					defaultValue
+				)
 			end
 		end
 	end
 end
 
-local function migrateProfile(rawData: any): PlayerProfile
-	if type(rawData) ~= "table" then
-		return deepCopy(DEFAULT_PROFILE)
-	end
-
-	local profile = deepCopy(rawData)
-
-	local loadedVersion = profile.Version
-
-	if type(loadedVersion) ~= "number" then
-		loadedVersion = 0
-	end
-
-	-- Future migrations go here.
-	--
-	-- Example:
-	-- if loadedVersion < 2 then
-	--     profile.NewField = "DefaultValue"
-	--     loadedVersion = 2
-	-- end
-
-	profile.Version = CURRENT_DATA_VERSION
-
-	reconcileTable(profile, DEFAULT_PROFILE)
-
-	if type(profile.Cash) ~= "number" then
-		profile.Cash = DEFAULT_PROFILE.Cash
-	end
-
-	profile.Cash = math.max(
-		0,
-		math.floor(profile.Cash)
-	)
-
-	return profile :: PlayerProfile
-end
-
-local function serializeCFrame(cframe: CFrame): SerializedCFrame
+local function serializeCFrame(
+	cframe: CFrame
+): SerializedCFrame
 	return {
 		cframe:GetComponents(),
 	}
@@ -172,7 +179,8 @@ local function deserializeCFrame(
 	local validatedComponents = {}
 
 	for index = 1, 12 do
-		local component = components[index]
+		local component =
+			components[index]
 
 		if type(component) ~= "number"
 			or component ~= component
@@ -182,35 +190,301 @@ local function deserializeCFrame(
 			return nil
 		end
 
-		validatedComponents[index] = component
+		validatedComponents[index] =
+			component
 	end
 
-	return CFrame.new(table.unpack(validatedComponents))
+	return CFrame.new(
+		table.unpack(
+			validatedComponents
+		)
+	)
 end
 
-local function getPlayerKey(player: Player): string
+local function sanitizeUpgradeLevels(
+	rawUpgrades: any
+): UpgradeLevels
+	local upgrades =
+		deepCopy(DEFAULT_UPGRADES)
+
+	if type(rawUpgrades) ~= "table" then
+		return upgrades
+	end
+
+	for upgradeName, defaultLevel in
+		DEFAULT_UPGRADES do
+
+		local loadedLevel =
+			rawUpgrades[upgradeName]
+
+		if type(loadedLevel) == "number" then
+			upgrades[upgradeName] =
+				math.max(
+					0,
+					math.floor(loadedLevel)
+				)
+		else
+			upgrades[upgradeName] =
+				defaultLevel
+		end
+	end
+
+	return upgrades
+end
+
+local function migrateVersionOneProfile(
+	profile: {[any]: any}
+)
+	local oldBusinesses =
+		profile.Businesses
+
+	local oldStand =
+		type(oldBusinesses) == "table"
+		and oldBusinesses.LemonadeStand
+		or nil
+
+	profile.PlacedBusinesses = {}
+	profile.NextBusinessNumber = 1
+
+	if type(oldStand) ~= "table"
+		or oldStand.Owned ~= true then
+
+		return
+	end
+
+	local oldGlobalUpgrades =
+		type(profile.Upgrades) == "table"
+		and profile.Upgrades.LemonadeStand
+		or nil
+
+	table.insert(
+		profile.PlacedBusinesses,
+		{
+			Id = "LemonadeStand_1",
+			Type = "LemonadeStand",
+
+			Transform =
+				deepCopy(oldStand.Transform),
+
+			-- Version 1 stored world-space CFrames.
+			TransformSpace = "World",
+
+			Upgrades =
+				sanitizeUpgradeLevels(
+					oldGlobalUpgrades
+				),
+		}
+	)
+
+	profile.NextBusinessNumber = 2
+end
+
+local function sanitizePlacedBusinesses(
+	profile: {[any]: any}
+)
+	if type(profile.PlacedBusinesses)
+		~= "table" then
+
+		profile.PlacedBusinesses = {}
+	end
+
+	local sanitized = {}
+	local usedIds: {[string]: boolean} = {}
+
+	local largestNumber = 0
+
+	for _, rawBusiness in
+		profile.PlacedBusinesses do
+
+		if type(rawBusiness) ~= "table" then
+			continue
+		end
+
+		local businessType =
+			rawBusiness.Type
+
+		if type(businessType) ~= "string"
+			or businessType == "" then
+
+			continue
+		end
+
+		local businessId =
+			rawBusiness.Id
+
+		if type(businessId) ~= "string"
+			or businessId == ""
+			or usedIds[businessId] then
+
+			continue
+		end
+
+		local transform =
+			deserializeCFrame(
+				rawBusiness.Transform
+			)
+
+		if not transform then
+			continue
+		end
+
+		local transformSpace =
+			rawBusiness.TransformSpace
+
+		if transformSpace ~= "Plot"
+			and transformSpace ~= "World" then
+
+			transformSpace = "World"
+		end
+
+		usedIds[businessId] = true
+
+		local endingNumber =
+			tonumber(
+				string.match(
+					businessId,
+					"_(%d+)$"
+				)
+			)
+
+		if endingNumber then
+			largestNumber =
+				math.max(
+					largestNumber,
+					endingNumber
+				)
+		end
+
+		table.insert(
+			sanitized,
+			{
+				Id = businessId,
+				Type = businessType,
+
+				Transform =
+					serializeCFrame(transform),
+
+				TransformSpace =
+					transformSpace,
+
+				Upgrades =
+					sanitizeUpgradeLevels(
+						rawBusiness.Upgrades
+					),
+			}
+		)
+	end
+
+	profile.PlacedBusinesses = sanitized
+
+	local nextBusinessNumber =
+		profile.NextBusinessNumber
+
+	if type(nextBusinessNumber) ~= "number" then
+		nextBusinessNumber =
+			largestNumber + 1
+	end
+
+	profile.NextBusinessNumber =
+		math.max(
+			largestNumber + 1,
+			math.floor(
+				nextBusinessNumber
+			),
+			1
+		)
+end
+
+local function migrateProfile(
+	rawData: any
+): PlayerProfile
+	if type(rawData) ~= "table" then
+		return deepCopy(DEFAULT_PROFILE)
+	end
+
+	local profile = deepCopy(rawData)
+
+	local loadedVersion =
+		profile.Version
+
+	if type(loadedVersion) ~= "number" then
+		loadedVersion = 0
+	end
+
+	if loadedVersion < 2 then
+		migrateVersionOneProfile(profile)
+		loadedVersion = 2
+	end
+
+	reconcileTable(
+		profile,
+		DEFAULT_PROFILE
+	)
+
+	if type(profile.Cash) ~= "number" then
+		profile.Cash =
+			DEFAULT_PROFILE.Cash
+	end
+
+	profile.Cash =
+		math.max(
+			0,
+			math.floor(profile.Cash)
+		)
+
+	if type(profile.Upgrades) ~= "table" then
+		profile.Upgrades = {}
+	end
+
+	profile.Upgrades.LemonadeStand =
+		sanitizeUpgradeLevels(
+			profile.Upgrades.LemonadeStand
+		)
+
+	sanitizePlacedBusinesses(profile)
+
+	-- Remove the obsolete version-one field after migration.
+	profile.Businesses = nil
+	profile.Version = CURRENT_DATA_VERSION
+
+	return profile :: PlayerProfile
+end
+
+local function getPlayerKey(
+	player: Player
+): string
 	return `Player_{player.UserId}`
 end
 
-local function getPlayerPlot(player: Player): Model?
-	local plotName = player:GetAttribute("PlotName")
+local function getPlayerPlot(
+	player: Player
+): Model?
+	local plotName =
+		player:GetAttribute("PlotName")
 
 	if typeof(plotName) == "string" then
-		local plot = plotsFolder:FindFirstChild(plotName)
+		local plot =
+			plotsFolder:FindFirstChild(
+				plotName
+			)
 
 		if plot
 			and plot:IsA("Model")
-			and plot:GetAttribute("OwnerUserId")
-			== player.UserId then
+			and plot:GetAttribute(
+				"OwnerUserId"
+			) == player.UserId then
 
 			return plot
 		end
 	end
 
-	for _, plot in plotsFolder:GetChildren() do
+	for _, plot in
+		plotsFolder:GetChildren() do
+
 		if plot:IsA("Model")
-			and plot:GetAttribute("OwnerUserId")
-			== player.UserId then
+			and plot:GetAttribute(
+				"OwnerUserId"
+			) == player.UserId then
 
 			return plot
 		end
@@ -219,14 +493,20 @@ local function getPlayerPlot(player: Player): Model?
 	return nil
 end
 
-local function getCashValue(player: Player): IntValue?
-	local leaderstats = player:FindFirstChild("leaderstats")
+local function getCashValue(
+	player: Player
+): IntValue?
+	local leaderstats =
+		player:FindFirstChild(
+			"leaderstats"
+		)
 
 	if not leaderstats then
 		return nil
 	end
 
-	local cash = leaderstats:FindFirstChild("Cash")
+	local cash =
+		leaderstats:FindFirstChild("Cash")
 
 	if cash and cash:IsA("IntValue") then
 		return cash
@@ -240,23 +520,146 @@ local function createLeaderstats(
 	startingCash: number
 )
 	local existingLeaderstats =
-		player:FindFirstChild("leaderstats")
+		player:FindFirstChild(
+			"leaderstats"
+		)
 
 	if existingLeaderstats then
 		existingLeaderstats:Destroy()
 	end
 
-	local leaderstats = Instance.new("Folder")
+	local leaderstats =
+		Instance.new("Folder")
+
 	leaderstats.Name = "leaderstats"
 	leaderstats.Parent = player
 
 	local cash = Instance.new("IntValue")
+
 	cash.Name = "Cash"
-	cash.Value = math.max(
-		0,
-		math.floor(startingCash)
-	)
+
+	cash.Value =
+		math.max(
+			0,
+			math.floor(startingCash)
+		)
+
 	cash.Parent = leaderstats
+end
+
+local function getBusinessType(
+	business: Model
+): string
+	local businessType =
+		business:GetAttribute(
+			"BusinessType"
+		)
+
+	if typeof(businessType) == "string"
+		and businessType ~= "" then
+
+		return businessType
+	end
+
+	if string.match(
+		business.Name,
+		"^LemonadeStand"
+	) then
+
+		return "LemonadeStand"
+	end
+
+	return business.Name
+end
+
+local function generateBusinessId(
+	profile: PlayerProfile,
+	businessType: string
+): string
+	local businessNumber =
+		profile.NextBusinessNumber
+
+	profile.NextBusinessNumber += 1
+
+	return `{businessType}_{businessNumber}`
+end
+
+local function ensureBusinessIdentity(
+	profile: PlayerProfile,
+	business: Model
+): (string, string)
+	local businessType =
+		getBusinessType(business)
+
+	local businessId =
+		business:GetAttribute(
+			"BusinessId"
+		)
+
+	if typeof(businessId) ~= "string"
+		or businessId == "" then
+
+		businessId =
+			generateBusinessId(
+				profile,
+				businessType
+			)
+
+		business:SetAttribute(
+			"BusinessId",
+			businessId
+		)
+	end
+
+	business:SetAttribute(
+		"BusinessType",
+		businessType
+	)
+
+	return businessId, businessType
+end
+
+local function getBusinessUpgradeSnapshot(
+	profile: PlayerProfile,
+	business: Model,
+	businessType: string
+): UpgradeLevels
+	local savedUpgrades = {
+		ServingSpeed =
+			business:GetAttribute(
+				"ServingSpeedLevel"
+			),
+
+		SaleValue =
+			business:GetAttribute(
+				"SaleValueLevel"
+			),
+
+		QueueCapacity =
+			business:GetAttribute(
+				"QueueCapacityLevel"
+			),
+	}
+
+	local globalUpgrades =
+		profile.Upgrades[businessType]
+
+	for upgradeName in DEFAULT_UPGRADES do
+		if type(savedUpgrades[upgradeName])
+			~= "number" then
+
+			savedUpgrades[upgradeName] =
+				globalUpgrades
+				and globalUpgrades[
+					upgradeName
+				]
+				or 0
+		end
+	end
+
+	return sanitizeUpgradeLevels(
+		savedUpgrades
+	)
 end
 
 local function captureBusinessState(
@@ -270,34 +673,73 @@ local function captureBusinessState(
 	end
 
 	local placedBusinesses =
-		plot:FindFirstChild("PlacedBusinesses")
+		plot:FindFirstChild(
+			"PlacedBusinesses"
+		)
 
 	if not placedBusinesses then
 		return
 	end
 
-	local lemonadeStand =
-		placedBusinesses:FindFirstChild("LemonadeStand")
+	local savedBusinesses = {}
 
-	local savedStand =
-		profile.Businesses.LemonadeStand
+	for _, instance in
+		placedBusinesses:GetChildren() do
 
-	if lemonadeStand
-		and lemonadeStand:IsA("Model") then
+		if not instance:IsA("Model") then
+			continue
+		end
 
-		savedStand.Owned = true
-		savedStand.Transform =
-			serializeCFrame(lemonadeStand:GetPivot())
-	else
-		savedStand.Owned = false
-		savedStand.Transform = nil
+		local businessId, businessType =
+			ensureBusinessIdentity(
+				profile,
+				instance
+			)
+
+		local relativeCFrame =
+			plot:GetPivot():ToObjectSpace(
+				instance:GetPivot()
+			)
+
+		table.insert(
+			savedBusinesses,
+			{
+				Id = businessId,
+				Type = businessType,
+
+				Transform =
+					serializeCFrame(
+						relativeCFrame
+					),
+
+				TransformSpace = "Plot",
+
+				Upgrades =
+					getBusinessUpgradeSnapshot(
+						profile,
+						instance,
+						businessType
+					),
+			}
+		)
 	end
+
+	table.sort(
+		savedBusinesses,
+		function(first, second)
+			return first.Id < second.Id
+		end
+	)
+
+	profile.PlacedBusinesses =
+		savedBusinesses
 end
 
 local function createSaveSnapshot(
 	player: Player
 ): PlayerProfile?
-	local currentProfile = profiles[player]
+	local currentProfile =
+		profiles[player]
 
 	if not currentProfile then
 		return nil
@@ -309,15 +751,20 @@ local function createSaveSnapshot(
 	local cash = getCashValue(player)
 
 	if cash then
-		snapshot.Cash = math.max(
-			0,
-			math.floor(cash.Value)
-		)
+		snapshot.Cash =
+			math.max(
+				0,
+				math.floor(cash.Value)
+			)
 	end
 
-	captureBusinessState(player, snapshot)
+	captureBusinessState(
+		player,
+		snapshot
+	)
 
-	snapshot.Version = CURRENT_DATA_VERSION
+	snapshot.Version =
+		CURRENT_DATA_VERSION
 
 	return snapshot
 end
@@ -339,7 +786,8 @@ local function runWithRetries(
 
 		if attempt < MAX_RETRIES then
 			task.wait(
-				RETRY_DELAY_SECONDS * attempt
+				RETRY_DELAY_SECONDS
+					* attempt
 			)
 		end
 	end
@@ -366,11 +814,12 @@ function DataService.LoadPlayer(
 
 	loadingPlayers[player] = true
 
-	local success, result = runWithRetries(function()
-		return playerDataStore:GetAsync(
-			getPlayerKey(player)
-		)
-	end)
+	local success, result =
+		runWithRetries(function()
+			return playerDataStore:GetAsync(
+				getPlayerKey(player)
+			)
+		end)
 
 	if not player.Parent then
 		loadingPlayers[player] = nil
@@ -388,7 +837,7 @@ function DataService.LoadPlayer(
 			)
 		else
 			print(
-				`Found saved data for {player.Name}: Cash={profile.Cash}, LemonadeStandOwned={profile.Businesses.LemonadeStand.Owned}`
+				`Found saved data for {player.Name}: Cash={profile.Cash}, Businesses={#profile.PlacedBusinesses}`
 			)
 		end
 	else
@@ -408,9 +857,15 @@ function DataService.LoadPlayer(
 	profiles[player] = profile
 	loadingPlayers[player] = nil
 
-	createLeaderstats(player, profile.Cash)
+	createLeaderstats(
+		player,
+		profile.Cash
+	)
 
-	player:SetAttribute("DataLoaded", true)
+	player:SetAttribute(
+		"DataLoaded",
+		true
+	)
 
 	return true
 end
@@ -423,13 +878,16 @@ function DataService.WaitForProfile(
 	local maximumWait = timeout or 15
 
 	while player.Parent do
-		local profile = profiles[player]
+		local profile =
+			profiles[player]
 
 		if profile then
 			return profile
 		end
 
-		if time() - startedAt >= maximumWait then
+		if time() - startedAt
+			>= maximumWait then
+
 			return nil
 		end
 
@@ -445,12 +903,44 @@ function DataService.GetProfile(
 	return profiles[player]
 end
 
+function DataService.GetPlacedBusinesses(
+	player: Player
+): {SavedPlacedBusiness}
+	local profile = profiles[player]
+
+	if not profile then
+		return {}
+	end
+
+	return deepCopy(
+		profile.PlacedBusinesses
+	)
+end
+
+function DataService.GenerateBusinessId(
+	player: Player,
+	businessType: string
+): string?
+	local profile = profiles[player]
+
+	if not profile
+		or type(businessType) ~= "string"
+		or businessType == "" then
+
+		return nil
+	end
+
+	return generateBusinessId(
+		profile,
+		businessType
+	)
+end
+
 function DataService.SavePlayer(
 	player: Player
 ): boolean
 	local startedWaitingAt = time()
 
-	-- Never discard a final save merely because an autosave is running.
 	while savingPlayers[player] do
 		if time() - startedWaitingAt
 			>= SAVE_LOCK_TIMEOUT_SECONDS then
@@ -479,17 +969,18 @@ function DataService.SavePlayer(
 	savingPlayers[player] = true
 
 	print(
-		`Saving {player.Name}: Cash={snapshot.Cash}, LemonadeStandOwned={snapshot.Businesses.LemonadeStand.Owned}`
+		`Saving {player.Name}: Cash={snapshot.Cash}, Businesses={#snapshot.PlacedBusinesses}`
 	)
 
-	local success, result = runWithRetries(function()
-		return playerDataStore:UpdateAsync(
-			getPlayerKey(player),
-			function(_oldData)
-				return snapshot
-			end
-		)
-	end)
+	local success, result =
+		runWithRetries(function()
+			return playerDataStore:UpdateAsync(
+				getPlayerKey(player),
+				function(_oldData)
+					return snapshot
+				end
+			)
+		end)
 
 	savingPlayers[player] = nil
 
@@ -517,7 +1008,10 @@ function DataService.RestorePlot(
 	plot: Model
 ): boolean
 	local profile =
-		DataService.WaitForProfile(player, 15)
+		DataService.WaitForProfile(
+			player,
+			15
+		)
 
 	if not profile then
 		warn(
@@ -534,10 +1028,14 @@ function DataService.RestorePlot(
 	end
 
 	local placedBusinesses =
-		plot:FindFirstChild("PlacedBusinesses")
+		plot:FindFirstChild(
+			"PlacedBusinesses"
+		)
 
 	if not placedBusinesses
-		or not placedBusinesses:IsA("Folder") then
+		or not placedBusinesses:IsA(
+			"Folder"
+		) then
 
 		warn(
 			`Plot "{plot.Name}" is missing PlacedBusinesses.`
@@ -546,10 +1044,7 @@ function DataService.RestorePlot(
 		return false
 	end
 
-	local savedStand =
-		profile.Businesses.LemonadeStand
-
-	if not savedStand.Owned then
+	if #profile.PlacedBusinesses == 0 then
 		plot:SetAttribute(
 			"StarterBusinessPlaced",
 			false
@@ -558,75 +1053,143 @@ function DataService.RestorePlot(
 		return true
 	end
 
-	local savedCFrame =
-		deserializeCFrame(savedStand.Transform)
+	local restoredCount = 0
 
-	if not savedCFrame then
-		warn(
-			`The saved LemonadeStand transform for {player.Name} was invalid.`
-		)
+	for _, savedBusiness in
+		profile.PlacedBusinesses do
 
-		savedStand.Owned = false
-		savedStand.Transform = nil
+		local template =
+			businessModels:FindFirstChild(
+				savedBusiness.Type
+			)
 
-		return false
-	end
+		if not template
+			or not template:IsA("Model") then
 
-	local template =
-		businessModels:FindFirstChild(
-			"LemonadeStand"
-		)
+			warn(
+				`Business template "{savedBusiness.Type}" was not found.`
+			)
 
-	if not template or not template:IsA("Model") then
-		warn(
-			"ReplicatedStorage.BusinessModels.LemonadeStand was not found."
-		)
-
-		return false
-	end
-
-	if placedBusinesses:FindFirstChild(
-		"LemonadeStand"
-	) then
-
-		return true
-	end
-
-	local stand = template:Clone()
-	stand.Name = "LemonadeStand"
-
-	stand:SetAttribute(
-		"OwnerUserId",
-		player.UserId
-	)
-
-	stand:SetAttribute(
-		"PlotName",
-		plot.Name
-	)
-
-	stand:SetAttribute(
-		"StandUnavailable",
-		false
-	)
-
-	stand:SetAttribute(
-		"IsBeingEdited",
-		false
-	)
-
-	for _, descendant in stand:GetDescendants() do
-		if descendant:IsA("BasePart") then
-			descendant.Anchored = true
+			continue
 		end
-	end
 
-	stand.Parent = placedBusinesses
-	stand:PivotTo(savedCFrame)
+		local serializedTransform =
+			deserializeCFrame(
+				savedBusiness.Transform
+			)
+
+		if not serializedTransform then
+			warn(
+				`Saved transform for {savedBusiness.Id} was invalid.`
+			)
+
+			continue
+		end
+
+		local targetCFrame
+
+		if savedBusiness.TransformSpace
+			== "Plot" then
+
+			targetCFrame =
+				plot:GetPivot()
+				* serializedTransform
+		else
+			-- Version-one compatibility.
+			targetCFrame =
+				serializedTransform
+		end
+
+		if placedBusinesses:FindFirstChild(
+			savedBusiness.Id
+		) then
+
+			continue
+		end
+
+		local stand = template:Clone()
+
+		-- Keep the first stand's old name temporarily so
+		-- the current one-stand systems continue working.
+		if restoredCount == 0
+			and savedBusiness.Type
+				== "LemonadeStand" then
+
+			stand.Name = "LemonadeStand"
+		else
+			stand.Name =
+				savedBusiness.Id
+		end
+
+		stand:SetAttribute(
+			"BusinessId",
+			savedBusiness.Id
+		)
+
+		stand:SetAttribute(
+			"BusinessType",
+			savedBusiness.Type
+		)
+
+		stand:SetAttribute(
+			"OwnerUserId",
+			player.UserId
+		)
+
+		stand:SetAttribute(
+			"PlotName",
+			plot.Name
+		)
+
+		stand:SetAttribute(
+			"StandUnavailable",
+			false
+		)
+
+		stand:SetAttribute(
+			"IsBeingEdited",
+			false
+		)
+
+		local upgrades =
+			savedBusiness.Upgrades
+
+		stand:SetAttribute(
+			"ServingSpeedLevel",
+			upgrades.ServingSpeed or 0
+		)
+
+		stand:SetAttribute(
+			"SaleValueLevel",
+			upgrades.SaleValue or 0
+		)
+
+		stand:SetAttribute(
+			"QueueCapacityLevel",
+			upgrades.QueueCapacity or 0
+		)
+
+		for _, descendant in
+			stand:GetDescendants() do
+
+			if descendant:IsA("BasePart") then
+				descendant.Anchored = true
+			end
+		end
+
+		stand.Parent = placedBusinesses
+		stand:PivotTo(targetCFrame)
+
+		restoredCount += 1
+	end
 
 	plot:SetAttribute(
 		"StarterBusinessPlaced",
-		true
+		restoredCount > 0
+	)
+
+	print(
+		`Restored {restoredCount} business(es) for {player.Name}.`
 	)
 
 	return true
@@ -705,8 +1268,9 @@ function DataService.IsBusinessUnlocked(
 		return false
 	end
 
-	return profile.UnlockedBusinesses[businessName]
-		== true
+	return profile.UnlockedBusinesses[
+		businessName
+	] == true
 end
 
 function DataService.UnlockBusiness(
@@ -721,28 +1285,36 @@ function DataService.UnlockBusiness(
 		return false
 	end
 
-	profile.UnlockedBusinesses[businessName] = true
+	profile.UnlockedBusinesses[
+		businessName
+	] = true
 
 	return true
 end
 
-function DataService.ReleasePlayer(player: Player)
+function DataService.ReleasePlayer(
+	player: Player
+)
 	profiles[player] = nil
 	loadingPlayers[player] = nil
 	savingPlayers[player] = nil
 end
 
 function DataService.SaveAllPlayers()
-	local players = Players:GetPlayers()
+	local currentPlayers =
+		Players:GetPlayers()
 
-	if #players == 0 then
+	if #currentPlayers == 0 then
 		return
 	end
 
-	local remaining = #players
-	local completed = Instance.new("BindableEvent")
+	local remaining =
+		#currentPlayers
 
-	for _, player in players do
+	local completed =
+		Instance.new("BindableEvent")
+
+	for _, player in currentPlayers do
 		task.spawn(function()
 			DataService.SavePlayer(player)
 

@@ -1,6 +1,19 @@
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ReplicatedStorage =
+	game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
+
+local DataService = require(
+	script.Parent
+		:WaitForChild("Services")
+		:WaitForChild("DataService")
+)
+
+local BusinessConfig = require(
+	ReplicatedStorage
+		:WaitForChild("Shared")
+		:WaitForChild("BusinessConfig")
+)
 
 local businessModels =
 	ReplicatedStorage:WaitForChild("BusinessModels")
@@ -19,15 +32,30 @@ local BUSINESS_NAME = "LemonadeStand"
 local MAX_PLACEMENT_DISTANCE = 250
 local EDGE_PADDING = 0.5
 
-local placementRequests: {[Player]: number} = {}
+local lemonadeConfig =
+	BusinessConfig.LemonadeStand
 
-local function getPlayerPlot(player: Player): Model?
+local MAXIMUM_STANDS =
+	lemonadeConfig.MaximumPlaced or 3
+
+local ADDITIONAL_STAND_COST =
+	lemonadeConfig.AdditionalStandCost or 750
+
+local placementRequests: {
+	[Player]: number
+} = {}
+
+local function getPlayerPlot(
+	player: Player
+): Model?
 	for _, plot in plotsFolder:GetChildren() do
 		if not plot:IsA("Model") then
 			continue
 		end
 
-		if plot:GetAttribute("OwnerUserId") == player.UserId then
+		if plot:GetAttribute("OwnerUserId")
+			== player.UserId then
+
 			return plot
 		end
 	end
@@ -35,8 +63,11 @@ local function getPlayerPlot(player: Player): Model?
 	return nil
 end
 
-local function getPlacedBusinesses(plot: Model): Folder?
-	local folder = plot:FindFirstChild("PlacedBusinesses")
+local function getPlacedBusinesses(
+	plot: Model
+): Folder?
+	local folder =
+		plot:FindFirstChild("PlacedBusinesses")
 
 	if folder and folder:IsA("Folder") then
 		return folder
@@ -45,18 +76,94 @@ local function getPlacedBusinesses(plot: Model): Folder?
 	return nil
 end
 
-local function isFiniteNumber(value: number): boolean
+local function getBusinessType(
+	business: Model
+): string
+	local businessType =
+		business:GetAttribute("BusinessType")
+
+	if typeof(businessType) == "string"
+		and businessType ~= "" then
+
+		return businessType
+	end
+
+	if string.match(
+		business.Name,
+		"^LemonadeStand"
+	) then
+
+		return BUSINESS_NAME
+	end
+
+	return business.Name
+end
+
+local function getLemonadeStands(
+	plot: Model
+): {Model}
+	local folder =
+		getPlacedBusinesses(plot)
+
+	if not folder then
+		return {}
+	end
+
+	local stands = {}
+
+	for _, child in folder:GetChildren() do
+		if not child:IsA("Model") then
+			continue
+		end
+
+		if getBusinessType(child)
+			== BUSINESS_NAME then
+
+			table.insert(stands, child)
+		end
+	end
+
+	return stands
+end
+
+local function getCashValue(
+	player: Player
+): IntValue?
+	local leaderstats =
+		player:FindFirstChild("leaderstats")
+
+	if not leaderstats then
+		return nil
+	end
+
+	local cash =
+		leaderstats:FindFirstChild("Cash")
+
+	if cash and cash:IsA("IntValue") then
+		return cash
+	end
+
+	return nil
+end
+
+local function isFiniteNumber(
+	value: number
+): boolean
 	return value == value
 		and value ~= math.huge
 		and value ~= -math.huge
 end
 
-local function isValidCFrame(value: any): boolean
+local function isValidCFrame(
+	value: any
+): boolean
 	if typeof(value) ~= "CFrame" then
 		return false
 	end
 
-	local components = {value:GetComponents()}
+	local components = {
+		value:GetComponents(),
+	}
 
 	for _, component in components do
 		if not isFiniteNumber(component) then
@@ -67,20 +174,36 @@ local function isValidCFrame(value: any): boolean
 	return true
 end
 
-local function getBoundingBoxAtCFrame(
+local function getPlacementBoundsAtCFrame(
 	template: Model,
 	targetPivot: CFrame
-): (CFrame, Vector3)
+): (CFrame?, Vector3?)
 	local clone = template:Clone()
 
 	clone:PivotTo(targetPivot)
 
-	local boundingBoxCFrame, boundingBoxSize =
-		clone:GetBoundingBox()
+	local placementBounds =
+		clone:FindFirstChild(
+			"PlacementBounds",
+			true
+		)
+
+	if not placementBounds
+		or not placementBounds:IsA("BasePart") then
+
+		clone:Destroy()
+		return nil, nil
+	end
+
+	local boundsCFrame =
+		placementBounds.CFrame
+
+	local boundsSize =
+		placementBounds.Size
 
 	clone:Destroy()
 
-	return boundingBoxCFrame, boundingBoxSize
+	return boundsCFrame, boundsSize
 end
 
 local function isBoundingBoxInsideGround(
@@ -106,13 +229,19 @@ local function isBoundingBoxInsideGround(
 
 	for _, cornerOffset in corners do
 		local worldCorner =
-			boxCFrame:PointToWorldSpace(cornerOffset)
+			boxCFrame:PointToWorldSpace(
+				cornerOffset
+			)
 
 		local groundSpace =
-			ground.CFrame:PointToObjectSpace(worldCorner)
+			ground.CFrame:PointToObjectSpace(
+				worldCorner
+			)
 
-		if math.abs(groundSpace.X) > groundHalfX
-			or math.abs(groundSpace.Z) > groundHalfZ then
+		if math.abs(groundSpace.X)
+				> groundHalfX
+			or math.abs(groundSpace.Z)
+				> groundHalfZ then
 
 			return false
 		end
@@ -126,44 +255,185 @@ local function isCorrectHeight(
 	placementCFrame: CFrame
 ): boolean
 	local groundTop =
-		ground.Position.Y + ground.Size.Y / 2
+		ground.Position.Y
+		+ ground.Size.Y / 2
 
 	return math.abs(
-		placementCFrame.Position.Y - groundTop
+		placementCFrame.Position.Y
+			- groundTop
 	) <= 0.5
 end
 
-local function setModelPlacedState(model: Model)
-	for _, descendant in model:GetDescendants() do
+local function rectanglesOverlapXZ(
+	firstCFrame: CFrame,
+	firstSize: Vector3,
+	secondCFrame: CFrame,
+	secondSize: Vector3
+): boolean
+	local firstRight =
+		Vector3.new(
+			firstCFrame.RightVector.X,
+			0,
+			firstCFrame.RightVector.Z
+		).Unit
+
+	local firstForward =
+		Vector3.new(
+			firstCFrame.LookVector.X,
+			0,
+			firstCFrame.LookVector.Z
+		).Unit
+
+	local secondRight =
+		Vector3.new(
+			secondCFrame.RightVector.X,
+			0,
+			secondCFrame.RightVector.Z
+		).Unit
+
+	local secondForward =
+		Vector3.new(
+			secondCFrame.LookVector.X,
+			0,
+			secondCFrame.LookVector.Z
+		).Unit
+
+	local offset =
+		Vector3.new(
+			secondCFrame.Position.X
+				- firstCFrame.Position.X,
+			0,
+			secondCFrame.Position.Z
+				- firstCFrame.Position.Z
+		)
+
+	local axes = {
+		firstRight,
+		firstForward,
+		secondRight,
+		secondForward,
+	}
+
+	local firstHalfX =
+		firstSize.X / 2
+
+	local firstHalfZ =
+		firstSize.Z / 2
+
+	local secondHalfX =
+		secondSize.X / 2
+
+	local secondHalfZ =
+		secondSize.Z / 2
+
+	for _, axis in axes do
+		local distance =
+			math.abs(
+				offset:Dot(axis)
+			)
+
+		local firstRadius =
+			math.abs(
+				firstRight:Dot(axis)
+			) * firstHalfX
+			+ math.abs(
+				firstForward:Dot(axis)
+			) * firstHalfZ
+
+		local secondRadius =
+			math.abs(
+				secondRight:Dot(axis)
+			) * secondHalfX
+			+ math.abs(
+				secondForward:Dot(axis)
+			) * secondHalfZ
+
+		if distance >=
+			firstRadius + secondRadius then
+
+			return false
+		end
+	end
+
+	return true
+end
+
+local function overlapsExistingBusiness(
+	plot: Model,
+	candidateCFrame: CFrame,
+	candidateSize: Vector3,
+	ignoredBusiness: Model?
+): boolean
+	local placedBusinesses =
+		getPlacedBusinesses(plot)
+
+	if not placedBusinesses then
+		return false
+	end
+
+	for _, business in
+		placedBusinesses:GetChildren() do
+
+		if not business:IsA("Model")
+			or business == ignoredBusiness then
+
+			continue
+		end
+
+		local existingBounds =
+			business:FindFirstChild(
+				"PlacementBounds",
+				true
+			)
+
+		if not existingBounds
+			or not existingBounds:IsA(
+				"BasePart"
+			) then
+
+			continue
+		end
+
+		if rectanglesOverlapXZ(
+			candidateCFrame,
+			candidateSize,
+			existingBounds.CFrame,
+			existingBounds.Size
+		) then
+
+			return true
+		end
+	end
+
+	return false
+end
+
+local function setModelPlacedState(
+	model: Model
+)
+	for _, descendant in
+		model:GetDescendants() do
+
 		if descendant:IsA("BasePart") then
 			descendant.Anchored = true
 		end
 	end
 end
 
-local function getPlacementBoundsAtCFrame(
-	template: Model,
-	targetPivot: CFrame
-): (CFrame?, Vector3?)
-	local clone = template:Clone()
-	clone:PivotTo(targetPivot)
+local function setPromptState(
+	model: Model,
+	enabled: boolean
+)
+	for _, descendant in
+		model:GetDescendants() do
 
-	local placementBounds =
-		clone:FindFirstChild("PlacementBounds", true)
+		if descendant:IsA(
+			"ProximityPrompt"
+		) then
 
-	if not placementBounds
-		or not placementBounds:IsA("BasePart") then
-
-		clone:Destroy()
-		return nil, nil
+			descendant.Enabled = enabled
+		end
 	end
-
-	local boundsCFrame = placementBounds.CFrame
-	local boundsSize = placementBounds.Size
-
-	clone:Destroy()
-
-	return boundsCFrame, boundsSize
 end
 
 local function canPlaceBusiness(
@@ -171,51 +441,78 @@ local function canPlaceBusiness(
 	plot: Model,
 	businessName: string,
 	placementCFrame: CFrame,
-	isEditing: boolean
+	editedStand: Model?
 ): (boolean, string)
 	if businessName ~= BUSINESS_NAME then
 		return false, "Unknown business."
 	end
 
-	local ground = plot:FindFirstChild("Ground")
+	local ground =
+		plot:FindFirstChild("Ground")
 
-	if not ground or not ground:IsA("BasePart") then
-		return false, "The plot is missing Ground."
+	if not ground
+		or not ground:IsA("BasePart") then
+
+		return false,
+			"The plot is missing Ground."
 	end
 
-	local placedBusinesses = getPlacedBusinesses(plot)
+	local placedBusinesses =
+		getPlacedBusinesses(plot)
 
 	if not placedBusinesses then
-		return false, "The plot is missing PlacedBusinesses."
+		return false,
+			"The plot is missing PlacedBusinesses."
 	end
 
-	if placedBusinesses:FindFirstChild(BUSINESS_NAME)
-		and not isEditing then
+	local currentStands =
+		getLemonadeStands(plot)
 
-		return false, "The lemonade stand is already placed."
+	if not editedStand
+		and #currentStands
+			>= MAXIMUM_STANDS then
+
+		return false,
+			`You can only place {MAXIMUM_STANDS} Lemonade Stands.`
 	end
 
-	local template = businessModels:FindFirstChild(businessName)
+	local template =
+		businessModels:FindFirstChild(
+			businessName
+		)
 
-	if not template or not template:IsA("Model") then
-		return false, "The business model could not be found."
+	if not template
+		or not template:IsA("Model") then
+
+		return false,
+			"The business model could not be found."
 	end
 
 	if not template.PrimaryPart then
-		return false, "The LemonadeStand needs a PrimaryPart."
+		return false,
+			"The LemonadeStand needs a PrimaryPart."
 	end
 
-	local playerCharacter = player.Character
-	local playerRoot =
-		playerCharacter
-		and playerCharacter:FindFirstChild("HumanoidRootPart")
+	local character = player.Character
 
-	if playerRoot and playerRoot:IsA("BasePart") then
+	local root =
+		character
+		and character:FindFirstChild(
+			"HumanoidRootPart"
+		)
+
+	if root and root:IsA("BasePart") then
 		local distance =
-			(playerRoot.Position - placementCFrame.Position).Magnitude
+			(
+				root.Position
+				- placementCFrame.Position
+			).Magnitude
 
-		if distance > MAX_PLACEMENT_DISTANCE then
-			return false, "The placement is too far away."
+		if distance
+			> MAX_PLACEMENT_DISTANCE then
+
+			return false,
+				"The placement is too far away."
 		end
 	end
 
@@ -226,102 +523,256 @@ local function canPlaceBusiness(
 		)
 
 	if not boxCFrame or not boxSize then
-		return false, "The stand is missing PlacementBounds."
+		return false,
+			"The stand is missing PlacementBounds."
 	end
 
 	if not isBoundingBoxInsideGround(
 		ground,
 		boxCFrame,
 		boxSize
-		) then
-		return false, "The stand must be fully inside the plot."
+	) then
+		return false,
+			"The stand must be fully inside the plot."
 	end
 
 	if not isCorrectHeight(
 		ground,
 		placementCFrame
-		) then
-		return false, "The stand must be placed on the Ground."
+	) then
+		return false,
+			"The stand must be placed on the Ground."
 	end
+
+	if overlapsExistingBusiness(
+	plot,
+	boxCFrame,
+	boxSize,
+	editedStand
+) then
+	return false,
+		"Businesses cannot overlap."
+end
 
 	return true, ""
 end
 
-placeBusinessRemote.OnServerEvent:Connect(function(
-	player: Player,
-	businessName: string,
-	placementCFrame: CFrame
-)
-	local currentTime = time()
-	local previousRequest = placementRequests[player] or 0
-
-	if currentTime - previousRequest < 0.25 then
-		return
-	end
-
-	placementRequests[player] = currentTime
-
-	if typeof(businessName) ~= "string"
-		or not isValidCFrame(placementCFrame) then
-
-		return
-	end
-
-	local plot = getPlayerPlot(player)
-
-	if not plot then
-		placeBusinessRemote:FireClient(
-			player,
-			false,
-			"You do not own a plot."
-		)
-
-		return
-	end
-
-	local editStates = _G.BusinessEditStates
-
-	local editState =
-		typeof(editStates) == "table"
-		and editStates[player]
-		or nil
-
-	local valid, reason = canPlaceBusiness(
-		player,
-		plot,
-		businessName,
-		placementCFrame,
-		editState ~= nil
+placeBusinessRemote.OnServerEvent:Connect(
+	function(
+		player: Player,
+		businessName: string,
+		placementCFrame: CFrame
 	)
+		local currentTime = time()
 
-	if not valid then
-		placeBusinessRemote:FireClient(
-			player,
-			false,
-			reason
-		)
+		local previousRequest =
+			placementRequests[player] or 0
 
-		return
-	end
+		if currentTime - previousRequest
+			< 0.25 then
 
-	-- Move the existing stand when the player is editing.
-	if editState then
-		local stand = editState.stand
+			return
+		end
 
-		if not stand
-			or not stand.Parent
-			or editState.plot ~= plot then
+		placementRequests[player] =
+			currentTime
 
+		if typeof(businessName) ~= "string"
+			or not isValidCFrame(
+				placementCFrame
+			) then
+
+			return
+		end
+
+		local plot =
+			getPlayerPlot(player)
+
+		if not plot then
 			placeBusinessRemote:FireClient(
 				player,
 				false,
-				"The lemonade stand could not be moved."
+				"You do not own a plot."
 			)
 
 			return
 		end
 
-		stand:PivotTo(placementCFrame)
+		local editStates =
+			_G.BusinessEditStates
+
+		local editState =
+			typeof(editStates) == "table"
+			and editStates[player]
+			or nil
+
+		local editedStand =
+			editState
+			and editState.stand
+			or nil
+
+		local valid, reason =
+			canPlaceBusiness(
+				player,
+				plot,
+				businessName,
+				placementCFrame,
+				editedStand
+			)
+
+		if not valid then
+			placeBusinessRemote:FireClient(
+				player,
+				false,
+				reason
+			)
+
+			return
+		end
+
+		if editState then
+			local stand =
+				editState.stand
+
+			if not stand
+				or not stand.Parent
+				or editState.plot ~= plot then
+
+				placeBusinessRemote:FireClient(
+					player,
+					false,
+					"The Lemonade Stand could not be moved."
+				)
+
+				return
+			end
+
+			stand:PivotTo(
+				placementCFrame
+			)
+
+			stand:SetAttribute(
+				"StandUnavailable",
+				false
+			)
+
+			stand:SetAttribute(
+				"IsBeingEdited",
+				false
+			)
+
+			setPromptState(
+				stand,
+				true
+			)
+
+			editStates[player] = nil
+
+			player:SetAttribute(
+				"EditingBusiness",
+				nil
+			)
+
+			placeBusinessRemote:FireClient(
+				player,
+				true,
+				"Lemonade Stand moved!"
+			)
+
+			return
+		end
+
+		local currentStands =
+			getLemonadeStands(plot)
+
+		local standCost =
+			#currentStands == 0
+			and 0
+			or ADDITIONAL_STAND_COST
+
+		local cash = getCashValue(player)
+
+		if not cash then
+			placeBusinessRemote:FireClient(
+				player,
+				false,
+				"Your cash could not be found."
+			)
+
+			return
+		end
+
+		if cash.Value < standCost then
+			placeBusinessRemote:FireClient(
+				player,
+				false,
+				`You need ${standCost - cash.Value} more to build another stand.`
+			)
+
+			return
+		end
+
+		local template =
+			businessModels:FindFirstChild(
+				businessName
+			)
+
+		if not template
+			or not template:IsA("Model") then
+
+			return
+		end
+
+		local placedBusinesses =
+			getPlacedBusinesses(plot)
+
+		if not placedBusinesses then
+			return
+		end
+
+		local businessId =
+			DataService.GenerateBusinessId(
+				player,
+				businessName
+			)
+
+		if not businessId then
+			placeBusinessRemote:FireClient(
+				player,
+				false,
+				"Your business data was not ready."
+			)
+
+			return
+		end
+
+		if standCost > 0 then
+			cash.Value -= standCost
+		end
+
+		local stand = template:Clone()
+
+		stand.Name = businessId
+
+		stand:SetAttribute(
+			"BusinessId",
+			businessId
+		)
+
+		stand:SetAttribute(
+			"BusinessType",
+			businessName
+		)
+
+		stand:SetAttribute(
+			"OwnerUserId",
+			player.UserId
+		)
+
+		stand:SetAttribute(
+			"PlotName",
+			plot.Name
+		)
 
 		stand:SetAttribute(
 			"StandUnavailable",
@@ -333,79 +784,71 @@ placeBusinessRemote.OnServerEvent:Connect(function(
 			false
 		)
 
-		for _, descendant in stand:GetDescendants() do
-			if descendant:IsA("ProximityPrompt") then
-				descendant.Enabled = true
-			end
-		end
+		stand:SetAttribute(
+			"ServingSpeedLevel",
+			DataService.GetUpgradeLevel(
+				player,
+				businessName,
+				"ServingSpeed"
+			)
+		)
 
-		editStates[player] = nil
-		player:SetAttribute("EditingBusiness", nil)
+		stand:SetAttribute(
+			"SaleValueLevel",
+			DataService.GetUpgradeLevel(
+				player,
+				businessName,
+				"SaleValue"
+			)
+		)
+
+		stand:SetAttribute(
+			"QueueCapacityLevel",
+			DataService.GetUpgradeLevel(
+				player,
+				businessName,
+				"QueueCapacity"
+			)
+		)
+
+		setModelPlacedState(stand)
+
+		stand.Parent = placedBusinesses
+
+		stand:PivotTo(
+			placementCFrame
+		)
+
+		plot:SetAttribute(
+			"StarterBusinessPlaced",
+			true
+		)
+
+		local newCount =
+			#currentStands + 1
+
+		local message
+
+		if standCost == 0 then
+			message =
+				"Lemonade Stand placed!"
+		else
+			message =
+				`Lemonade Stand placed for ${standCost}!`
+		end
 
 		placeBusinessRemote:FireClient(
 			player,
 			true,
-			"Lemonade stand moved!"
+			message,
+			newCount,
+			MAXIMUM_STANDS
 		)
-
-		return
 	end
+)
 
-	-- Everything below this point is only for building a new stand.
-	local template =
-		businessModels:FindFirstChild(businessName)
-
-	if not template or not template:IsA("Model") then
-		return
-	end
-
-	local placedBusinesses =
-		getPlacedBusinesses(plot)
-
-	if not placedBusinesses then
-		return
-	end
-
-	local stand = template:Clone()
-	stand.Name = businessName
-
-	stand:SetAttribute(
-		"OwnerUserId",
-		player.UserId
-	)
-
-	stand:SetAttribute(
-		"PlotName",
-		plot.Name
-	)
-
-	stand:SetAttribute(
-		"StandUnavailable",
-		false
-	)
-
-	stand:SetAttribute(
-		"IsBeingEdited",
-		false
-	)
-
-	setModelPlacedState(stand)
-
-	stand.Parent = placedBusinesses
-	stand:PivotTo(placementCFrame)
-
-	plot:SetAttribute(
-		"StarterBusinessPlaced",
-		true
-	)
-
-	placeBusinessRemote:FireClient(
-		player,
-		true,
-		"Lemonade stand placed!"
-	)
-end)
-
-Players.PlayerRemoving:Connect(function(player)
+Players.PlayerRemoving:Connect(function(
+	player
+)
 	placementRequests[player] = nil
 end)
