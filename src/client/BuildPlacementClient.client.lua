@@ -157,11 +157,58 @@ local function getLemonadeStands(): {Model}
 	return stands
 end
 
-local function getExistingStand(): Model?
-	local stands =
-		getLemonadeStands()
+local function findStandByBusinessId(
+	businessId: string
+): Model?
+	if not ownedPlot
+		or type(businessId) ~= "string"
+		or businessId == "" then
 
-	return stands[1]
+		return nil
+	end
+
+	local placedBusinesses =
+		ownedPlot:FindFirstChild(
+			"PlacedBusinesses"
+		)
+
+	if not placedBusinesses then
+		return nil
+	end
+
+	for _, child in
+		placedBusinesses:GetChildren() do
+
+		if not child:IsA("Model") then
+			continue
+		end
+
+		if getBusinessType(child)
+			~= BUSINESS_NAME then
+
+			continue
+		end
+
+		if child:GetAttribute(
+			"OwnerUserId"
+		) ~= player.UserId then
+
+			continue
+		end
+
+		local childBusinessId =
+			child:GetAttribute(
+				"BusinessId"
+			)
+
+		if childBusinessId == businessId
+			or child.Name == businessId then
+
+			return child
+		end
+	end
+
+	return nil
 end
 
 local function getStandCount(): number
@@ -1136,7 +1183,8 @@ local function finishPlacementMode()
 end
 
 local function startPlacement(
-	editingExisting: boolean
+	editingExisting: boolean,
+	businessId: string?
 )
 	if isPlacementActive then
 		return
@@ -1153,8 +1201,26 @@ local function startPlacement(
 		return
 	end
 
-	local existingStand =
-		getExistingStand()
+	local existingStand: Model? = nil
+
+if editingExisting then
+	if type(businessId) ~= "string"
+		or businessId == "" then
+
+		showStatus(
+			"The selected lemonade stand could not be identified.",
+			2
+		)
+
+		cancelEditRemote:FireServer()
+		return
+	end
+
+	existingStand =
+		findStandByBusinessId(
+			businessId
+		)
+end
 
 	if not editingExisting
 	and getStandCount()
@@ -1504,7 +1570,8 @@ end)
 
 interactionResultRemote.OnClientEvent:Connect(function(
 	action: string,
-	message: any
+	message: any,
+	businessId: any
 )
 	if action == "ShowRemoveConfirmation" then
 		-- BusinessManagementClient owns this interface.
@@ -1512,9 +1579,25 @@ interactionResultRemote.OnClientEvent:Connect(function(
 	end
 
 	if action == "BeginEdit" then
-		startPlacement(true)
+	if typeof(businessId) ~= "string"
+		or businessId == "" then
+
+		showStatus(
+			"The selected lemonade stand could not be identified.",
+			2
+		)
+
+		cancelEditRemote:FireServer()
 		return
 	end
+
+	startPlacement(
+		true,
+		businessId
+	)
+
+	return
+end
 
 	if action == "Removed" then
 	finishPlacementMode()
