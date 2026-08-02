@@ -71,6 +71,9 @@ type SavedPlacedBusiness = {
 	TransformSpace: string,
 
 	Upgrades: UpgradeLevels,
+
+	TotalSales: number,
+	LifetimeEarnings: number,
 }
 
 type PlayerProfile = {
@@ -238,6 +241,23 @@ local function sanitizeUpgradeLevels(
 	return upgrades
 end
 
+local function sanitizeStatistic(
+	value: any
+): number
+	if type(value) ~= "number"
+		or value ~= value
+		or value == math.huge
+		or value == -math.huge then
+
+		return 0
+	end
+
+	return math.max(
+		0,
+		math.floor(value)
+	)
+end
+
 local function migrateVersionOneProfile(
 	profile: {[any]: any}
 )
@@ -274,6 +294,9 @@ local function migrateVersionOneProfile(
 
 			-- Version 1 stored world-space CFrames.
 			TransformSpace = "World",
+
+			TotalSales = 0,
+LifetimeEarnings = 0,
 
 			Upgrades =
 				sanitizeUpgradeLevels(
@@ -377,6 +400,16 @@ local function sanitizePlacedBusinesses(
 					sanitizeUpgradeLevels(
 						rawBusiness.Upgrades
 					),
+
+				TotalSales =
+	sanitizeStatistic(
+		rawBusiness.TotalSales
+	),
+
+LifetimeEarnings =
+	sanitizeStatistic(
+		rawBusiness.LifetimeEarnings
+	),
 			}
 		)
 	end
@@ -775,6 +808,20 @@ local function captureBusinessState(
 						instance,
 						businessType
 					),
+
+				TotalSales =
+	sanitizeStatistic(
+		instance:GetAttribute(
+			"TotalSales"
+		)
+	),
+
+LifetimeEarnings =
+	sanitizeStatistic(
+		instance:GetAttribute(
+			"LifetimeEarnings"
+		)
+	),
 			}
 		)
 	end

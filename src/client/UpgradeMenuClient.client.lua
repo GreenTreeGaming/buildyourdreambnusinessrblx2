@@ -22,6 +22,35 @@ local upgradeResultRemote =
 local getUpgradeStateRemote =
 	remotes:WaitForChild("GetUpgradeState")
 
+local function getOpenUpgradeMenuEvent(): BindableEvent
+	local existing =
+		playerGui:FindFirstChild(
+			"OpenUpgradeMenu"
+		)
+
+	if existing then
+		if not existing:IsA(
+			"BindableEvent"
+		) then
+
+			existing:Destroy()
+		else
+			return existing
+		end
+	end
+
+	local event =
+		Instance.new("BindableEvent")
+
+	event.Name = "OpenUpgradeMenu"
+	event.Parent = playerGui
+
+	return event
+end
+
+local openUpgradeMenuEvent =
+	getOpenUpgradeMenuEvent()
+
 local UITheme = require(
 	ReplicatedStorage
 		:WaitForChild("Shared")
@@ -73,6 +102,10 @@ local statusVersion = 0
 
 local cards: {
 	[string]: UpgradeCard
+} = {}
+
+local statisticLabels: {
+	[string]: TextLabel
 } = {}
 
 local function createTextLabel(
@@ -261,6 +294,64 @@ local function getClosestOwnedStand(): Model?
 	return closestStand
 end
 
+local function findOwnedStandByBusinessId(
+	businessId: string
+): Model?
+	if type(businessId) ~= "string"
+		or businessId == "" then
+
+		return nil
+	end
+
+	local plot =
+		getOwnedPlot()
+
+	if not plot then
+		return nil
+	end
+
+	local placedBusinesses =
+		plot:FindFirstChild(
+			"PlacedBusinesses"
+		)
+
+	if not placedBusinesses then
+		return nil
+	end
+
+	for _, child in
+		placedBusinesses:GetChildren() do
+
+		if not child:IsA("Model")
+			or not isLemonadeStand(
+				child
+			) then
+
+			continue
+		end
+
+		if child:GetAttribute(
+			"OwnerUserId"
+		) ~= player.UserId then
+
+			continue
+		end
+
+		local childBusinessId =
+			child:GetAttribute(
+				"BusinessId"
+			)
+
+		if childBusinessId == businessId
+			or child.Name == businessId then
+
+			return child
+		end
+	end
+
+	return nil
+end
+
 local function selectClosestStand(): boolean
 	local stand =
 		getClosestOwnedStand()
@@ -284,6 +375,41 @@ local function selectClosestStand(): boolean
 
 	selectedStand = stand
 	selectedBusinessId = businessId
+
+	return true
+end
+
+local function selectStandByBusinessId(
+	businessId: string
+): boolean
+	local stand =
+		findOwnedStandByBusinessId(
+			businessId
+		)
+
+	if not stand then
+		selectedStand = nil
+		selectedBusinessId = nil
+
+		return false
+	end
+
+	local resolvedBusinessId =
+		stand:GetAttribute(
+			"BusinessId"
+		)
+
+	if typeof(resolvedBusinessId)
+		~= "string"
+		or resolvedBusinessId == "" then
+
+		resolvedBusinessId =
+			stand.Name
+	end
+
+	selectedStand = stand
+	selectedBusinessId =
+		resolvedBusinessId
 
 	return true
 end
@@ -585,6 +711,94 @@ local function createUpgradeCard(
 	}
 end
 
+local function createStatisticBox(
+	parent: Instance,
+	name: string,
+	captionText: string
+): TextLabel
+	local box =
+		Instance.new("Frame")
+
+	box.Name = name .. "Box"
+
+	box.Size =
+		UDim2.new(
+			0.2,
+			-8,
+			1,
+			0
+		)
+
+	box.BackgroundColor3 =
+		Colors.Background
+
+	box.BackgroundTransparency = 0.2
+	box.BorderSizePixel = 0
+	box.Parent = parent
+
+	UITheme.AddCorner(
+		box,
+		0.12
+	)
+
+	UITheme.AddStroke(
+		box,
+		Colors.Stroke,
+		1,
+		0.5
+	)
+
+	local caption =
+		createTextLabel(
+			box,
+			"Caption",
+			captionText,
+			UDim2.fromScale(
+				0.06,
+				0.08
+			),
+			UDim2.fromScale(
+				0.88,
+				0.34
+			),
+			7,
+			11,
+			Fonts.Bold,
+			Colors.TextMuted
+		)
+
+	caption.TextWrapped = true
+
+	caption.TextXAlignment =
+		Enum.TextXAlignment.Center
+
+	local value =
+		createTextLabel(
+			box,
+			"Value",
+			"--",
+			UDim2.fromScale(
+				0.06,
+				0.43
+			),
+			UDim2.fromScale(
+				0.88,
+				0.44
+			),
+			11,
+			18,
+			Fonts.Black,
+			Colors.Text
+		)
+
+	value.TextWrapped = true
+
+	value.TextXAlignment =
+		Enum.TextXAlignment.Center
+
+	return value
+end
+
 local function createInterface()
 	local existing =
 		playerGui:FindFirstChild(
@@ -619,6 +833,10 @@ local function createInterface()
 
 	openButton.Text = "UPGRADES"
 	openButton.Parent = screenGui
+
+	openButton.Visible = false
+	openButton.Active = false
+	openButton.Selectable = false
 
 	UITheme.StyleText(
 		openButton,
@@ -717,6 +935,83 @@ local function createInterface()
 	header.BackgroundTransparency = 1
 	header.Parent = panel
 
+	local statisticsPanel =
+	Instance.new("Frame")
+
+statisticsPanel.Name =
+	"StatisticsPanel"
+
+statisticsPanel.Position =
+	UDim2.fromScale(
+		0.045,
+		0.165
+	)
+
+statisticsPanel.Size =
+	UDim2.fromScale(
+		0.91,
+		0.145
+	)
+
+statisticsPanel.BackgroundTransparency = 1
+statisticsPanel.Parent = panel
+
+local statisticsLayout =
+	Instance.new("UIListLayout")
+
+statisticsLayout.FillDirection =
+	Enum.FillDirection.Horizontal
+
+statisticsLayout.HorizontalAlignment =
+	Enum.HorizontalAlignment.Center
+
+statisticsLayout.VerticalAlignment =
+	Enum.VerticalAlignment.Center
+
+statisticsLayout.SortOrder =
+	Enum.SortOrder.LayoutOrder
+
+statisticsLayout.Padding =
+	UDim.new(0, 8)
+
+statisticsLayout.Parent =
+	statisticsPanel
+
+statisticLabels.TotalSales =
+	createStatisticBox(
+		statisticsPanel,
+		"TotalSales",
+		"TOTAL SALES"
+	)
+
+statisticLabels.LifetimeEarnings =
+	createStatisticBox(
+		statisticsPanel,
+		"LifetimeEarnings",
+		"LIFETIME CASH"
+	)
+
+statisticLabels.CustomersWaiting =
+	createStatisticBox(
+		statisticsPanel,
+		"CustomersWaiting",
+		"WAITING"
+	)
+
+statisticLabels.ServiceTime =
+	createStatisticBox(
+		statisticsPanel,
+		"ServiceTime",
+		"SERVICE TIME"
+	)
+
+statisticLabels.CashPerSale =
+	createStatisticBox(
+		statisticsPanel,
+		"CashPerSale",
+		"CASH / SALE"
+	)
+
 	local title = createTextLabel(
 		header,
 		"Title",
@@ -799,10 +1094,16 @@ local function createInterface()
 		"UpgradeList"
 
 	scrollingFrame.Position =
-		UDim2.fromScale(0.045, 0.17)
+	UDim2.fromScale(
+		0.045,
+		0.33
+	)
 
-	scrollingFrame.Size =
-		UDim2.fromScale(0.91, 0.72)
+scrollingFrame.Size =
+	UDim2.fromScale(
+		0.91,
+		0.56
+	)
 
 	scrollingFrame.BackgroundTransparency = 1
 	scrollingFrame.BorderSizePixel = 0
@@ -971,6 +1272,97 @@ local titleLabel =
 
 local subtitleLabel =
 	interface.SubtitleLabel
+
+local function getNumericAttribute(
+	instance: Instance,
+	attributeName: string
+): number
+	local value =
+		instance:GetAttribute(
+			attributeName
+		)
+
+	if typeof(value) ~= "number" then
+		return 0
+	end
+
+	return math.max(
+		0,
+		value
+	)
+end
+
+local function updateStatistics()
+	if not selectedStand
+		or not selectedStand.Parent then
+
+		for _, label in statisticLabels do
+			label.Text = "--"
+		end
+
+		return
+	end
+
+	local totalSales =
+		getNumericAttribute(
+			selectedStand,
+			"TotalSales"
+		)
+
+	local lifetimeEarnings =
+		getNumericAttribute(
+			selectedStand,
+			"LifetimeEarnings"
+		)
+
+	local customersWaiting =
+		getNumericAttribute(
+			selectedStand,
+			"CustomersWaiting"
+		)
+
+	local serviceTime =
+		getNumericAttribute(
+			selectedStand,
+			"PurchaseCooldown"
+		)
+
+	local cashPerSale =
+		getNumericAttribute(
+			selectedStand,
+			"SaleValue"
+		)
+
+	statisticLabels.TotalSales.Text =
+		string.format(
+			"%d",
+			math.floor(totalSales)
+		)
+
+	statisticLabels.LifetimeEarnings.Text =
+		string.format(
+			"$%d",
+			math.floor(lifetimeEarnings)
+		)
+
+	statisticLabels.CustomersWaiting.Text =
+		string.format(
+			"%d",
+			math.floor(customersWaiting)
+		)
+
+	statisticLabels.ServiceTime.Text =
+		string.format(
+			"%.2fs",
+			serviceTime
+		)
+
+	statisticLabels.CashPerSale.Text =
+		string.format(
+			"$%d",
+			math.floor(cashPerSale)
+		)
+end
 
 local function showStatus(
 	message: string,
@@ -1162,16 +1554,19 @@ local function refreshAllCards()
 	end
 end
 
-interface.OpenButton.Activated:Connect(function()
+local function openUpgradeMenuForStand(
+	businessId: string
+)
 	if interface.Overlay.Visible then
 		return
 	end
 
-	if not selectClosestStand()
-		or not selectedBusinessId then
+	if not selectStandByBusinessId(
+		businessId
+	) or not selectedBusinessId then
 
 		showStatus(
-			"Stand near a lemonade stand to upgrade it.",
+			"The selected lemonade stand could not be found.",
 			true
 		)
 
@@ -1189,15 +1584,26 @@ interface.OpenButton.Activated:Connect(function()
 	subtitleLabel.Text =
 		"Upgrades apply only to this stand."
 
+	requestPending = nil
+
 	interface.Overlay.Visible = true
 	interface.OpenButton.Visible = false
 
+	updateStatistics()
 	refreshAllCards()
+end
+
+openUpgradeMenuEvent.Event:Connect(function(
+	businessId: string
+)
+	openUpgradeMenuForStand(
+		businessId
+	)
 end)
 
 interface.CloseButton.Activated:Connect(function()
 	interface.Overlay.Visible = false
-	interface.OpenButton.Visible = true
+	interface.OpenButton.Visible = false
 
 	requestPending = nil
 	selectedStand = nil
@@ -1211,7 +1617,7 @@ task.spawn(function()
 				or not selectedStand.Parent then
 
 				interface.Overlay.Visible = false
-				interface.OpenButton.Visible = true
+				interface.OpenButton.Visible = false
 
 				requestPending = nil
 				selectedStand = nil
@@ -1269,5 +1675,18 @@ cash:GetPropertyChangedSignal("Value"):Connect(function()
 		and not requestPending then
 
 		refreshAllCards()
+	end
+end)
+
+task.spawn(function()
+	while true do
+		if interface.Overlay.Visible
+			and selectedStand
+			and selectedStand.Parent then
+
+			updateStatistics()
+		end
+
+		task.wait(0.25)
 	end
 end)

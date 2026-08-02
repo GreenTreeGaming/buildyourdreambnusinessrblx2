@@ -34,6 +34,35 @@ local interactionResultRemote =
 		"BusinessInteractionResult"
 	)
 
+local function getOpenUpgradeMenuEvent(): BindableEvent
+	local existing =
+		playerGui:FindFirstChild(
+			"OpenUpgradeMenu"
+		)
+
+	if existing then
+		if not existing:IsA(
+			"BindableEvent"
+		) then
+
+			existing:Destroy()
+		else
+			return existing
+		end
+	end
+
+	local event =
+		Instance.new("BindableEvent")
+
+	event.Name = "OpenUpgradeMenu"
+	event.Parent = playerGui
+
+	return event
+end
+
+local openUpgradeMenuEvent =
+	getOpenUpgradeMenuEvent()
+
 local UITheme = require(
 	ReplicatedStorage
 		:WaitForChild("Shared")
@@ -451,10 +480,10 @@ local function createManagementUI(
 	billboard.Adornee = adornee
 
 	billboard.Size =
-		UDim2.fromScale(
-			7.4,
-			2.25
-		)
+	UDim2.fromScale(
+		9.4,
+		2.25
+	)
 
 	billboard.StudsOffsetWorldSpace =
 		Vector3.new(
@@ -651,27 +680,54 @@ local function createManagementUI(
 		Enum.VerticalAlignment.Center
 
 	layout.Padding =
-		UDim.new(0.04, 0)
+	UDim.new(0.025, 0)
 
 	layout.Parent = buttons
 
 	local editButton =
-		createActionButton(
-			buttons,
-			"EditButton",
-			"MOVE",
-			Colors.Info,
-			Colors.InfoDark
-		)
+	createActionButton(
+		buttons,
+		"EditButton",
+		"MOVE",
+		Colors.Info,
+		Colors.InfoDark
+	)
 
-	local removeButton =
-		createActionButton(
-			buttons,
-			"RemoveButton",
-			"REMOVE",
-			Colors.Danger,
-			Colors.DangerDark
-		)
+local upgradeButton =
+	createActionButton(
+		buttons,
+		"UpgradeButton",
+		"UPGRADE",
+		Colors.Primary,
+		Colors.PrimaryDark
+	)
+
+local removeButton =
+	createActionButton(
+		buttons,
+		"RemoveButton",
+		"REMOVE",
+		Colors.Danger,
+		Colors.DangerDark
+	)
+
+editButton.Size =
+	UDim2.fromScale(
+		0.31,
+		1
+	)
+
+upgradeButton.Size =
+	UDim2.fromScale(
+		0.31,
+		1
+	)
+
+removeButton.Size =
+	UDim2.fromScale(
+		0.31,
+		1
+	)
 
 	editButton.Activated:Connect(function()
 		if stand
@@ -703,6 +759,60 @@ local function createManagementUI(
 			businessId
 		)
 	end)
+
+	upgradeButton.Activated:Connect(function()
+	if stand
+		~= getClosestOwnedStand() then
+
+		showToast(
+			"Your lemonade stand could not be found.",
+			true
+		)
+
+		return
+	end
+
+	if stand:GetAttribute(
+		"IsBeingEdited"
+	) == true then
+
+		showToast(
+			"Finish moving this stand first.",
+			true
+		)
+
+		return
+	end
+
+	if stand:GetAttribute(
+		"StandUnavailable"
+	) == true then
+
+		showToast(
+			"This stand is currently unavailable.",
+			true
+		)
+
+		return
+	end
+
+	local businessId =
+		stand:GetAttribute(
+			"BusinessId"
+		)
+
+	if typeof(businessId) ~= "string"
+		or businessId == "" then
+
+		businessId = stand.Name
+	end
+
+	billboard.Enabled = false
+
+	openUpgradeMenuEvent:Fire(
+		businessId
+	)
+end)
 
 	removeButton.Activated:Connect(function()
 		if removeRequestPending then

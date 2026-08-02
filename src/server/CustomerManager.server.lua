@@ -229,6 +229,30 @@ local function getStandState(
 	return newState
 end
 
+local function updateStandWaitingCount(
+	stand: Model,
+	state: StandState
+)
+	if not stand.Parent then
+		return
+	end
+
+	local waitingCount = 0
+
+	for _, entry in state.queue do
+		if entry.customer.Parent
+			and not entry.isLeaving then
+
+			waitingCount += 1
+		end
+	end
+
+	stand:SetAttribute(
+		"CustomersWaiting",
+		waitingCount
+	)
+end
+
 local function getPlayerFromPlot(
 	plot: Model
 ): Player?
@@ -1121,6 +1145,42 @@ local function rewardPlotOwner(
 
 	cash.Value += saleValue
 
+	local totalSales =
+	stand:GetAttribute(
+		"TotalSales"
+	)
+
+if typeof(totalSales) ~= "number" then
+	totalSales = 0
+end
+
+local lifetimeEarnings =
+	stand:GetAttribute(
+		"LifetimeEarnings"
+	)
+
+if typeof(lifetimeEarnings)
+	~= "number" then
+
+	lifetimeEarnings = 0
+end
+
+stand:SetAttribute(
+	"TotalSales",
+	math.max(
+		0,
+		math.floor(totalSales)
+	) + 1
+)
+
+stand:SetAttribute(
+	"LifetimeEarnings",
+	math.max(
+		0,
+		math.floor(lifetimeEarnings)
+	) + saleValue
+)
+
 	showCashPopup(
 		stand,
 		saleValue
@@ -1323,6 +1383,11 @@ local function evacuateStandCustomers(
 
 	table.clear(state.queue)
 
+updateStandWaitingCount(
+	stand,
+	state
+)
+
 	for _, entry in customersToRemove do
 		entry.isLeaving = true
 		entry.targetPosition = nil
@@ -1434,6 +1499,11 @@ local function processQueue(
 				1
 			)
 
+			updateStandWaitingCount(
+	stand,
+	state
+)
+
 			moveQueueForward(
 				stand,
 				state
@@ -1484,6 +1554,11 @@ local function processQueue(
 				state.queue,
 				1
 			)
+
+			updateStandWaitingCount(
+	stand,
+	state
+)
 
 			if customer.Parent then
 				sendCustomerToExit(
@@ -1595,6 +1670,11 @@ local function processQueue(
 			state.queue,
 			1
 		)
+
+		updateStandWaitingCount(
+	stand,
+	state
+)
 
 		sendCustomerToExit(
 			plot,
@@ -1712,9 +1792,14 @@ local function spawnCustomerForStand(
 	}
 
 	table.insert(
-		state.queue,
-		entry
-	)
+	state.queue,
+	entry
+)
+
+updateStandWaitingCount(
+	stand,
+	state
+)
 
 	moveQueueForward(
 		stand,
@@ -1756,6 +1841,13 @@ local function cleanStandState(
 			entry.customer:Destroy()
 		end
 	end
+
+	if stand.Parent then
+	stand:SetAttribute(
+		"CustomersWaiting",
+		0
+	)
+end
 
 	setStandServingState(
 		stand,

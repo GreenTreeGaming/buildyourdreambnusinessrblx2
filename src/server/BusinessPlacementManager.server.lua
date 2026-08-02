@@ -812,6 +812,21 @@ end
 		)
 
 		stand:SetAttribute(
+	"TotalSales",
+	0
+)
+
+stand:SetAttribute(
+	"LifetimeEarnings",
+	0
+)
+
+stand:SetAttribute(
+	"CustomersWaiting",
+	0
+)
+
+		stand:SetAttribute(
 			"SaleValueLevel",
 			0
 		)
