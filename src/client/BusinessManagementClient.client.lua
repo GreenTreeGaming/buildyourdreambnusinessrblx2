@@ -1,9 +1,15 @@
-local Players = game:GetService("Players")
+local Players =
+	game:GetService("Players")
+
 local ReplicatedStorage =
 	game:GetService("ReplicatedStorage")
-local Workspace = game:GetService("Workspace")
 
-local player = Players.LocalPlayer
+local Workspace =
+	game:GetService("Workspace")
+
+local player =
+	Players.LocalPlayer
+
 local playerGui =
 	player:WaitForChild("PlayerGui")
 
@@ -14,13 +20,19 @@ local remotes =
 	ReplicatedStorage:WaitForChild("Remotes")
 
 local requestEditRemote =
-	remotes:WaitForChild("RequestEditBusiness")
+	remotes:WaitForChild(
+		"RequestEditBusiness"
+	)
 
 local requestRemoveRemote =
-	remotes:WaitForChild("RequestRemoveBusiness")
+	remotes:WaitForChild(
+		"RequestRemoveBusiness"
+	)
 
 local interactionResultRemote =
-	remotes:WaitForChild("BusinessInteractionResult")
+	remotes:WaitForChild(
+		"BusinessInteractionResult"
+	)
 
 local UITheme = require(
 	ReplicatedStorage
@@ -31,20 +43,38 @@ local UITheme = require(
 local Colors = UITheme.Colors
 local Fonts = UITheme.Fonts
 
-local BUSINESS_NAME = "LemonadeStand"
+local BUSINESS_NAME =
+	"LemonadeStand"
 
 local MANAGEMENT_DISTANCE = 22
 local UPDATE_INTERVAL = 0.1
 
 local managementGui: BillboardGui? = nil
 local managementStand: Model? = nil
+
 local confirmationOverlay: Frame? = nil
 local confirmationWindow: Frame? = nil
-local toastLabel: TextLabel? = nil
-local managementCreationPending = false
+local confirmationShadow: Frame? = nil
 
+local confirmationTitle: TextLabel? = nil
+local confirmationSubtitle: TextLabel? = nil
+local confirmationDescription: TextLabel? = nil
+
+local confirmationButtons: Frame? = nil
+local confirmationButtonsLayout:
+	UIListLayout? = nil
+
+local keepStandButton: TextButton? = nil
+local confirmRemoveButton: TextButton? = nil
+
+local toastLabel: TextLabel? = nil
+
+local managementCreationPending = false
 local removeRequestPending = false
-local pendingRemoveBusinessId: string? = nil
+
+local pendingRemoveBusinessId:
+	string? = nil
+
 local toastVersion = 0
 
 local function getOwnedPlot(): Model?
@@ -53,21 +83,27 @@ local function getOwnedPlot(): Model?
 
 	if typeof(plotName) == "string" then
 		local plot =
-			plotsFolder:FindFirstChild(plotName)
+			plotsFolder:FindFirstChild(
+				plotName
+			)
 
 		if plot
 			and plot:IsA("Model")
-			and plot:GetAttribute("OwnerUserId")
-			== player.UserId then
+			and plot:GetAttribute(
+				"OwnerUserId"
+			) == player.UserId then
 
 			return plot
 		end
 	end
 
-	for _, plot in plotsFolder:GetChildren() do
+	for _, plot in
+		plotsFolder:GetChildren() do
+
 		if plot:IsA("Model")
-			and plot:GetAttribute("OwnerUserId")
-			== player.UserId then
+			and plot:GetAttribute(
+				"OwnerUserId"
+			) == player.UserId then
 
 			return plot
 		end
@@ -77,7 +113,8 @@ local function getOwnedPlot(): Model?
 end
 
 local function getCharacterRoot(): BasePart?
-	local character = player.Character
+	local character =
+		player.Character
 
 	if not character then
 		return nil
@@ -121,7 +158,8 @@ local function isLemonadeStand(
 end
 
 local function getClosestOwnedStand(): Model?
-	local plot = getOwnedPlot()
+	local plot =
+		getOwnedPlot()
 
 	if not plot then
 		return nil
@@ -157,9 +195,7 @@ local function getClosestOwnedStand(): Model?
 			continue
 		end
 
-		local stand: Model = child
-
-		if stand:GetAttribute(
+		if child:GetAttribute(
 			"OwnerUserId"
 		) ~= player.UserId then
 
@@ -167,12 +203,13 @@ local function getClosestOwnedStand(): Model?
 		end
 
 		local positionInstance =
-			stand:FindFirstChild(
+			child:FindFirstChild(
 				"ManagementUIPosition",
 				true
 			)
 
-		local positionPart: BasePart? = nil
+		local positionPart:
+			BasePart? = nil
 
 		if positionInstance
 			and positionInstance:IsA(
@@ -181,9 +218,9 @@ local function getClosestOwnedStand(): Model?
 
 			positionPart =
 				positionInstance
-		elseif stand.PrimaryPart then
+		elseif child.PrimaryPart then
 			positionPart =
-				stand.PrimaryPart
+				child.PrimaryPart
 		end
 
 		if not positionPart then
@@ -198,32 +235,11 @@ local function getClosestOwnedStand(): Model?
 
 		if distance < closestDistance then
 			closestDistance = distance
-			closestStand = stand
+			closestStand = child
 		end
 	end
 
 	return closestStand
-end
-
-local function getCharacterRoot(): BasePart?
-	local character = player.Character
-
-	if not character then
-		return nil
-	end
-
-	local rootPart =
-		character:FindFirstChild(
-			"HumanoidRootPart"
-		)
-
-	if rootPart
-		and rootPart:IsA("BasePart") then
-
-		return rootPart
-	end
-
-	return nil
 end
 
 local function getUIAdornee(
@@ -238,7 +254,9 @@ local function getUIAdornee(
 			)
 
 		if managementPosition
-			and managementPosition:IsA("BasePart") then
+			and managementPosition:IsA(
+				"BasePart"
+			) then
 
 			return managementPosition
 		end
@@ -250,7 +268,9 @@ local function getUIAdornee(
 			)
 
 		if cooldownPosition
-			and cooldownPosition:IsA("BasePart") then
+			and cooldownPosition:IsA(
+				"BasePart"
+			) then
 
 			return cooldownPosition
 		end
@@ -262,7 +282,9 @@ local function getUIAdornee(
 			)
 
 		if salePosition
-			and salePosition:IsA("BasePart") then
+			and salePosition:IsA(
+				"BasePart"
+			) then
 
 			return salePosition
 		end
@@ -274,9 +296,12 @@ local function getUIAdornee(
 		return nil
 	end
 
-	local existing = findAdornee()
+	local existing =
+		findAdornee()
 
-	if existing or waitForReplication ~= true then
+	if existing
+		or waitForReplication ~= true then
+
 		return existing
 	end
 
@@ -285,7 +310,8 @@ local function getUIAdornee(
 	while stand.Parent
 		and time() - startedAt < 10 do
 
-		local adornee = findAdornee()
+		local adornee =
+			findAdornee()
 
 		if adornee then
 			return adornee
@@ -309,9 +335,12 @@ local function showToast(
 	end
 
 	toastVersion += 1
-	local currentVersion = toastVersion
+
+	local currentVersion =
+		toastVersion
 
 	toastLabel.Text = message
+
 	toastLabel.TextColor3 =
 		isError
 		and Colors.Danger
@@ -335,15 +364,30 @@ local function createActionButton(
 	topColor: Color3,
 	bottomColor: Color3
 ): TextButton
-	local button = Instance.new("TextButton")
+	local button =
+		Instance.new("TextButton")
 
 	button.Name = name
+
 	button.Size =
-		UDim2.fromScale(0.48, 1)
+		UDim2.fromScale(
+			0.48,
+			1
+		)
+
+	button.BackgroundColor3 =
+		topColor
+
+	button.BorderSizePixel = 0
 
 	button.Text = text
+	button.TextWrapped = true
 	button.TextColor3 = Colors.Text
 	button.TextTransparency = 0
+
+	button.AutoButtonColor = true
+	button.Active = true
+
 	button.ZIndex = 10
 	button.Parent = parent
 
@@ -362,7 +406,9 @@ local function createActionButton(
 		Colors.Text
 	)
 
-	button.TextColor3 = Colors.Text
+	button.TextColor3 =
+		Colors.Text
+
 	button.TextTransparency = 0
 
 	return button
@@ -383,15 +429,15 @@ local function createManagementUI(
 	destroyManagementUI()
 
 	local adornee =
-	getUIAdornee(
-		stand,
-		true
-	)
+		getUIAdornee(
+			stand,
+			true
+		)
 
 	if not adornee then
 		warn(
-	`{stand:GetFullName()} did not finish loading a management UI position.`
-)
+			`{stand:GetFullName()} did not finish loading a management UI position.`
+		)
 
 		return
 	end
@@ -404,15 +450,22 @@ local function createManagementUI(
 
 	billboard.Adornee = adornee
 
-	-- Scale values on BillboardGui are world-space studs.
 	billboard.Size =
-		UDim2.fromScale(7.4, 2.25)
+		UDim2.fromScale(
+			7.4,
+			2.25
+		)
 
 	billboard.StudsOffsetWorldSpace =
-		Vector3.new(0, 3.1, 0)
+		Vector3.new(
+			0,
+			3.1,
+			0
+		)
 
 	billboard.AlwaysOnTop = true
 	billboard.LightInfluence = 0
+
 	billboard.MaxDistance =
 		MANAGEMENT_DISTANCE + 5
 
@@ -421,16 +474,25 @@ local function createManagementUI(
 	billboard.ResetOnSpawn = false
 	billboard.Parent = playerGui
 
-	local shadow = Instance.new("Frame")
+	local shadow =
+		Instance.new("Frame")
+
 	shadow.Name = "Shadow"
+
 	shadow.AnchorPoint =
 		Vector2.new(0.5, 0.5)
 
 	shadow.Position =
-		UDim2.fromScale(0.51, 0.54)
+		UDim2.fromScale(
+			0.51,
+			0.54
+		)
 
 	shadow.Size =
-		UDim2.fromScale(0.98, 0.96)
+		UDim2.fromScale(
+			0.98,
+			0.96
+		)
 
 	shadow.BackgroundColor3 =
 		Colors.Shadow
@@ -439,18 +501,30 @@ local function createManagementUI(
 	shadow.BorderSizePixel = 0
 	shadow.Parent = billboard
 
-	UITheme.AddCorner(shadow, 0.12)
+	UITheme.AddCorner(
+		shadow,
+		0.12
+	)
 
-	local container = Instance.new("Frame")
+	local container =
+		Instance.new("Frame")
+
 	container.Name = "Container"
+
 	container.AnchorPoint =
 		Vector2.new(0.5, 0.5)
 
 	container.Position =
-		UDim2.fromScale(0.5, 0.5)
+		UDim2.fromScale(
+			0.5,
+			0.5
+		)
 
 	container.Size =
-		UDim2.fromScale(0.98, 0.96)
+		UDim2.fromScale(
+			0.98,
+			0.96
+		)
 
 	container.BackgroundColor3 =
 		Colors.Surface
@@ -460,7 +534,10 @@ local function createManagementUI(
 	container.ZIndex = 2
 	container.Parent = billboard
 
-	UITheme.AddCorner(container, 0.12)
+	UITheme.AddCorner(
+		container,
+		0.12
+	)
 
 	UITheme.AddStroke(
 		container,
@@ -475,13 +552,22 @@ local function createManagementUI(
 		Colors.Background
 	)
 
-	local accent = Instance.new("Frame")
+	local accent =
+		Instance.new("Frame")
+
 	accent.Name = "Accent"
+
 	accent.Position =
-		UDim2.fromScale(0.03, 0.08)
+		UDim2.fromScale(
+			0.03,
+			0.08
+		)
 
 	accent.Size =
-		UDim2.fromScale(0.025, 0.84)
+		UDim2.fromScale(
+			0.025,
+			0.84
+		)
 
 	accent.BackgroundColor3 =
 		Colors.Primary
@@ -490,18 +576,32 @@ local function createManagementUI(
 	accent.ZIndex = 3
 	accent.Parent = container
 
-	UITheme.AddCorner(accent, 0.5)
+	UITheme.AddCorner(
+		accent,
+		0.5
+	)
 
-	local title = Instance.new("TextLabel")
+	local title =
+		Instance.new("TextLabel")
+
 	title.Name = "Title"
+
 	title.Position =
-		UDim2.fromScale(0.09, 0.08)
+		UDim2.fromScale(
+			0.09,
+			0.08
+		)
 
 	title.Size =
-		UDim2.fromScale(0.82, 0.23)
+		UDim2.fromScale(
+			0.82,
+			0.23
+		)
 
 	title.BackgroundTransparency = 1
 	title.Text = "LEMONADE STAND"
+	title.TextWrapped = true
+
 	title.TextXAlignment =
 		Enum.TextXAlignment.Left
 
@@ -516,13 +616,22 @@ local function createManagementUI(
 		Fonts.Black
 	)
 
-	local buttons = Instance.new("Frame")
+	local buttons =
+		Instance.new("Frame")
+
 	buttons.Name = "Buttons"
+
 	buttons.Position =
-		UDim2.fromScale(0.09, 0.5)
+		UDim2.fromScale(
+			0.09,
+			0.5
+		)
 
 	buttons.Size =
-		UDim2.fromScale(0.82, 0.36)
+		UDim2.fromScale(
+			0.82,
+			0.36
+		)
 
 	buttons.BackgroundTransparency = 1
 	buttons.Active = true
@@ -541,27 +650,33 @@ local function createManagementUI(
 	layout.VerticalAlignment =
 		Enum.VerticalAlignment.Center
 
-	layout.Padding = UDim.new(0.04, 0)
+	layout.Padding =
+		UDim.new(0.04, 0)
+
 	layout.Parent = buttons
 
-	local editButton = createActionButton(
-	buttons,
-	"EditButton",
-	"MOVE",
-	Colors.Info,
-	Colors.InfoDark
-)
+	local editButton =
+		createActionButton(
+			buttons,
+			"EditButton",
+			"MOVE",
+			Colors.Info,
+			Colors.InfoDark
+		)
 
-local removeButton = createActionButton(
-	buttons,
-	"RemoveButton",
-	"REMOVE",
-	Colors.Danger,
-	Colors.DangerDark
-)
+	local removeButton =
+		createActionButton(
+			buttons,
+			"RemoveButton",
+			"REMOVE",
+			Colors.Danger,
+			Colors.DangerDark
+		)
 
 	editButton.Activated:Connect(function()
-		if stand ~= getClosestOwnedStand() then
+		if stand
+			~= getClosestOwnedStand() then
+
 			showToast(
 				"Your lemonade stand could not be found.",
 				true
@@ -570,17 +685,23 @@ local removeButton = createActionButton(
 			return
 		end
 
-		if stand:GetAttribute("IsBeingEdited")
-			== true then
+		if stand:GetAttribute(
+			"IsBeingEdited"
+		) == true then
 
 			return
 		end
 
+		local businessId =
+			stand:GetAttribute(
+				"BusinessId"
+			) or stand.Name
+
 		billboard.Enabled = false
+
 		requestEditRemote:FireServer(
-	stand:GetAttribute("BusinessId")
-		or stand.Name
-)
+			businessId
+		)
 	end)
 
 	removeButton.Activated:Connect(function()
@@ -588,7 +709,9 @@ local removeButton = createActionButton(
 			return
 		end
 
-		if stand ~= getClosestOwnedStand() then
+		if stand
+			~= getClosestOwnedStand() then
+
 			showToast(
 				"Your lemonade stand could not be found.",
 				true
@@ -598,15 +721,16 @@ local removeButton = createActionButton(
 		end
 
 		pendingRemoveBusinessId =
-	stand:GetAttribute("BusinessId")
-	or stand.Name
+			stand:GetAttribute(
+				"BusinessId"
+			) or stand.Name
 
-removeRequestPending = true
+		removeRequestPending = true
 
-requestRemoveRemote:FireServer(
-	false,
-	pendingRemoveBusinessId
-)
+		requestRemoveRemote:FireServer(
+			false,
+			pendingRemoveBusinessId
+		)
 
 		task.delay(2, function()
 			removeRequestPending = false
@@ -624,6 +748,243 @@ local function hideRemoveConfirmation()
 
 	removeRequestPending = false
 	pendingRemoveBusinessId = nil
+end
+
+local function updateConfirmationLayout()
+	local camera =
+		Workspace.CurrentCamera
+
+	if not camera
+		or not confirmationWindow
+		or not confirmationShadow
+		or not confirmationButtons
+		or not confirmationButtonsLayout
+		or not keepStandButton
+		or not confirmRemoveButton
+		or not confirmationTitle
+		or not confirmationSubtitle
+		or not confirmationDescription
+		or not toastLabel then
+
+		return
+	end
+
+	local viewport =
+		camera.ViewportSize
+
+	local portrait =
+		viewport.Y > viewport.X
+
+	local narrow =
+		viewport.X < 700
+
+	local shortScreen =
+		viewport.Y < 600
+
+	local mobile =
+		portrait or narrow
+
+	local horizontalMargin = 24
+	local verticalMargin = 36
+
+	local maximumWidth =
+		mobile and 520 or 680
+
+	local maximumHeight =
+		mobile and 520 or 410
+
+	local windowWidth =
+		math.min(
+			maximumWidth,
+			viewport.X - horizontalMargin * 2
+		)
+
+	local windowHeight =
+		math.min(
+			maximumHeight,
+			viewport.Y - verticalMargin * 2
+		)
+
+	windowWidth =
+		math.max(
+			300,
+			windowWidth
+		)
+
+	windowHeight =
+		math.max(
+			330,
+			windowHeight
+		)
+
+	if shortScreen then
+		windowHeight =
+			math.min(
+				windowHeight,
+				viewport.Y - 24
+			)
+	end
+
+	confirmationWindow.Size =
+		UDim2.fromOffset(
+			windowWidth,
+			windowHeight
+		)
+
+	confirmationShadow.Size =
+		UDim2.fromOffset(
+			windowWidth,
+			windowHeight
+		)
+
+	confirmationShadow.Position =
+		UDim2.new(
+			0.5,
+			8,
+			0.5,
+			10
+		)
+
+	local contentPadding =
+		mobile and 22 or 34
+
+	confirmationTitle.Position =
+		UDim2.fromOffset(
+			contentPadding,
+			mobile and 24 or 30
+		)
+
+	confirmationTitle.Size =
+		UDim2.new(
+			1,
+			-contentPadding * 2,
+			0,
+			mobile and 52 or 48
+		)
+
+	confirmationSubtitle.Position =
+		UDim2.fromOffset(
+			contentPadding,
+			mobile and 80 or 82
+		)
+
+	confirmationSubtitle.Size =
+		UDim2.new(
+			1,
+			-contentPadding * 2,
+			0,
+			mobile and 42 or 36
+		)
+
+	local descriptionY =
+		mobile and 132 or 128
+
+	local descriptionHeight =
+		mobile and 84 or 76
+
+	confirmationDescription.Position =
+		UDim2.fromOffset(
+			contentPadding,
+			descriptionY
+		)
+
+	confirmationDescription.Size =
+		UDim2.new(
+			1,
+			-contentPadding * 2,
+			0,
+			descriptionHeight
+		)
+
+	if mobile then
+		confirmationButtonsLayout.FillDirection =
+			Enum.FillDirection.Vertical
+
+		confirmationButtonsLayout.Padding =
+			UDim.new(0, 12)
+
+		confirmationButtons.Position =
+			UDim2.fromOffset(
+				contentPadding,
+				descriptionY
+					+ descriptionHeight
+					+ 18
+			)
+
+		confirmationButtons.Size =
+			UDim2.new(
+				1,
+				-contentPadding * 2,
+				0,
+				124
+			)
+
+		keepStandButton.Size =
+			UDim2.new(
+				1,
+				0,
+				0,
+				56
+			)
+
+		confirmRemoveButton.Size =
+			UDim2.new(
+				1,
+				0,
+				0,
+				56
+			)
+	else
+		confirmationButtonsLayout.FillDirection =
+			Enum.FillDirection.Horizontal
+
+		confirmationButtonsLayout.Padding =
+			UDim.new(0, 16)
+
+		confirmationButtons.Position =
+			UDim2.fromOffset(
+				contentPadding,
+				descriptionY
+					+ descriptionHeight
+					+ 24
+			)
+
+		confirmationButtons.Size =
+			UDim2.new(
+				1,
+				-contentPadding * 2,
+				0,
+				66
+			)
+
+		keepStandButton.Size =
+			UDim2.new(
+				0.5,
+				-8,
+				1,
+				0
+			)
+
+		confirmRemoveButton.Size =
+			UDim2.new(
+				0.5,
+				-8,
+				1,
+				0
+			)
+	end
+
+	local toastWidth =
+		math.min(
+			560,
+			viewport.X - 32
+		)
+
+	toastLabel.Size =
+		UDim2.fromOffset(
+			toastWidth,
+			mobile and 56 or 48
+		)
 end
 
 local function createRemoveConfirmation()
@@ -645,67 +1006,104 @@ local function createRemoveConfirmation()
 	screenGui.IgnoreGuiInset = false
 	screenGui.ResetOnSpawn = false
 	screenGui.DisplayOrder = 100
+	screenGui.ZIndexBehavior =
+		Enum.ZIndexBehavior.Sibling
+
 	screenGui.Parent = playerGui
 
-	local overlay = Instance.new("Frame")
+	local overlay =
+		Instance.new("Frame")
+
 	overlay.Name = "Overlay"
+
 	overlay.Size =
 		UDim2.fromScale(1, 1)
 
 	overlay.BackgroundColor3 =
 		Colors.Shadow
 
-	overlay.BackgroundTransparency = 0.2
+	overlay.BackgroundTransparency = 0.18
 	overlay.BorderSizePixel = 0
+
 	overlay.Visible = false
 	overlay.Active = true
+	overlay.ZIndex = 1
 	overlay.Parent = screenGui
 
-	local shadow = Instance.new("Frame")
+	local shadow =
+		Instance.new("Frame")
+
 	shadow.Name = "Shadow"
+
 	shadow.AnchorPoint =
 		Vector2.new(0.5, 0.5)
 
 	shadow.Position =
-		UDim2.fromScale(0.51, 0.52)
+		UDim2.new(
+			0.5,
+			8,
+			0.5,
+			10
+		)
 
 	shadow.Size =
-		UDim2.fromScale(0.45, 0.48)
+		UDim2.fromOffset(
+			680,
+			410
+		)
 
 	shadow.BackgroundColor3 =
 		Colors.Shadow
 
-	shadow.BackgroundTransparency = 0.25
+	shadow.BackgroundTransparency = 0.2
 	shadow.BorderSizePixel = 0
+	shadow.ZIndex = 2
 	shadow.Parent = overlay
 
-	UITheme.AddCorner(shadow, 0.07)
+	UITheme.AddCorner(
+		shadow,
+		0.05
+	)
 
-	local window = Instance.new("Frame")
+	local window =
+		Instance.new("Frame")
+
 	window.Name = "Window"
+
 	window.AnchorPoint =
 		Vector2.new(0.5, 0.5)
 
 	window.Position =
-		UDim2.fromScale(0.5, 0.5)
+		UDim2.fromScale(
+			0.5,
+			0.5
+		)
 
 	window.Size =
-		UDim2.fromScale(0.45, 0.48)
+		UDim2.fromOffset(
+			680,
+			410
+		)
 
 	window.BackgroundColor3 =
 		Colors.Surface
 
 	window.BorderSizePixel = 0
 	window.Active = true
+	window.ClipsDescendants = true
+	window.ZIndex = 3
 	window.Parent = overlay
 
-	UITheme.AddCorner(window, 0.07)
+	UITheme.AddCorner(
+		window,
+		0.05
+	)
 
 	UITheme.AddStroke(
 		window,
 		Colors.Danger,
 		2,
-		0.18
+		0.08
 	)
 
 	UITheme.AddGradient(
@@ -714,60 +1112,68 @@ local function createRemoveConfirmation()
 		Colors.Background
 	)
 
-	local warningIcon =
-		Instance.new("TextLabel")
+	local topAccent =
+		Instance.new("Frame")
 
-	warningIcon.Name = "WarningIcon"
-	warningIcon.Position =
-		UDim2.fromScale(0.08, 0.08)
+	topAccent.Name = "TopAccent"
 
-	warningIcon.Size =
-		UDim2.fromScale(0.14, 0.22)
+	topAccent.Position =
+		UDim2.fromOffset(0, 0)
 
-	warningIcon.BackgroundColor3 =
+	topAccent.Size =
+		UDim2.new(
+			1,
+			0,
+			0,
+			6
+		)
+
+	topAccent.BackgroundColor3 =
 		Colors.Danger
 
-	warningIcon.BorderSizePixel = 0
-	warningIcon.Text = "!"
-	warningIcon.Parent = window
+	topAccent.BorderSizePixel = 0
+	topAccent.ZIndex = 4
+	topAccent.Parent = window
 
-	UITheme.AddCorner(warningIcon, 0.5)
+	local title =
+		Instance.new("TextLabel")
 
-	UITheme.AddGradient(
-		warningIcon,
-		Colors.Danger,
-		Colors.DangerDark
-	)
-
-	UITheme.StyleText(
-		warningIcon,
-		18,
-		30,
-		Colors.Text,
-		Fonts.Black
-	)
-
-	local title = Instance.new("TextLabel")
 	title.Name = "Title"
-	title.Position =
-	UDim2.fromScale(0.09, 0.12)
 
-title.Size =
-	UDim2.fromScale(0.82, 0.28)
+	title.Position =
+		UDim2.fromOffset(
+			34,
+			30
+		)
+
+	title.Size =
+		UDim2.new(
+			1,
+			-68,
+			0,
+			48
+		)
 
 	title.BackgroundTransparency = 1
+
 	title.Text =
 		"REMOVE LEMONADE STAND?"
+
+	title.TextWrapped = true
 
 	title.TextXAlignment =
 		Enum.TextXAlignment.Left
 
+	title.TextYAlignment =
+		Enum.TextYAlignment.Center
+
+	title.ZIndex = 4
 	title.Parent = window
 
 	UITheme.StyleText(
 		title,
-		14,
-		23,
+		17,
+		25,
 		Colors.Text,
 		Fonts.Black
 	)
@@ -776,25 +1182,41 @@ title.Size =
 		Instance.new("TextLabel")
 
 	subtitle.Name = "Subtitle"
-	subtitle.Position =
-	UDim2.fromScale(0.09, 0.29)
 
-subtitle.Size =
-	UDim2.fromScale(0.82, 0.08)
+	subtitle.Position =
+		UDim2.fromOffset(
+			34,
+			82
+		)
+
+	subtitle.Size =
+		UDim2.new(
+			1,
+			-68,
+			0,
+			36
+		)
 
 	subtitle.BackgroundTransparency = 1
+
 	subtitle.Text =
-		"This action can be reversed by building it again."
+		"You can build another stand later."
+
+	subtitle.TextWrapped = true
 
 	subtitle.TextXAlignment =
 		Enum.TextXAlignment.Left
 
+	subtitle.TextYAlignment =
+		Enum.TextYAlignment.Center
+
+	subtitle.ZIndex = 4
 	subtitle.Parent = window
 
 	UITheme.StyleText(
 		subtitle,
-		9,
-		14,
+		10,
+		15,
 		Colors.TextMuted,
 		Fonts.Medium
 	)
@@ -803,52 +1225,82 @@ subtitle.Size =
 		Instance.new("TextLabel")
 
 	description.Name = "Description"
+
 	description.Position =
-		UDim2.fromScale(0.08, 0.37)
+		UDim2.fromOffset(
+			34,
+			128
+		)
 
 	description.Size =
-		UDim2.fromScale(0.84, 0.2)
+		UDim2.new(
+			1,
+			-68,
+			0,
+			76
+		)
 
 	description.BackgroundColor3 =
 		Colors.Background
 
-	description.BackgroundTransparency = 0.3
+	description.BackgroundTransparency = 0.22
 	description.BorderSizePixel = 0
 
 	description.Text =
-		"All waiting customers will leave and sales will stop until another stand is built."
+		"Customers waiting at this stand will leave. Your other stands and their customers will continue operating normally."
+
+	description.TextWrapped = true
 
 	description.TextXAlignment =
 		Enum.TextXAlignment.Center
 
+	description.TextYAlignment =
+		Enum.TextYAlignment.Center
+
+	description.ZIndex = 4
 	description.Parent = window
 
-	UITheme.AddCorner(description, 0.12)
+	UITheme.AddCorner(
+		description,
+		0.09
+	)
 
 	UITheme.AddStroke(
 		description,
 		Colors.Stroke,
 		1,
-		0.5
+		0.45
 	)
 
 	UITheme.StyleText(
 		description,
 		10,
-		15,
+		16,
 		Colors.TextMuted,
 		Fonts.Medium
 	)
 
-	local buttons = Instance.new("Frame")
-	buttons.Name = "Buttons"
-	buttons.Position =
-	UDim2.fromScale(0.09, 0.48)
+	local buttons =
+		Instance.new("Frame")
 
-buttons.Size =
-	UDim2.fromScale(0.82, 0.4)
+	buttons.Name = "Buttons"
+
+	buttons.Position =
+		UDim2.fromOffset(
+			34,
+			228
+		)
+
+	buttons.Size =
+		UDim2.new(
+			1,
+			-68,
+			0,
+			66
+		)
 
 	buttons.BackgroundTransparency = 1
+	buttons.ZIndex = 4
 	buttons.Parent = window
 
 	local layout =
@@ -863,74 +1315,109 @@ buttons.Size =
 	layout.VerticalAlignment =
 		Enum.VerticalAlignment.Center
 
-	layout.Padding = UDim.new(0.04, 0)
+	layout.SortOrder =
+		Enum.SortOrder.LayoutOrder
+
+	layout.Padding =
+		UDim.new(0, 16)
+
 	layout.Parent = buttons
 
-	local cancelButton = createActionButton(
-		buttons,
-		"CancelButton",
-		"KEEP STAND",
-		Colors.SurfaceLight,
-		Colors.SurfaceRaised
-	)
+	local cancelButton =
+		createActionButton(
+			buttons,
+			"CancelButton",
+			"KEEP STAND",
+			Colors.SurfaceLight,
+			Colors.SurfaceRaised
+		)
 
-	local removeButton = createActionButton(
-		buttons,
-		"ConfirmRemoveButton",
-		"REMOVE STAND",
-		Colors.Danger,
-		Colors.DangerDark
-	)
+	cancelButton.LayoutOrder = 1
+
+	local removeButton =
+		createActionButton(
+			buttons,
+			"ConfirmRemoveButton",
+			"REMOVE STAND",
+			Colors.Danger,
+			Colors.DangerDark
+		)
+
+	removeButton.LayoutOrder = 2
 
 	cancelButton.Activated:Connect(function()
 		hideRemoveConfirmation()
 	end)
 
 	removeButton.Activated:Connect(function()
-	if removeRequestPending then
-		return
-	end
+		if removeRequestPending then
+			return
+		end
 
-	if not pendingRemoveBusinessId then
-		hideRemoveConfirmation()
-		return
-	end
+		if not pendingRemoveBusinessId then
+			hideRemoveConfirmation()
+			return
+		end
 
-	removeRequestPending = true
-	overlay.Visible = false
+		removeRequestPending = true
+		overlay.Visible = false
 
-	requestRemoveRemote:FireServer(
-		true,
-		pendingRemoveBusinessId
-	)
+		requestRemoveRemote:FireServer(
+			true,
+			pendingRemoveBusinessId
+		)
 
-	task.delay(2, function()
-		removeRequestPending = false
+		task.delay(2, function()
+			removeRequestPending = false
+		end)
 	end)
-end)
 
-	local toast = Instance.new("TextLabel")
+	local toast =
+		Instance.new("TextLabel")
+
 	toast.Name = "Toast"
+
 	toast.AnchorPoint =
 		Vector2.new(0.5, 0)
 
 	toast.Position =
-		UDim2.fromScale(0.5, 0.05)
+		UDim2.new(
+			0.5,
+			0,
+			0,
+			18
+		)
 
 	toast.Size =
-		UDim2.fromScale(0.52, 0.075)
+		UDim2.fromOffset(
+			560,
+			48
+		)
 
 	toast.BackgroundColor3 =
 		Colors.Surface
 
-	toast.BackgroundTransparency = 0.05
+	toast.BackgroundTransparency = 0.04
 	toast.BorderSizePixel = 0
+
 	toast.Text = ""
+	toast.TextWrapped = true
+
 	toast.Visible = false
+	toast.ZIndex = 20
 	toast.Parent = screenGui
 
-	UITheme.AddCorner(toast, 0.25)
-	UITheme.AddStroke(toast, Colors.Stroke, 1.5, 0.2)
+	UITheme.AddCorner(
+		toast,
+		0.2
+	)
+
+	UITheme.AddStroke(
+		toast,
+		Colors.Stroke,
+		1.5,
+		0.2
+	)
 
 	UITheme.StyleText(
 		toast,
@@ -940,136 +1427,130 @@ end)
 		Fonts.Bold
 	)
 
-	local function updateResponsiveLayout()
-		local camera = Workspace.CurrentCamera
+	confirmationOverlay = overlay
+	confirmationWindow = window
+	confirmationShadow = shadow
 
-		if not camera then
-			return
-		end
+	confirmationTitle = title
+	confirmationSubtitle = subtitle
+	confirmationDescription = description
 
-		local viewport = camera.ViewportSize
-		local portrait =
-			viewport.Y > viewport.X
+	confirmationButtons = buttons
+	confirmationButtonsLayout = layout
 
-		local compact =
-			viewport.X < 800
-			or viewport.Y < 550
+	keepStandButton = cancelButton
+	confirmRemoveButton = removeButton
 
-		if portrait then
-			window.Size =
-				UDim2.fromScale(0.9, 0.46)
+	toastLabel = toast
 
-			shadow.Size =
-				UDim2.fromScale(0.9, 0.46)
+	updateConfirmationLayout()
 
-			toast.Size =
-				UDim2.fromScale(0.88, 0.075)
-		elseif compact then
-			window.Size =
-				UDim2.fromScale(0.62, 0.7)
-
-			shadow.Size =
-				UDim2.fromScale(0.62, 0.7)
-
-			toast.Size =
-				UDim2.fromScale(0.62, 0.1)
-		else
-			window.Size =
-				UDim2.fromScale(0.45, 0.48)
-
-			shadow.Size =
-				UDim2.fromScale(0.45, 0.48)
-
-			toast.Size =
-				UDim2.fromScale(0.52, 0.075)
-		end
-	end
-
-	updateResponsiveLayout()
-
-	local camera = Workspace.CurrentCamera
+	local camera =
+		Workspace.CurrentCamera
 
 	if camera then
 		camera:GetPropertyChangedSignal(
 			"ViewportSize"
-		):Connect(updateResponsiveLayout)
+		):Connect(
+			updateConfirmationLayout
+		)
 	end
 
-	confirmationOverlay = overlay
-	confirmationWindow = window
-	toastLabel = toast
+	Workspace:GetPropertyChangedSignal(
+		"CurrentCamera"
+	):Connect(function()
+		local newCamera =
+			Workspace.CurrentCamera
+
+		if newCamera then
+			updateConfirmationLayout()
+
+			newCamera:GetPropertyChangedSignal(
+				"ViewportSize"
+			):Connect(
+				updateConfirmationLayout
+			)
+		end
+	end)
 end
 
 createRemoveConfirmation()
 
-interactionResultRemote.OnClientEvent:Connect(function(
-	action: string,
-	message: any
+interactionResultRemote.OnClientEvent:Connect(
+	function(
+		action: string,
+		message: any
+	)
+		if action
+			== "ShowRemoveConfirmation" then
+
+			removeRequestPending = false
+
+			if confirmationOverlay then
+				updateConfirmationLayout()
+
+				confirmationOverlay.Visible =
+					true
+			end
+
+			return
+		end
+
+		if action == "BeginEdit" then
+			hideRemoveConfirmation()
+
+			if managementGui then
+				managementGui.Enabled = false
+			end
+
+			return
+		end
+
+		if action == "Removed" then
+			hideRemoveConfirmation()
+			destroyManagementUI()
+
+			showToast(
+				typeof(message) == "string"
+					and message
+					or "Lemonade stand removed."
+			)
+
+			return
+		end
+
+		if action == "RemoveFailed" then
+			hideRemoveConfirmation()
+
+			showToast(
+				typeof(message) == "string"
+					and message
+					or "The stand could not be removed.",
+				true
+			)
+
+			return
+		end
+
+		if action == "EditCancelled" then
+			hideRemoveConfirmation()
+			return
+		end
+
+		if action == "EditFailed" then
+			if managementGui then
+				managementGui.Enabled = false
+			end
+
+			showToast(
+				typeof(message) == "string"
+					and message
+					or "The stand could not be edited.",
+				true
+			)
+		end
+	end
 )
-	if action == "ShowRemoveConfirmation" then
-		removeRequestPending = false
-
-		if confirmationOverlay then
-			confirmationOverlay.Visible = true
-		end
-
-		return
-	end
-
-	if action == "BeginEdit" then
-		hideRemoveConfirmation()
-
-		if managementGui then
-			managementGui.Enabled = false
-		end
-
-		return
-	end
-
-	if action == "Removed" then
-		hideRemoveConfirmation()
-		destroyManagementUI()
-
-		showToast(
-			typeof(message) == "string"
-				and message
-				or "Lemonade stand removed."
-		)
-
-		return
-	end
-
-	if action == "RemoveFailed" then
-		hideRemoveConfirmation()
-
-		showToast(
-			typeof(message) == "string"
-				and message
-				or "The stand could not be removed.",
-			true
-		)
-
-		return
-	end
-
-	if action == "EditCancelled" then
-		hideRemoveConfirmation()
-		return
-	end
-
-	if action == "EditFailed" then
-		if managementGui then
-			managementGui.Enabled = false
-		end
-
-		showToast(
-			typeof(message) == "string"
-				and message
-				or "The stand could not be edited.",
-			true
-		)
-	end
-end)
 
 player.CharacterRemoving:Connect(function()
 	if managementGui then
@@ -1091,22 +1572,18 @@ task.spawn(function()
 			if stand
 				and not managementCreationPending then
 
-				managementCreationPending =
-					true
+				managementCreationPending = true
 
 				task.spawn(function()
 					createManagementUI(
 						stand
 					)
 
-					managementCreationPending =
-						false
+					managementCreationPending = false
 				end)
 			elseif not stand then
 				destroyManagementUI()
-
-				managementCreationPending =
-					false
+				managementCreationPending = false
 			end
 		end
 
@@ -1144,6 +1621,8 @@ task.spawn(function()
 				shouldShow
 		end
 
-		task.wait(UPDATE_INTERVAL)
+		task.wait(
+			UPDATE_INTERVAL
+		)
 	end
 end)

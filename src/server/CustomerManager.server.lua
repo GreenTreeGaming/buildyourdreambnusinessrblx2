@@ -1300,82 +1300,68 @@ end
 
 local function evacuateStandCustomers(
 	plot: Model,
-	stand: Model
+	stand: Model,
+	state: StandState
 )
-	local state =
-		standStates[stand]
-
-	if not state then
-		return
-	end
-
-	local customersToEvacuate =
-		state.queue
-
-	state.queue = {}
-	state.isServing = false
-
+	-- Stop the current service timer immediately.
 	setStandServingState(
 		stand,
 		false
 	)
 
-	for _, entry in
-		customersToEvacuate do
+	-- Copy the entries before clearing the queue.
+	local customersToRemove: {
+		QueueEntry
+	} = {}
 
+	for _, entry in state.queue do
+		table.insert(
+			customersToRemove,
+			entry
+		)
+	end
+
+	table.clear(state.queue)
+
+	for _, entry in customersToRemove do
 		entry.isLeaving = true
-		entry.reachedPosition = false
 		entry.targetPosition = nil
+		entry.reachedPosition = false
 		entry.movementVersion += 1
 
 		local customer =
 			entry.customer
 
-		if not customer.Parent then
-			continue
-		end
+		if customer
+			and customer.Parent then
 
-		local humanoid =
-			customer:FindFirstChildOfClass(
-				"Humanoid"
-			)
-
-		local rootPart =
-			customer:FindFirstChild(
-				"HumanoidRootPart"
-			)
-
-		if humanoid then
-			humanoid.AutoRotate = true
-
-			if rootPart
-				and rootPart:IsA(
-					"BasePart"
-				) then
-
-				humanoid:MoveTo(
-					rootPart.Position
+			local humanoid =
+				customer:FindFirstChildOfClass(
+					"Humanoid"
 				)
+
+			local rootPart =
+				customer:FindFirstChild(
+					"HumanoidRootPart"
+				)
+
+			if humanoid then
+				humanoid.AutoRotate = true
+
+				if rootPart
+					and rootPart:IsA(
+						"BasePart"
+					) then
+
+					humanoid:MoveTo(
+						rootPart.Position
+					)
+				end
 			end
-		end
 
-		sendCustomerToExit(
-			plot,
-			customer
-		)
-	end
-end
-
-local function evacuatePlotCustomers(
-	plot: Model
-)
-	for stand in standStates do
-		if getPlotFromStand(stand)
-			== plot then
-
-			evacuateStandCustomers(
+			sendCustomerToExit(
 				plot,
-				stand
+				customer
 			)
 		end
 	end
@@ -1387,14 +1373,36 @@ if businessAvailabilityEvent
 	) then
 
 	businessAvailabilityEvent.Event:Connect(
-		function(plot: Model)
-			if plot
-				and plot:IsA("Model") then
+		function(
+			plot: Model,
+			stand: Model
+		)
+			if not plot
+				or not plot:IsA("Model")
+				or not stand
+				or not stand:IsA("Model") then
 
-				evacuatePlotCustomers(
-					plot
-				)
+				return
 			end
+
+			if getPlotFromStand(stand)
+				~= plot then
+
+				return
+			end
+
+			local state =
+				standStates[stand]
+
+			if not state then
+				return
+			end
+
+			evacuateStandCustomers(
+				plot,
+				stand,
+				state
+			)
 		end
 	)
 end

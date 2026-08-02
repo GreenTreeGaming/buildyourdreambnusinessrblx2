@@ -158,22 +158,31 @@ local function closeStand(
 	stand: Model,
 	plot: Model
 )
-	stand:SetAttribute("StandUnavailable", true)
-	stand:SetAttribute("IsBeingEdited", true)
-
-	setPurchasePromptsEnabled(stand, false)
-
-	-- Tells CustomerManager to cancel all queue movement and send every
-	-- customer assigned to this plot toward CustomerExit.
-	if businessAvailabilityEvent
-	and businessAvailabilityEvent:IsA(
-		"BindableEvent"
-	) then
-
-	businessAvailabilityEvent:Fire(
-		plot
+	stand:SetAttribute(
+		"StandUnavailable",
+		true
 	)
-end
+
+	stand:SetAttribute(
+		"IsBeingEdited",
+		true
+	)
+
+	setPurchasePromptsEnabled(
+		stand,
+		false
+	)
+
+	if businessAvailabilityEvent
+		and businessAvailabilityEvent:IsA(
+			"BindableEvent"
+		) then
+
+		businessAvailabilityEvent:Fire(
+			plot,
+			stand
+		)
+	end
 end
 
 local function reopenStand(stand: Model)
