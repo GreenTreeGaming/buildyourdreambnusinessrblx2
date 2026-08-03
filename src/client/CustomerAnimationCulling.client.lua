@@ -15,7 +15,7 @@ local customersFolder =
 
 -- Always animate when close to the camera.
 local NEAR_DISTANCE = 55
-
+ 
 -- At medium range, animate only when visible on screen
 -- and not blocked by scenery.
 local MAX_VISIBLE_DISTANCE = 180
