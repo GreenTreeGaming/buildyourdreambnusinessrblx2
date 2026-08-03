@@ -9,6 +9,39 @@ local BusinessConfig = {
 		BaseSaleValue = 2,
 		BaseServingCooldown = 5,
 
+		-- Controls the physical appearance of the stand.
+		StandLevels = {
+			[1] = {
+				TemplateName = "LemonadeStand",
+				UpgradeCost = 50,
+			},
+
+			[2] = {
+				TemplateName = "LemonadeStand2",
+
+				-- Cost to upgrade from Level 2 to Level 3 later.
+				UpgradeCost = 250,
+			},
+
+			-- Add these when the models are ready.
+			--[[
+			[3] = {
+				TemplateName = "LemonadeStand3",
+				UpgradeCost = 1000,
+			},
+
+			[4] = {
+				TemplateName = "LemonadeStand4",
+				UpgradeCost = 4000,
+			},
+
+			[5] = {
+				TemplateName = "LemonadeStand5",
+				UpgradeCost = nil,
+			},
+			]]
+		},
+
 		Upgrades = {
 			ServingSpeed = {
 				DisplayName = "Faster Service",

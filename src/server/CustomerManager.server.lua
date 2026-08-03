@@ -337,6 +337,52 @@ local function getLemonadeCooldown(
 	return DEFAULT_LEMONADE_COOLDOWN
 end
 
+local function getCashPerSale(
+	stand: Model
+): number
+	local levelValue =
+		stand:GetAttribute("Level")
+
+	local level = 1
+
+	if typeof(levelValue) == "number"
+		and levelValue >= 1
+		and levelValue % 1 == 0 then
+
+		level = levelValue
+	end
+
+	local standConfig =
+		BusinessConfig.LemonadeStand
+
+	if typeof(standConfig) ~= "table" then
+		return 2
+	end
+
+	local levels = standConfig.Levels
+
+	if typeof(levels) ~= "table" then
+		return 2
+	end
+
+	local levelConfig = levels[level]
+
+	if typeof(levelConfig) ~= "table" then
+		return 2
+	end
+
+	local cashPerSale =
+		levelConfig.CashPerSale
+
+	if typeof(cashPerSale) ~= "number"
+		or cashPerSale < 0 then
+
+		return 2
+	end
+
+	return math.floor(cashPerSale)
+end
+
 local function getLemonadeSaleValue(
 	stand: Model
 ): number
@@ -1139,47 +1185,39 @@ local function rewardPlotOwner(
 	end
 
 	local saleValue =
-		getLemonadeSaleValue(
-			stand
-		)
+		getLemonadeSaleValue(stand)
 
 	cash.Value += saleValue
 
 	local totalSales =
-	stand:GetAttribute(
-		"TotalSales"
+		stand:GetAttribute("TotalSales")
+
+	if typeof(totalSales) ~= "number" then
+		totalSales = 0
+	end
+
+	local lifetimeEarnings =
+		stand:GetAttribute("LifetimeEarnings")
+
+	if typeof(lifetimeEarnings) ~= "number" then
+		lifetimeEarnings = 0
+	end
+
+	stand:SetAttribute(
+		"TotalSales",
+		math.max(
+			0,
+			math.floor(totalSales)
+		) + 1
 	)
 
-if typeof(totalSales) ~= "number" then
-	totalSales = 0
-end
-
-local lifetimeEarnings =
-	stand:GetAttribute(
-		"LifetimeEarnings"
+	stand:SetAttribute(
+		"LifetimeEarnings",
+		math.max(
+			0,
+			math.floor(lifetimeEarnings)
+		) + saleValue
 	)
-
-if typeof(lifetimeEarnings)
-	~= "number" then
-
-	lifetimeEarnings = 0
-end
-
-stand:SetAttribute(
-	"TotalSales",
-	math.max(
-		0,
-		math.floor(totalSales)
-	) + 1
-)
-
-stand:SetAttribute(
-	"LifetimeEarnings",
-	math.max(
-		0,
-		math.floor(lifetimeEarnings)
-	) + saleValue
-)
 
 	showCashPopup(
 		stand,
