@@ -360,7 +360,7 @@ local function createUpgradeGui(
 			upgradeButton.Interactable = false
 			upgradeButton.Text = "UPGRADING..."
 
-			requestUpgradeRemote:FireServer()
+			requestUpgradeRemote:FireServer(stand)
 		end
 	)
 

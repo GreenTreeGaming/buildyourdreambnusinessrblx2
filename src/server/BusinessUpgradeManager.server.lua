@@ -91,32 +91,6 @@ local function getPlacedBusinesses(
 	return plot:FindFirstChild("PlacedBusinesses")
 end
 
-local function getPlayerStand(
-	player: Player
-): (Model?, Model?)
-	local plot = getPlayerPlot(player)
-
-	if not plot then
-		return nil, nil
-	end
-
-	local placedBusinesses =
-		getPlacedBusinesses(plot)
-
-	if not placedBusinesses then
-		return nil, plot
-	end
-
-	local stand =
-		placedBusinesses:FindFirstChild(BUSINESS_NAME)
-
-	if stand and stand:IsA("Model") then
-		return stand, plot
-	end
-
-	return nil, plot
-end
-
 local function getCashValue(
 	player: Player
 ): IntValue?
@@ -265,7 +239,24 @@ local function validateUpgradeTemplate(
 	return true, ""
 end
 
-local function performUpgrade(player: Player)
+local function isLemonadeStand(
+	stand: Model
+): boolean
+	local businessType =
+		stand:GetAttribute("BusinessType")
+
+	if businessType == BUSINESS_NAME then
+		return true
+	end
+
+	return stand.Name == BUSINESS_NAME
+		or string.match(
+			stand.Name,
+			"^LemonadeStand_"
+		) ~= nil
+end
+
+local function performUpgrade(player: Player, stand: Model)
 	if activeUpgrades[player] then
 		return
 	end
@@ -276,20 +267,46 @@ local function performUpgrade(player: Player)
 		activeUpgrades[player] = nil
 	end
 
-	local stand, plot =
-		getPlayerStand(player)
+	if typeof(stand) ~= "Instance"
+	or not stand:IsA("Model") then
 
-	if not stand or not plot then
-		finish()
+	finish()
 
-		sendResult(
-			player,
-			false,
-			"Your lemonade stand could not be found."
-		)
+	sendResult(
+		player,
+		false,
+		"The selected lemonade stand is invalid."
+	)
 
-		return
-	end
+	return
+end
+
+local plot =
+	getPlayerPlot(player)
+
+if not plot then
+	finish()
+
+	sendResult(
+		player,
+		false,
+		"You do not own a plot."
+	)
+
+	return
+end
+
+if not isLemonadeStand(stand) then
+	finish()
+
+	sendResult(
+		player,
+		false,
+		"The selected business is not a lemonade stand."
+	)
+
+	return
+end
 
 	if not playerOwnsStand(
 		player,
@@ -533,10 +550,26 @@ local function performUpgrade(player: Player)
 
 			setModelPlacedState(upgradedStand)
 
-			upgradedStand.Parent =
-				placedBusinesses
+			upgradedStand.Name =
+	stand.Name .. "_UpgradePending"
 
-			upgradedStand:PivotTo(oldPivot)
+upgradedStand.Parent =
+	placedBusinesses
+
+upgradedStand:PivotTo(oldPivot)
+
+local finalName = stand.Name
+
+stand:SetAttribute(
+	"StandUnavailable",
+	true
+)
+
+task.wait(0.1)
+
+stand:Destroy()
+
+upgradedStand.Name = finalName
 
 			setPromptsEnabled(
 				upgradedStand,
@@ -589,8 +622,12 @@ local function performUpgrade(player: Player)
 end
 
 requestUpgradeRemote.OnServerEvent:Connect(
-	function(player: Player)
+	function(
+		player: Player,
+		stand: Model
+	)
 		local currentTime = time()
+
 		local previousRequest =
 			lastRequests[player] or 0
 
@@ -602,7 +639,10 @@ requestUpgradeRemote.OnServerEvent:Connect(
 
 		lastRequests[player] = currentTime
 
-		performUpgrade(player)
+		performUpgrade(
+			player,
+			stand
+		)
 	end
 )
 
