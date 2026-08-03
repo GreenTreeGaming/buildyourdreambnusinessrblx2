@@ -27,12 +27,11 @@ local UPDATE_INTERVAL = 0.1
 local DISPLAY_LEVELS = {
 	[1] = {
 		UpgradeCost = 50,
-		CashPerSale = 2,
-		NextCashPerSale = 4,
+		Description = "Upgrade the stand's appearance.",
 	},
 
 	[2] = {
-		CashPerSale = 4,
+		Description = "Level 2 appearance unlocked.",
 	},
 }
 
@@ -319,7 +318,7 @@ local function createUpgradeGui(
 			or not displayConfig.UpgradeCost then
 
 			detailsLabel.Text =
-				`Earns ${displayConfig and displayConfig.CashPerSale or "?"} per sale`
+	displayConfig.Description
 
 			upgradeButton.Text =
 				"MAX LEVEL"
@@ -331,11 +330,8 @@ local function createUpgradeGui(
 			return
 		end
 
-		detailsLabel.Text = string.format(
-			"$%d → $%d per customer",
-			displayConfig.CashPerSale,
-			displayConfig.NextCashPerSale
-		)
+		detailsLabel.Text =
+	displayConfig.Description
 
 		upgradeButton.Text = string.format(
 			"UPGRADE TO LEVEL %d — $%d",

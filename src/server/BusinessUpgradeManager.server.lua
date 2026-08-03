@@ -1,10 +1,11 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local ServerStorage = game:GetService("ServerStorage")
 local Workspace = game:GetService("Workspace")
 
 local BusinessConfig = require(
-	ServerStorage:WaitForChild("BusinessConfig")
+	ReplicatedStorage
+		:WaitForChild("Shared")
+		:WaitForChild("BusinessConfig")
 )
 
 local businessModels =
@@ -493,7 +494,7 @@ local function performUpgrade(player: Player)
 
 	local success, upgradeError =
 		pcall(function()
-			upgradedStand.Name = BUSINESS_NAME
+			upgradedStand.Name = stand.Name
 
 			copyAttributes(
 				stand,
@@ -508,16 +509,6 @@ local function performUpgrade(player: Player)
 			upgradedStand:SetAttribute(
 				"Level",
 				nextLevel
-			)
-
-			stand:SetAttribute(
-				"BusinessType",
-				BUSINESS_NAME
-			)
-
-			stand:SetAttribute(
-				"Level",
-				1
 			)
 
 			upgradedStand:SetAttribute(
