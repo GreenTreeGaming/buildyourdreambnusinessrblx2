@@ -7,6 +7,12 @@ local ReplicatedStorage =
 local Workspace =
 	game:GetService("Workspace")
 
+local TweenService =
+	game:GetService("TweenService")
+
+local UserInputService =
+	game:GetService("UserInputService")
+
 local player =
 	Players.LocalPlayer
 
@@ -33,6 +39,12 @@ local requestAppearanceUpgradeRemote =
 
 local appearanceUpgradeResultRemote =
 	remotes:WaitForChild("BusinessUpgradeResult")
+
+local FormatNumber = require(
+	ReplicatedStorage
+		:WaitForChild("Shared")
+		:WaitForChild("FormatNumber")
+)
 
 local BusinessConfig = require(
 	ReplicatedStorage
@@ -86,13 +98,19 @@ type UpgradeCard = {
 
 type Interface = {
 	ScreenGui: ScreenGui,
+
 	Overlay: Frame,
+	Panel: Frame,
+	PanelScale: UIScale,
+
 	CloseButton: TextButton,
 	CashLabel: TextLabel,
 	StatusLabel: TextLabel,
 	TitleLabel: TextLabel,
 	SubtitleLabel: TextLabel,
 }
+
+local menuOpen = false
 
 local selectedBusinessId: string? = nil
 local selectedStand: Model? = nil
@@ -397,26 +415,27 @@ local function createStatisticBox(
 	name: string,
 	captionText: string
 ): TextLabel
-	local box = Instance.new("Frame")
+	local box =
+		Instance.new("Frame")
 
 	box.Name = name .. "Box"
 
 	box.Size =
-		UDim2.new(
-			0.2,
-			-8,
-			1,
-			0
+		UDim2.fromOffset(
+			154,
+			72
 		)
 
 	box.BackgroundColor3 =
-		Colors.Background
+		Colors.SurfaceRaised
 
-	box.BackgroundTransparency = 0.2
 	box.BorderSizePixel = 0
 	box.Parent = parent
 
-	UITheme.AddCorner(box, 0.12)
+	UITheme.AddCorner(
+		box,
+		0.12
+	)
 
 	UITheme.AddStroke(
 		box,
@@ -425,36 +444,46 @@ local function createStatisticBox(
 		0.5
 	)
 
-	local caption = createTextLabel(
-		box,
-		"Caption",
-		captionText,
-		UDim2.fromScale(0.06, 0.08),
-		UDim2.fromScale(0.88, 0.34),
-		7,
-		11,
-		Fonts.Bold,
-		Colors.TextMuted
-	)
-
-	caption.TextWrapped = true
+	local caption =
+		createTextLabel(
+			box,
+			"Caption",
+			captionText,
+			UDim2.fromScale(
+				0.08,
+				0.1
+			),
+			UDim2.fromScale(
+				0.84,
+				0.28
+			),
+			8,
+			11,
+			Fonts.Bold,
+			Colors.TextMuted
+		)
 
 	caption.TextXAlignment =
 		Enum.TextXAlignment.Center
 
-	local value = createTextLabel(
-		box,
-		"Value",
-		"--",
-		UDim2.fromScale(0.06, 0.43),
-		UDim2.fromScale(0.88, 0.44),
-		11,
-		18,
-		Fonts.Black,
-		Colors.Text
-	)
-
-	value.TextWrapped = true
+	local value =
+		createTextLabel(
+			box,
+			"Value",
+			"--",
+			UDim2.fromScale(
+				0.08,
+				0.4
+			),
+			UDim2.fromScale(
+				0.84,
+				0.42
+			),
+			12,
+			19,
+			Fonts.Black,
+			Colors.Text
+		)
 
 	value.TextXAlignment =
 		Enum.TextXAlignment.Center
@@ -471,74 +500,117 @@ local function createUpgradeCard(
 	buttonColor: Color3,
 	buttonDarkColor: Color3
 ): UpgradeCard
-	local card = Instance.new("Frame")
+	local card =
+		Instance.new("Frame")
 
 	card.Name = name .. "Card"
 
 	card.Size =
 		UDim2.new(
-			0.96,
+			1,
+			-8,
 			0,
-			0,
-			205
+			188
 		)
 
 	card.BackgroundColor3 =
-		Color3.fromRGB(48, 68, 94)
+		Colors.SurfaceRaised
 
 	card.BorderSizePixel = 0
 	card.Parent = parent
 
-	UITheme.AddCorner(card, 0.055)
+	UITheme.AddCorner(
+		card,
+		0.045
+	)
 
 	UITheme.AddStroke(
 		card,
-		Colors.Info,
+		Colors.Stroke,
 		1.5,
-		0.45
+		0.35
 	)
 
-	UITheme.AddGradient(
-		card,
-		Color3.fromRGB(48, 68, 94),
-		Color3.fromRGB(31, 48, 71)
+	local accent =
+		Instance.new("Frame")
+
+	accent.Name = "Accent"
+
+	accent.Size =
+		UDim2.new(
+			0,
+			5,
+			1,
+			0
+		)
+
+	accent.BackgroundColor3 =
+		buttonColor
+
+	accent.BorderSizePixel = 0
+	accent.Parent = card
+
+	UITheme.AddCorner(
+		accent,
+		0.5
 	)
 
-	local title = createTextLabel(
-		card,
-		"Title",
-		titleText,
-		UDim2.fromScale(0.045, 0.045),
-		UDim2.fromScale(0.91, 0.1),
-		13,
-		21,
-		Fonts.Black,
-		Colors.Text
-	)
+	local title =
+		createTextLabel(
+			card,
+			"Title",
+			titleText,
+			UDim2.fromScale(
+				0.045,
+				0.055
+			),
+			UDim2.fromScale(
+				0.9,
+				0.12
+			),
+			12,
+			20,
+			Fonts.Black,
+			Colors.Text
+		)
 
-	local description = createTextLabel(
-		card,
-		"Description",
-		descriptionText,
-		UDim2.fromScale(0.045, 0.145),
-		UDim2.fromScale(0.91, 0.11),
-		9,
-		14,
-		Fonts.Medium,
-		Colors.Text
-	)
+	local description =
+		createTextLabel(
+			card,
+			"Description",
+			descriptionText,
+			UDim2.fromScale(
+				0.045,
+				0.17
+			),
+			UDim2.fromScale(
+				0.9,
+				0.12
+			),
+			8,
+			13,
+			Fonts.Medium,
+			Colors.TextMuted
+		)
 
 	description.TextWrapped = true
 
-	local statRow = Instance.new("Frame")
+	local statRow =
+		Instance.new("Frame")
 
 	statRow.Name = "Stats"
 
 	statRow.Position =
-		UDim2.fromScale(0.045, 0.3)
+		UDim2.fromScale(
+			0.045,
+			0.33
+		)
 
 	statRow.Size =
-		UDim2.fromScale(0.91, 0.25)
+		UDim2.fromScale(
+			0.91,
+			0.25
+		)
 
 	statRow.BackgroundTransparency = 1
 	statRow.Parent = card
@@ -556,7 +628,10 @@ local function createUpgradeCard(
 		Enum.VerticalAlignment.Center
 
 	statLayout.Padding =
-		UDim.new(0.035, 0)
+		UDim.new(
+			0,
+			10
+		)
 
 	statLayout.Parent = statRow
 
@@ -564,58 +639,80 @@ local function createUpgradeCard(
 		statName: string,
 		captionText: string
 	): (Frame, TextLabel)
-		local box = Instance.new("Frame")
+		local box =
+			Instance.new("Frame")
 
 		box.Name = statName
 
 		box.Size =
-			UDim2.fromScale(
-				0.4825,
-				1
+			UDim2.new(
+				0.5,
+				-5,
+				1,
+				0
 			)
 
 		box.BackgroundColor3 =
 			Colors.Background
 
-		box.BackgroundTransparency = 0.2
+		box.BackgroundTransparency =
+			0.3
+
 		box.BorderSizePixel = 0
 		box.Parent = statRow
 
-		UITheme.AddCorner(box, 0.12)
+		UITheme.AddCorner(
+			box,
+			0.12
+		)
 
 		UITheme.AddStroke(
 			box,
 			Colors.Stroke,
 			1,
-			0.45
+			0.55
 		)
 
-		local caption = createTextLabel(
-			box,
-			"Caption",
-			captionText,
-			UDim2.fromScale(0.08, 0.08),
-			UDim2.fromScale(0.84, 0.3),
-			8,
-			12,
-			Fonts.Bold,
-			Colors.Text
-		)
+		local caption =
+			createTextLabel(
+				box,
+				"Caption",
+				captionText,
+				UDim2.fromScale(
+					0.06,
+					0.08
+				),
+				UDim2.fromScale(
+					0.88,
+					0.3
+				),
+				8,
+				11,
+				Fonts.Bold,
+				Colors.TextMuted
+			)
 
 		caption.TextXAlignment =
 			Enum.TextXAlignment.Center
 
-		local value = createTextLabel(
-			box,
-			"Value",
-			"--",
-			UDim2.fromScale(0.08, 0.42),
-			UDim2.fromScale(0.84, 0.45),
-			13,
-			21,
-			Fonts.Black,
-			Colors.Text
-		)
+		local value =
+			createTextLabel(
+				box,
+				"Value",
+				"--",
+				UDim2.fromScale(
+					0.06,
+					0.4
+				),
+				UDim2.fromScale(
+					0.88,
+					0.45
+				),
+				12,
+				19,
+				Fonts.Black,
+				Colors.Text
+			)
 
 		value.TextXAlignment =
 			Enum.TextXAlignment.Center
@@ -641,18 +738,25 @@ local function createUpgradeCard(
 		) :: TextLabel
 
 	valueLabel.TextColor3 =
-		Colors.Success
+		buttonColor
 
 	local progressTrack =
 		Instance.new("Frame")
 
-	progressTrack.Name = "ProgressTrack"
+	progressTrack.Name =
+		"ProgressTrack"
 
 	progressTrack.Position =
-		UDim2.fromScale(0.045, 0.62)
+		UDim2.fromScale(
+			0.045,
+			0.635
+		)
 
 	progressTrack.Size =
-		UDim2.fromScale(0.91, 0.065)
+		UDim2.fromScale(
+			0.91,
+			0.045
+		)
 
 	progressTrack.BackgroundColor3 =
 		Colors.ProgressTrack
@@ -669,10 +773,14 @@ local function createUpgradeCard(
 	local progressFill =
 		Instance.new("Frame")
 
-	progressFill.Name = "ProgressFill"
+	progressFill.Name =
+		"ProgressFill"
 
 	progressFill.Size =
-		UDim2.fromScale(0, 1)
+		UDim2.fromScale(
+			0,
+			1
+		)
 
 	progressFill.BackgroundColor3 =
 		buttonColor
@@ -685,13 +793,6 @@ local function createUpgradeCard(
 		0.5
 	)
 
-	UITheme.AddGradient(
-		progressFill,
-		buttonColor,
-		Colors.Success,
-		0
-	)
-
 	local purchaseButton =
 		Instance.new("TextButton")
 
@@ -699,18 +800,26 @@ local function createUpgradeCard(
 		"PurchaseButton"
 
 	purchaseButton.Position =
-		UDim2.fromScale(0.045, 0.745)
+		UDim2.fromScale(
+			0.045,
+			0.745
+		)
 
 	purchaseButton.Size =
-		UDim2.fromScale(0.91, 0.17)
+		UDim2.fromScale(
+			0.91,
+			0.16
+		)
 
-	purchaseButton.Text = "LOADING..."
+	purchaseButton.Text =
+		"LOADING..."
+
 	purchaseButton.Parent = card
 
 	UITheme.StyleText(
 		purchaseButton,
-		11,
-		17,
+		10,
+		16,
 		Colors.Text,
 		Fonts.Black
 	)
@@ -721,11 +830,6 @@ local function createUpgradeCard(
 		buttonDarkColor,
 		Colors.Text
 	)
-
-	purchaseButton.TextColor3 =
-		Color3.fromRGB(255, 255, 255)
-
-	purchaseButton.TextTransparency = 0
 
 	return {
 		Root = card,
@@ -752,11 +856,20 @@ local function createInterface(): Interface
 
 	screenGui.Name = "UpgradeMenu"
 	screenGui.ResetOnSpawn = false
-	screenGui.IgnoreGuiInset = false
+	screenGui.IgnoreGuiInset = true
+
+	screenGui.ScreenInsets =
+		Enum.ScreenInsets.DeviceSafeInsets
+
 	screenGui.DisplayOrder = 30
+
+	screenGui.ZIndexBehavior =
+		Enum.ZIndexBehavior.Sibling
+
 	screenGui.Parent = playerGui
 
-	local overlay = Instance.new("Frame")
+	local overlay =
+		Instance.new("Frame")
 
 	overlay.Name = "Overlay"
 
@@ -764,37 +877,18 @@ local function createInterface(): Interface
 		UDim2.fromScale(1, 1)
 
 	overlay.BackgroundColor3 =
-		Color3.fromRGB(0, 0, 0)
+		Colors.Shadow
 
-	overlay.BackgroundTransparency = 0.35
+	overlay.BackgroundTransparency = 1
 	overlay.BorderSizePixel = 0
+
 	overlay.Visible = false
 	overlay.Active = true
 	overlay.Parent = screenGui
 
-	local shadow = Instance.new("Frame")
-
-	shadow.Name = "Shadow"
-
-	shadow.AnchorPoint =
-		Vector2.new(0.5, 0.5)
-
-	shadow.Position =
-		UDim2.fromScale(0.507, 0.512)
-
-	shadow.Size =
-		UDim2.fromScale(0.58, 0.86)
-
-	shadow.BackgroundColor3 =
-		Colors.Shadow
-
-	shadow.BackgroundTransparency = 0.25
-	shadow.BorderSizePixel = 0
-	shadow.Parent = overlay
-
-	UITheme.AddCorner(shadow, 0.045)
-
-	local panel = Instance.new("Frame")
+	-- No separate fake shadow frame.
+	local panel =
+		Instance.new("Frame")
 
 	panel.Name = "Panel"
 
@@ -805,96 +899,314 @@ local function createInterface(): Interface
 		UDim2.fromScale(0.5, 0.5)
 
 	panel.Size =
-		UDim2.fromScale(0.58, 0.86)
+		UDim2.fromScale(
+			0.88,
+			0.88
+		)
 
 	panel.BackgroundColor3 =
-		Color3.fromRGB(39, 57, 80)
+		Colors.Surface
 
 	panel.BorderSizePixel = 0
+	panel.ClipsDescendants = true
 	panel.Parent = overlay
 
-	UITheme.AddCorner(panel, 0.045)
+	UITheme.AddCorner(
+		panel,
+		0.025
+	)
 
 	UITheme.AddStroke(
 		panel,
 		Colors.Stroke,
 		2,
-		0.08
+		0.1
 	)
 
-	UITheme.AddGradient(
-		panel,
-		Color3.fromRGB(39, 57, 80),
-		Color3.fromRGB(23, 37, 57)
-	)
+	local panelConstraint =
+		Instance.new("UISizeConstraint")
 
-	local header = Instance.new("Frame")
+	panelConstraint.MinSize =
+		Vector2.new(
+			300,
+			430
+		)
+
+	panelConstraint.MaxSize =
+		Vector2.new(
+			1060,
+			720
+		)
+
+	panelConstraint.Parent = panel
+
+	local panelScale =
+		Instance.new("UIScale")
+
+	panelScale.Scale = 0.92
+	panelScale.Parent = panel
+
+	-- Premium header.
+	local header =
+		Instance.new("Frame")
 
 	header.Name = "Header"
 
-	header.Position =
-		UDim2.fromScale(0.045, 0.025)
-
 	header.Size =
-		UDim2.fromScale(0.91, 0.105)
+		UDim2.fromScale(
+			1,
+			0.145
+		)
 
-	header.BackgroundTransparency = 1
+	header.BackgroundColor3 =
+		Colors.Background
+
+	header.BorderSizePixel = 0
+	header.ClipsDescendants = true
 	header.Parent = panel
 
-	local title = createTextLabel(
-		header,
-		"Title",
-		"LEMONADE STAND",
-		UDim2.fromScale(0, 0),
-		UDim2.fromScale(0.62, 0.48),
-		14,
-		23,
-		Fonts.Black,
-		Colors.Text
+	local headerCorner =
+		Instance.new("UICorner")
+
+	headerCorner.CornerRadius =
+		UDim.new(
+			0,
+			18
+		)
+
+	headerCorner.Parent = header
+
+	local headerBottomCover =
+		Instance.new("Frame")
+
+	headerBottomCover.Name =
+		"BottomCover"
+
+	headerBottomCover.AnchorPoint =
+		Vector2.new(0, 1)
+
+	headerBottomCover.Position =
+		UDim2.fromScale(0, 1)
+
+	headerBottomCover.Size =
+		UDim2.new(
+			1,
+			0,
+			0,
+			20
+		)
+
+	headerBottomCover.BackgroundColor3 =
+		Colors.Background
+
+	headerBottomCover.BorderSizePixel = 0
+	headerBottomCover.ZIndex = 1
+	headerBottomCover.Parent = header
+
+	local title =
+		createTextLabel(
+			header,
+			"Title",
+			"LEMONADE STAND",
+			UDim2.fromScale(
+				0.045,
+				0.12
+			),
+			UDim2.fromScale(
+				0.58,
+				0.32
+			),
+			15,
+			25,
+			Fonts.Black,
+			Colors.Text
+		)
+
+	title.ZIndex = 2
+
+	local subtitle =
+		createTextLabel(
+			header,
+			"Subtitle",
+			"Appearance and upgrades apply only to this stand.",
+			UDim2.fromScale(
+				0.045,
+				0.49
+			),
+			UDim2.fromScale(
+				0.62,
+				0.24
+			),
+			8,
+			14,
+			Fonts.Medium,
+			Colors.TextMuted
+		)
+
+	subtitle.ZIndex = 2
+
+	local cashContainer =
+	Instance.new("Frame")
+
+cashContainer.Name =
+	"CashContainer"
+
+cashContainer.AnchorPoint =
+	Vector2.new(1, 0.5)
+
+cashContainer.Position =
+	UDim2.new(
+		1,
+		-92,
+		0.5,
+		0
 	)
 
-	local subtitle = createTextLabel(
-		header,
-		"Subtitle",
-		"Upgrades apply only to this stand.",
-		UDim2.fromScale(0, 0.5),
-		UDim2.fromScale(0.62, 0.34),
-		9,
-		14,
-		Fonts.Medium,
-		Colors.TextMuted
+cashContainer.Size =
+	UDim2.fromOffset(
+		190,
+		48
 	)
 
-	local cashLabel = createTextLabel(
-		header,
-		"CashLabel",
-		"CASH  $0",
-		UDim2.fromScale(0.6, 0.48),
-		UDim2.fromScale(0.25, 0.3),
+cashContainer.BackgroundColor3 =
+	Colors.SurfaceRaised
+
+cashContainer.BorderSizePixel = 0
+cashContainer.ZIndex = 2
+cashContainer.Parent = header
+
+UITheme.AddCorner(
+	cashContainer,
+	0.22
+)
+
+UITheme.AddStroke(
+	cashContainer,
+	Colors.Primary,
+	1.5,
+	0.28
+)
+
+local cashIcon =
+	Instance.new("Frame")
+
+cashIcon.Name =
+	"CashIcon"
+
+cashIcon.AnchorPoint =
+	Vector2.new(0, 0.5)
+
+cashIcon.Position =
+	UDim2.new(
+		0,
 		10,
-		15,
-		Fonts.Bold,
-		Colors.Primary
+		0.5,
+		0
 	)
 
-	cashLabel.TextXAlignment =
-		Enum.TextXAlignment.Right
+cashIcon.Size =
+	UDim2.fromOffset(
+		30,
+		30
+	)
+
+cashIcon.BackgroundColor3 =
+	Colors.Primary
+
+cashIcon.BorderSizePixel = 0
+cashIcon.ZIndex = 3
+cashIcon.Parent = cashContainer
+
+UITheme.AddCorner(
+	cashIcon,
+	0.5
+)
+
+local dollarLabel =
+	createTextLabel(
+	cashIcon,
+	"Dollar",
+	"$",
+	UDim2.fromScale(0, 0),
+	UDim2.fromScale(1, 1),
+	13,
+	20,
+	Fonts.Black,
+	Colors.TextDark
+)
+
+dollarLabel.TextXAlignment =
+	Enum.TextXAlignment.Center
+
+dollarLabel.ZIndex = 4
+
+local cashCaption =
+	createTextLabel(
+	cashContainer,
+	"Caption",
+	"CASH",
+	UDim2.fromScale(
+		0.25,
+		0.12
+	),
+	UDim2.fromScale(
+		0.68,
+		0.25
+	),
+	8,
+	11,
+	Fonts.Bold,
+	Colors.TextMuted
+)
+
+cashCaption.ZIndex = 3
+
+local cashLabel =
+	createTextLabel(
+	cashContainer,
+	"CashLabel",
+	"$0",
+	UDim2.fromScale(
+		0.25,
+		0.36
+	),
+	UDim2.fromScale(
+		0.68,
+		0.45
+	),
+	12,
+	20,
+	Fonts.Black,
+	Colors.Primary
+)
+
+cashLabel.ZIndex = 3
 
 	local closeButton =
 		Instance.new("TextButton")
 
-	closeButton.Name = "CloseButton"
+	closeButton.Name =
+		"CloseButton"
 
 	closeButton.AnchorPoint =
-		Vector2.new(1, 0)
+		Vector2.new(1, 0.5)
 
 	closeButton.Position =
-		UDim2.fromScale(1, 0)
+		UDim2.new(
+			1,
+			-22,
+			0.5,
+			0
+		)
 
 	closeButton.Size =
-		UDim2.fromScale(0.09, 0.75)
+		UDim2.fromOffset(
+			54,
+			54
+		)
 
 	closeButton.Text = "×"
+	closeButton.ZIndex = 3
 	closeButton.Parent = header
 
 	UITheme.StyleText(
@@ -902,35 +1214,126 @@ local function createInterface(): Interface
 		17,
 		27,
 		Colors.Text,
-		Fonts.Bold
+		Fonts.Black
 	)
 
 	UITheme.StyleButton(
 		closeButton,
-		Colors.SurfaceLight,
-		Colors.SurfaceRaised,
+		Colors.Danger,
+		Colors.DangerDark,
 		Colors.Text
 	)
 
-	closeButton.TextColor3 =
-		Color3.fromRGB(255, 255, 255)
+	local closeConstraint =
+		Instance.new("UISizeConstraint")
 
-	closeButton.TextTransparency = 0
+	closeConstraint.MinSize =
+		Vector2.new(46, 46)
 
-	local statisticsPanel =
+	closeConstraint.MaxSize =
+		Vector2.new(56, 56)
+
+	closeConstraint.Parent =
+		closeButton
+
+	local closeAspect =
+		Instance.new(
+			"UIAspectRatioConstraint"
+		)
+
+	closeAspect.AspectRatio = 1
+	closeAspect.Parent = closeButton
+
+	-- Body.
+	local content =
 		Instance.new("Frame")
+
+	content.Name = "Content"
+
+	content.Position =
+		UDim2.fromScale(
+			0,
+			0.145
+		)
+
+	content.Size =
+		UDim2.fromScale(
+			1,
+			0.855
+		)
+
+	content.BackgroundTransparency = 1
+	content.Parent = panel
+
+	local contentPadding =
+		Instance.new("UIPadding")
+
+	contentPadding.PaddingLeft =
+		UDim.new(0.035, 0)
+
+	contentPadding.PaddingRight =
+		UDim.new(0.035, 0)
+
+	contentPadding.PaddingTop =
+	UDim.new(0.035, 0)
+
+	contentPadding.PaddingBottom =
+		UDim.new(0.025, 0)
+
+	contentPadding.Parent = content
+
+	-- Horizontally scrollable stats on narrow displays.
+	local statisticsPanel =
+		Instance.new("ScrollingFrame")
 
 	statisticsPanel.Name =
 		"StatisticsPanel"
 
 	statisticsPanel.Position =
-		UDim2.fromScale(0.045, 0.14)
+		UDim2.fromScale(0, 0)
 
 	statisticsPanel.Size =
-		UDim2.fromScale(0.91, 0.125)
+	UDim2.fromScale(
+		1,
+		0.15
+	)
 
 	statisticsPanel.BackgroundTransparency = 1
-	statisticsPanel.Parent = panel
+	statisticsPanel.BorderSizePixel = 0
+
+	statisticsPanel.CanvasSize =
+		UDim2.fromOffset(0, 0)
+
+	statisticsPanel.AutomaticCanvasSize =
+		Enum.AutomaticSize.X
+
+	statisticsPanel.ScrollingDirection =
+		Enum.ScrollingDirection.X
+
+	statisticsPanel.ScrollBarThickness = 3
+
+	statisticsPanel.ScrollBarImageColor3 =
+		Colors.Primary
+
+	statisticsPanel.ElasticBehavior =
+		Enum.ElasticBehavior.WhenScrollable
+
+	statisticsPanel.Parent = content
+
+	local statisticsPadding =
+		Instance.new("UIPadding")
+
+	statisticsPadding.PaddingLeft =
+		UDim.new(0, 2)
+
+	statisticsPadding.PaddingRight =
+		UDim.new(0, 8)
+
+	statisticsPadding.PaddingBottom =
+		UDim.new(0, 5)
+
+	statisticsPadding.Parent =
+		statisticsPanel
 
 	local statisticsLayout =
 		Instance.new("UIListLayout")
@@ -938,30 +1341,23 @@ local function createInterface(): Interface
 	statisticsLayout.FillDirection =
 		Enum.FillDirection.Horizontal
 
-	statisticsLayout.HorizontalAlignment =
-		Enum.HorizontalAlignment.Center
-
 	statisticsLayout.VerticalAlignment =
-		Enum.VerticalAlignment.Center
+		Enum.VerticalAlignment.Top
+
+	statisticsLayout.SortOrder =
+		Enum.SortOrder.LayoutOrder
 
 	statisticsLayout.Padding =
-		UDim.new(0, 8)
+		UDim.new(0, 10)
 
 	statisticsLayout.Parent =
 		statisticsPanel
 
-	statisticLabels.TotalSales =
+	statisticLabels.CashPerSale =
 		createStatisticBox(
 			statisticsPanel,
-			"TotalSales",
-			"TOTAL SALES"
-		)
-
-	statisticLabels.LifetimeEarnings =
-		createStatisticBox(
-			statisticsPanel,
-			"LifetimeEarnings",
-			"LIFETIME CASH"
+			"CashPerSale",
+			"CASH / SALE"
 		)
 
 	statisticLabels.CustomersWaiting =
@@ -971,6 +1367,13 @@ local function createInterface(): Interface
 			"WAITING"
 		)
 
+	statisticLabels.LifetimeEarnings =
+		createStatisticBox(
+			statisticsPanel,
+			"LifetimeEarnings",
+			"LIFETIME CASH"
+		)
+
 	statisticLabels.ServiceTime =
 		createStatisticBox(
 			statisticsPanel,
@@ -978,11 +1381,11 @@ local function createInterface(): Interface
 			"SERVICE TIME"
 		)
 
-	statisticLabels.CashPerSale =
+	statisticLabels.TotalSales =
 		createStatisticBox(
 			statisticsPanel,
-			"CashPerSale",
-			"CASH / SALE"
+			"TotalSales",
+			"TOTAL SALES"
 		)
 
 	local scrollingFrame =
@@ -992,10 +1395,16 @@ local function createInterface(): Interface
 		"UpgradeList"
 
 	scrollingFrame.Position =
-		UDim2.fromScale(0.045, 0.285)
+	UDim2.fromScale(
+		0,
+		0.17
+	)
 
-	scrollingFrame.Size =
-		UDim2.fromScale(0.91, 0.625)
+scrollingFrame.Size =
+	UDim2.fromScale(
+		1,
+		0.74
+	)
 
 	scrollingFrame.BackgroundTransparency = 1
 	scrollingFrame.BorderSizePixel = 0
@@ -1006,7 +1415,7 @@ local function createInterface(): Interface
 	scrollingFrame.AutomaticCanvasSize =
 		Enum.AutomaticSize.Y
 
-	scrollingFrame.ScrollBarThickness = 5
+	scrollingFrame.ScrollBarThickness = 4
 
 	scrollingFrame.ScrollBarImageColor3 =
 		Colors.Primary
@@ -1014,22 +1423,25 @@ local function createInterface(): Interface
 	scrollingFrame.ScrollingDirection =
 		Enum.ScrollingDirection.Y
 
-	scrollingFrame.Parent = panel
+	scrollingFrame.ElasticBehavior =
+		Enum.ElasticBehavior.WhenScrollable
+
+	scrollingFrame.Parent = content
 
 	local listPadding =
 		Instance.new("UIPadding")
 
 	listPadding.PaddingLeft =
-		UDim.new(0.015, 0)
+		UDim.new(0, 2)
 
 	listPadding.PaddingRight =
-		UDim.new(0.025, 0)
+		UDim.new(0, 10)
 
 	listPadding.PaddingTop =
-		UDim.new(0, 5)
+		UDim.new(0, 2)
 
 	listPadding.PaddingBottom =
-		UDim.new(0, 12)
+		UDim.new(0, 14)
 
 	listPadding.Parent =
 		scrollingFrame
@@ -1046,120 +1458,88 @@ local function createInterface(): Interface
 	listLayout.VerticalAlignment =
 		Enum.VerticalAlignment.Top
 
+	listLayout.SortOrder =
+		Enum.SortOrder.LayoutOrder
+
 	listLayout.Padding =
 		UDim.new(0, 12)
 
 	listLayout.Parent =
 		scrollingFrame
 
-	appearanceCard = createUpgradeCard(
-		scrollingFrame,
-		"StandAppearance",
-		"STAND APPEARANCE",
-		"Improve the physical stand with a larger and more professional design.",
-		"NEXT DESIGN",
-		Colors.Primary,
-		Colors.PrimaryDark
-	)
+	appearanceCard =
+		createUpgradeCard(
+			scrollingFrame,
+			"StandAppearance",
+			"STAND APPEARANCE",
+			"Improve the physical stand with a larger and more professional design.",
+			"NEXT DESIGN",
+			Colors.Primary,
+			Colors.PrimaryDark
+		)
 
-	cards.SaleValue = createUpgradeCard(
-		scrollingFrame,
-		"SaleValue",
-		"BETTER LEMONADE",
-		"Improve the recipe and earn more from every sale.",
-		"CASH PER SALE",
-		Colors.Success,
-		Colors.SuccessDark
-	)
+	cards.QueueCapacity =
+		createUpgradeCard(
+			scrollingFrame,
+			"QueueCapacity",
+			"LONGER QUEUE",
+			"Allow more customers to wait at this stand.",
+			"QUEUE SIZE",
+			Colors.Info,
+			Colors.InfoDark
+		)
 
-		cards.ServingSpeed = createUpgradeCard(
-		scrollingFrame,
-		"ServingSpeed",
-		"FASTER SERVICE",
-		"Reduce how long each customer waits at the counter.",
-		"SERVICE TIME",
-		Colors.Success,
-		Colors.SuccessDark
-	)
+	cards.SaleValue =
+		createUpgradeCard(
+			scrollingFrame,
+			"SaleValue",
+			"BETTER LEMONADE",
+			"Improve the recipe and earn more from every sale.",
+			"CASH PER SALE",
+			Colors.Success,
+			Colors.SuccessDark
+		)
 
-	cards.QueueCapacity = createUpgradeCard(
-		scrollingFrame,
-		"QueueCapacity",
-		"LONGER QUEUE",
-		"Allow more customers to wait at this stand.",
-		"QUEUE SIZE",
-		Colors.Success,
-		Colors.SuccessDark
-	)
+	cards.ServingSpeed =
+		createUpgradeCard(
+			scrollingFrame,
+			"ServingSpeed",
+			"FASTER SERVICE",
+			"Reduce how long each customer waits at the counter.",
+			"SERVICE TIME",
+			Colors.Success,
+			Colors.SuccessDark
+		)
 
-	local statusLabel = createTextLabel(
-		panel,
-		"StatusLabel",
-		"",
-		UDim2.fromScale(0.06, 0.925),
-		UDim2.fromScale(0.88, 0.05),
-		9,
-		14,
-		Fonts.Semibold,
-		Colors.Text
-	)
+	local statusLabel =
+		createTextLabel(
+			content,
+			"StatusLabel",
+			"",
+			UDim2.fromScale(
+				0,
+				0.92
+			),
+			UDim2.fromScale(
+				1,
+				0.055
+			),
+			8,
+			14,
+			Fonts.Semibold,
+			Colors.TextMuted
+		)
 
 	statusLabel.TextXAlignment =
 		Enum.TextXAlignment.Center
 
-	local function updateResponsiveLayout()
-		local camera =
-			Workspace.CurrentCamera
-
-		if not camera then
-			return
-		end
-
-		local viewport =
-			camera.ViewportSize
-
-		local portrait =
-			viewport.Y > viewport.X
-
-		local compact =
-			viewport.X < 900
-			or viewport.Y < 600
-
-		if portrait then
-			panel.Size =
-				UDim2.fromScale(0.94, 0.88)
-
-			shadow.Size =
-				UDim2.fromScale(0.94, 0.88)
-		elseif compact then
-			panel.Size =
-				UDim2.fromScale(0.78, 0.92)
-
-			shadow.Size =
-				UDim2.fromScale(0.78, 0.92)
-		else
-			panel.Size =
-				UDim2.fromScale(0.58, 0.86)
-
-			shadow.Size =
-				UDim2.fromScale(0.58, 0.86)
-		end
-	end
-
-	updateResponsiveLayout()
-
-	local camera =
-		Workspace.CurrentCamera
-
-	if camera then
-		camera:GetPropertyChangedSignal(
-			"ViewportSize"
-		):Connect(updateResponsiveLayout)
-	end
-
 	return {
 		ScreenGui = screenGui,
+
 		Overlay = overlay,
+		Panel = panel,
+		PanelScale = panelScale,
+
 		CloseButton = closeButton,
 		CashLabel = cashLabel,
 		StatusLabel = statusLabel,
@@ -1170,6 +1550,56 @@ end
 
 local interface =
 	createInterface()
+
+local function closeUpgradeMenu()
+	if not menuOpen then
+		return
+	end
+
+	menuOpen = false
+	requestPending = nil
+
+	local overlayTween =
+		TweenService:Create(
+			interface.Overlay,
+			TweenInfo.new(
+				0.15,
+				Enum.EasingStyle.Quad,
+				Enum.EasingDirection.In
+			),
+			{
+				BackgroundTransparency = 1,
+			}
+		)
+
+	local panelTween =
+		TweenService:Create(
+			interface.PanelScale,
+			TweenInfo.new(
+				0.14,
+				Enum.EasingStyle.Quad,
+				Enum.EasingDirection.In
+			),
+			{
+				Scale = 0.94,
+			}
+		)
+
+	overlayTween:Play()
+	panelTween:Play()
+
+	panelTween.Completed:Once(function()
+		if menuOpen then
+			return
+		end
+
+		interface.Overlay.Visible =
+			false
+
+		selectedStand = nil
+		selectedBusinessId = nil
+	end)
+end
 
 local function showStatus(
 	message: string,
@@ -1674,9 +2104,9 @@ end
 local function openUpgradeMenuForStand(
 	businessId: string
 )
-	if interface.Overlay.Visible then
-		return
-	end
+	if menuOpen then
+	return
+end
 
 	if not selectStandByBusinessId(businessId)
 		or not selectedBusinessId then
@@ -1702,10 +2132,38 @@ local function openUpgradeMenuForStand(
 
 	requestPending = nil
 
-	interface.Overlay.Visible = true
+	menuOpen = true
 
-	updateStatistics()
-	refreshAllCards()
+interface.Overlay.Visible = true
+interface.Overlay.BackgroundTransparency = 1
+interface.PanelScale.Scale = 0.92
+
+TweenService:Create(
+	interface.Overlay,
+	TweenInfo.new(
+		0.18,
+		Enum.EasingStyle.Quad,
+		Enum.EasingDirection.Out
+	),
+	{
+		BackgroundTransparency = 0.28,
+	}
+):Play()
+
+TweenService:Create(
+	interface.PanelScale,
+	TweenInfo.new(
+		0.22,
+		Enum.EasingStyle.Back,
+		Enum.EasingDirection.Out
+	),
+	{
+		Scale = 1,
+	}
+):Play()
+
+updateStatistics()
+refreshAllCards()
 end
 
 openUpgradeMenuEvent.Event:Connect(
@@ -1721,12 +2179,24 @@ openUpgradeMenuEvent.Event:Connect(
 )
 
 interface.CloseButton.Activated:Connect(
-	function()
-		interface.Overlay.Visible = false
+	closeUpgradeMenu
+)
 
-		requestPending = nil
-		selectedStand = nil
-		selectedBusinessId = nil
+UserInputService.InputBegan:Connect(
+	function(input, gameProcessed)
+		if gameProcessed
+			or not menuOpen then
+
+			return
+		end
+
+		if input.KeyCode
+			== Enum.KeyCode.Escape
+			or input.KeyCode
+				== Enum.KeyCode.ButtonB then
+
+			closeUpgradeMenu()
+		end
 	end
 )
 
@@ -1780,7 +2250,7 @@ appearanceUpgradeResultRemote.OnClientEvent:Connect(
 					task.wait(0.05)
 				end
 
-				interface.Overlay.Visible = false
+				closeUpgradeMenu()
 
 				selectedStand = nil
 				selectedBusinessId = nil
@@ -1809,7 +2279,9 @@ local cash =
 
 local function updateCashLabel()
 	interface.CashLabel.Text =
-		`CASH  ${cash.Value}`
+		FormatNumber.Currency(
+			cash.Value
+		)
 end
 
 updateCashLabel()
@@ -1837,7 +2309,7 @@ task.spawn(function()
 				~= "StandAppearance" then
 
 				if not reconnectSelectedStand() then
-					interface.Overlay.Visible = false
+					closeUpgradeMenu()
 
 					requestPending = nil
 					selectedStand = nil
