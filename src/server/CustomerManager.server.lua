@@ -425,6 +425,10 @@ local function getLemonadeSaleValue(
 	return DEFAULT_LEMONADE_SALE_VALUE
 end
 
+local getQueuePositions: (
+	stand: Model
+) -> {BasePart}
+
 local function getQueueCapacity(
 	stand: Model,
 	availablePositions: number
@@ -586,7 +590,7 @@ local function setStandServingState(
 	end
 end
 
-local function getQueuePositions(
+getQueuePositions = function(
 	stand: Model
 ): {BasePart}
 	local queueFolder =
