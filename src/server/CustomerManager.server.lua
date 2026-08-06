@@ -122,6 +122,61 @@ local plotNextSpawnTimes: {
 	[Model]: number
 } = {}
 
+local function getPlotCustomerLimit(
+	plot: Model
+): number
+	local value =
+		plot:GetAttribute(
+			"CustomerLimit"
+		)
+
+	if typeof(value) ~= "number"
+		or value < 1 then
+
+		return BASE_PLOT_CUSTOMER_LIMIT
+	end
+
+	return math.max(
+		1,
+		math.floor(value)
+	)
+end
+
+local function getPlotSpawnInterval(
+	plot: Model
+): number
+	local minimum =
+		plot:GetAttribute(
+			"MinimumCustomerSpawnInterval"
+		)
+
+	local maximum =
+		plot:GetAttribute(
+			"MaximumCustomerSpawnInterval"
+		)
+
+	if typeof(minimum) ~= "number"
+		or minimum <= 0 then
+
+		minimum = MIN_SPAWN_INTERVAL
+	end
+
+	if typeof(maximum) ~= "number"
+		or maximum < minimum then
+
+		maximum =
+			math.max(
+				minimum,
+				MAX_SPAWN_INTERVAL
+			)
+	end
+
+	return randomGenerator:NextNumber(
+		minimum,
+		maximum
+	)
+end
+
 local function isLemonadeStand(
 	instance: Instance
 ): boolean
@@ -1901,7 +1956,7 @@ local function spawnCustomerForStand(
 	end
 
 	if getPlotCustomerCount(plot)
-		>= BASE_PLOT_CUSTOMER_LIMIT then
+	>= getPlotCustomerLimit(plot) then
 
 		return false
 	end
@@ -2132,10 +2187,9 @@ while true do
 
 			plotNextSpawnTimes[plot] =
 				currentTime
-				+ randomGenerator:NextNumber(
-					MIN_SPAWN_INTERVAL,
-					MAX_SPAWN_INTERVAL
-				)
+					+ getPlotSpawnInterval(
+						plot
+					)
 
 			continue
 		end
@@ -2147,7 +2201,7 @@ while true do
 		end
 
 		if getPlotCustomerCount(plot)
-			>= BASE_PLOT_CUSTOMER_LIMIT then
+			>= getPlotCustomerLimit(plot) then
 
 			plotNextSpawnTimes[plot] =
 				currentTime + 0.5
@@ -2169,9 +2223,8 @@ while true do
 
 		plotNextSpawnTimes[plot] =
 			currentTime
-				+ randomGenerator:NextNumber(
-					MIN_SPAWN_INTERVAL,
-					MAX_SPAWN_INTERVAL
+				+ getPlotSpawnInterval(
+					plot
 				)
 	end
 

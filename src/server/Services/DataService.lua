@@ -6,6 +6,12 @@ local ReplicatedStorage =
 	game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
+local MarketingConfig = require(
+	ReplicatedStorage
+		:WaitForChild("Shared")
+		:WaitForChild("MarketingConfig")
+)
+
 local BusinessConfig = require(
 	ReplicatedStorage
 		:WaitForChild("Shared")
@@ -18,7 +24,8 @@ local DATA_STORE_NAME = "PlayerData_v1"
 -- into a list of uniquely identified placed businesses.
 --
 -- Version 3 saves each placed business's physical model level.
-local CURRENT_DATA_VERSION = 3
+-- Version 4 adds plot-wide marketing progression.
+local CURRENT_DATA_VERSION = 4
 
 local MAX_RETRIES = 3
 local RETRY_DELAY_SECONDS = 2
@@ -40,6 +47,9 @@ local DEFAULT_PROFILE = {
 	Version = CURRENT_DATA_VERSION,
 
 	Cash = 0,
+
+	-- Plot-wide marketing progression.
+	MarketingLevel = 0,
 
 	-- Every placed business receives a unique ID.
 	PlacedBusinesses = {},
@@ -88,6 +98,7 @@ type SavedPlacedBusiness = {
 type PlayerProfile = {
 	Version: number,
 	Cash: number,
+	MarketingLevel: number,
 
 	PlacedBusinesses: {
 		SavedPlacedBusiness
@@ -264,6 +275,42 @@ local function sanitizeStatistic(
 		return math.max(
 		0,
 		math.floor(value)
+	)
+end
+
+local function getMaximumMarketingLevel(): number
+	local maximumLevel = 0
+
+	for _, definition in
+		MarketingConfig.Levels do
+
+		if typeof(definition.Level) == "number" then
+			maximumLevel =
+				math.max(
+					maximumLevel,
+					math.floor(definition.Level)
+				)
+		end
+	end
+
+	return maximumLevel
+end
+
+local function sanitizeMarketingLevel(
+	value: any
+): number
+	if typeof(value) ~= "number"
+		or value ~= value
+		or value == math.huge
+		or value == -math.huge then
+
+		return 0
+	end
+
+	return math.clamp(
+		math.floor(value),
+		0,
+		getMaximumMarketingLevel()
 	)
 end
 
@@ -521,6 +568,11 @@ local function migrateProfile(
 			0,
 			math.floor(profile.Cash)
 		)
+
+	profile.MarketingLevel =
+	sanitizeMarketingLevel(
+		profile.MarketingLevel
+	)
 
 	if type(profile.Upgrades) ~= "table" then
 		profile.Upgrades = {}
@@ -1060,6 +1112,42 @@ function DataService.GetProfile(
 	player: Player
 ): PlayerProfile?
 	return profiles[player]
+end
+
+function DataService.GetMarketingLevel(
+	player: Player
+): number
+	local profile =
+		profiles[player]
+
+	if not profile then
+		return 0
+	end
+
+	return sanitizeMarketingLevel(
+		profile.MarketingLevel
+	)
+end
+
+function DataService.SetMarketingLevel(
+	player: Player,
+	level: number
+): boolean
+	local profile =
+		profiles[player]
+
+	if not profile then
+		return false
+	end
+
+	if typeof(level) ~= "number" then
+		return false
+	end
+
+	profile.MarketingLevel =
+		sanitizeMarketingLevel(level)
+
+	return true
 end
 
 function DataService.GetPlacedBusinesses(
