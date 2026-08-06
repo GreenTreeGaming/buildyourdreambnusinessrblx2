@@ -84,6 +84,37 @@ local BusinessConfig = {
 				},
 			},
 
+			QueueCapacity = {
+	DisplayName = "Longer Queue",
+	Description =
+		"Allow more customers to wait at this stand.",
+
+	ValueType = "QueueCapacity",
+
+	Levels = {
+		{
+			Level = 0,
+			Cost = 0,
+			Capacity = 1,
+		},
+		{
+			Level = 1,
+			Cost = 75,
+			Capacity = 2,
+		},
+		{
+			Level = 2,
+			Cost = 225,
+			Capacity = 3,
+		},
+		{
+			Level = 3,
+			Cost = 600,
+			Capacity = 4,
+		},
+	},
+},
+
 			SaleValue = {
 				DisplayName = "Better Lemonade",
 				Description =

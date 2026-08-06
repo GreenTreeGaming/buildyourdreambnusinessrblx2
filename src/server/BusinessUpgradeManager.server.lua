@@ -19,6 +19,7 @@ local plotsFolder =
 
 local BUSINESS_NAME = "LemonadeStand"
 local REQUEST_COOLDOWN = 0.5
+local MANAGEMENT_DISTANCE = 22
 
 local requestUpgradeRemote =
 	remotes:FindFirstChild("RequestBusinessUpgrade")
@@ -194,6 +195,9 @@ local function setPromptsEnabled(
 )
 	for _, descendant in model:GetDescendants() do
 		if descendant:IsA("ProximityPrompt") then
+			descendant.MaxActivationDistance =
+				MANAGEMENT_DISTANCE
+
 			descendant.Enabled = enabled
 		end
 	end

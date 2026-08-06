@@ -19,7 +19,7 @@ local upgradeResultRemote =
 	remotes:WaitForChild("BusinessUpgradeResult")
 
 local BUSINESS_NAME = "LemonadeStand"
-local MANAGEMENT_DISTANCE = 14
+local MANAGEMENT_DISTANCE = 22
 local UPDATE_INTERVAL = 0.1
 
 -- Keep these synchronized with BusinessConfig.

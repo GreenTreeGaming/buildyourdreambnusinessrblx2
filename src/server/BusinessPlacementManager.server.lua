@@ -848,9 +848,14 @@ stand:SetAttribute(
 			0
 		)
 
-		stand:SetAttribute(
+				stand:SetAttribute(
 			"QueueCapacityLevel",
 			0
+		)
+
+		stand:SetAttribute(
+			"QueueCapacity",
+			1
 		)
 
 		stand:SetAttribute(

@@ -33,8 +33,9 @@ type UpgradeResult = {
 	MaximumLevel: number?,
 	NextCost: number?,
 
-	CurrentCooldown: number?,
+		CurrentCooldown: number?,
 	CurrentSaleValue: number?,
+	CurrentQueueCapacity: number?,
 }
 
 local purchaseLocks: {
@@ -168,6 +169,13 @@ local function addDefinitionValues(
 		result.CurrentSaleValue =
 			definition.SaleValue
 	end
+
+	if typeof(definition.Capacity)
+		== "number" then
+
+		result.CurrentQueueCapacity =
+			definition.Capacity
+	end
 end
 
 local function buildUpgradeResult(
@@ -273,8 +281,11 @@ function UpgradeService.ApplyStandUpgrades(
 	local servingConfig =
 		businessConfig.Upgrades.ServingSpeed
 
-	local saleValueConfig =
+		local saleValueConfig =
 		businessConfig.Upgrades.SaleValue
+
+	local queueCapacityConfig =
+		businessConfig.Upgrades.QueueCapacity
 
 	local servingLevel =
 		DataService.GetBusinessUpgradeLevel(
@@ -306,12 +317,21 @@ function UpgradeService.ApplyStandUpgrades(
 			)
 		)
 
-	saleValueLevel =
+		saleValueLevel =
 		math.clamp(
 			saleValueLevel,
 			0,
 			getMaximumLevel(
 				saleValueConfig
+			)
+		)
+
+	queueCapacityLevel =
+		math.clamp(
+			queueCapacityLevel,
+			0,
+			getMaximumLevel(
+				queueCapacityConfig
 			)
 		)
 
@@ -321,14 +341,21 @@ function UpgradeService.ApplyStandUpgrades(
 			servingLevel
 		)
 
-	local saleValueDefinition =
+		local saleValueDefinition =
 		getLevelDefinition(
 			saleValueConfig,
 			saleValueLevel
 		)
 
+	local queueCapacityDefinition =
+		getLevelDefinition(
+			queueCapacityConfig,
+			queueCapacityLevel
+		)
+
 	if not servingDefinition
-		or not saleValueDefinition then
+		or not saleValueDefinition
+		or not queueCapacityDefinition then
 
 		return false
 	end
@@ -353,9 +380,14 @@ function UpgradeService.ApplyStandUpgrades(
 		saleValueDefinition.SaleValue
 	)
 
-	stand:SetAttribute(
+		stand:SetAttribute(
 		"QueueCapacityLevel",
 		queueCapacityLevel
+	)
+
+	stand:SetAttribute(
+		"QueueCapacity",
+		queueCapacityDefinition.Capacity
 	)
 
 	return true

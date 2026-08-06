@@ -54,6 +54,7 @@ local BUSINESS_NAME = "LemonadeStand"
 local GAMEPLAY_UPGRADE_ORDER = {
 	"SaleValue",
 	"ServingSpeed",
+	"QueueCapacity",
 }
 
 type GameplayUpgradeState = {
@@ -69,8 +70,9 @@ type GameplayUpgradeState = {
 	MaximumLevel: number?,
 	NextCost: number?,
 
-	CurrentCooldown: number?,
+		CurrentCooldown: number?,
 	CurrentSaleValue: number?,
+	CurrentQueueCapacity: number?,
 }
 
 type UpgradeCard = {
@@ -1070,12 +1072,22 @@ local function createInterface(): Interface
 		Colors.SuccessDark
 	)
 
-	cards.ServingSpeed = createUpgradeCard(
+		cards.ServingSpeed = createUpgradeCard(
 		scrollingFrame,
 		"ServingSpeed",
 		"FASTER SERVICE",
 		"Reduce how long each customer waits at the counter.",
 		"SERVICE TIME",
+		Colors.Success,
+		Colors.SuccessDark
+	)
+
+	cards.QueueCapacity = createUpgradeCard(
+		scrollingFrame,
+		"QueueCapacity",
+		"LONGER QUEUE",
+		"Allow more customers to wait at this stand.",
+		"QUEUE SIZE",
 		Colors.Success,
 		Colors.SuccessDark
 	)
@@ -1433,7 +1445,7 @@ local function updateGameplayCard(
 	card.LevelLabel.Text =
 		`{currentLevel} / {maximumLevel}`
 
-	if upgradeName == "ServingSpeed" then
+		if upgradeName == "ServingSpeed" then
 		card.ValueCaption.Text =
 			"SERVICE TIME"
 
@@ -1444,6 +1456,7 @@ local function updateGameplayCard(
 				state.CurrentCooldown
 			)
 			or "--"
+
 	elseif upgradeName == "SaleValue" then
 		card.ValueCaption.Text =
 			"CASH PER SALE"
@@ -1455,6 +1468,31 @@ local function updateGameplayCard(
 				state.CurrentSaleValue
 			)
 			or "--"
+
+	elseif upgradeName == "QueueCapacity" then
+		card.ValueCaption.Text =
+			"QUEUE SIZE"
+
+		local capacity =
+			state.CurrentQueueCapacity
+
+		if typeof(capacity) == "number" then
+			local roundedCapacity =
+				math.max(
+					1,
+					math.floor(capacity)
+				)
+
+			if roundedCapacity == 1 then
+				card.ValueLabel.Text =
+					"1 CUSTOMER"
+			else
+				card.ValueLabel.Text =
+					`{roundedCapacity} CUSTOMERS`
+			end
+		else
+			card.ValueLabel.Text = "--"
+		end
 	end
 
 	local progress = 0

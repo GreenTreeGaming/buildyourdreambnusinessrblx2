@@ -398,6 +398,37 @@ local function getLemonadeSaleValue(
 	return DEFAULT_LEMONADE_SALE_VALUE
 end
 
+local function getQueueCapacity(
+	stand: Model,
+	availablePositions: number
+): number
+	local capacity =
+		stand:GetAttribute(
+			"QueueCapacity"
+		)
+
+	if typeof(capacity) ~= "number"
+		or capacity ~= capacity
+		or capacity == math.huge
+		or capacity == -math.huge then
+
+		capacity = 1
+	end
+
+	capacity =
+		math.max(
+			1,
+			math.floor(capacity)
+		)
+
+	-- Never allow more customers than the model has
+	-- physical queue positions for.
+	return math.min(
+		capacity,
+		availablePositions
+	)
+end
+
 local function setStandServingState(
 	stand: Model,
 	active: boolean,
@@ -1751,15 +1782,21 @@ local function spawnCustomerForStand(
 	local state =
 		getStandState(stand)
 
-	local queuePositions =
+		local queuePositions =
 		getQueuePositions(stand)
 
 	if #queuePositions == 0 then
 		return
 	end
 
+	local queueCapacity =
+		getQueueCapacity(
+			stand,
+			#queuePositions
+		)
+
 	if #state.queue
-		>= #queuePositions then
+		>= queueCapacity then
 
 		return
 	end

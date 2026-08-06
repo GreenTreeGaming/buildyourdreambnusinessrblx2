@@ -6,11 +6,19 @@ local ReplicatedStorage =
 	game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
+local BusinessConfig = require(
+	ReplicatedStorage
+		:WaitForChild("Shared")
+		:WaitForChild("BusinessConfig")
+)
+
 local DATA_STORE_NAME = "PlayerData_v1"
 
--- Version 2 changes Businesses from one fixed stand
+-- Version 2 changed Businesses from one fixed stand
 -- into a list of uniquely identified placed businesses.
-local CURRENT_DATA_VERSION = 2
+--
+-- Version 3 saves each placed business's physical model level.
+local CURRENT_DATA_VERSION = 3
 
 local MAX_RETRIES = 3
 local RETRY_DELAY_SECONDS = 2
@@ -66,6 +74,7 @@ type UpgradeLevels = {
 type SavedPlacedBusiness = {
 	Id: string,
 	Type: string,
+	Level: number,
 
 	Transform: SerializedCFrame?,
 	TransformSpace: string,
@@ -252,10 +261,45 @@ local function sanitizeStatistic(
 		return 0
 	end
 
-	return math.max(
+		return math.max(
 		0,
 		math.floor(value)
 	)
+end
+
+local function sanitizeBusinessLevel(
+	businessType: string,
+	value: any
+): number
+	local level = 1
+
+	if type(value) == "number"
+		and value == value
+		and value ~= math.huge
+		and value ~= -math.huge then
+
+		level = math.max(
+			1,
+			math.floor(value)
+		)
+	end
+
+	local businessConfig =
+		BusinessConfig[businessType]
+
+	if type(businessConfig) ~= "table"
+		or type(businessConfig.StandLevels) ~= "table" then
+
+		return level
+	end
+
+	if businessConfig.StandLevels[level] then
+		return level
+	end
+
+	-- Invalid or no-longer-configured levels safely fall
+	-- back to the base model.
+	return 1
 end
 
 local function migrateVersionOneProfile(
@@ -285,9 +329,10 @@ local function migrateVersionOneProfile(
 
 	table.insert(
 		profile.PlacedBusinesses,
-		{
+				{
 			Id = "LemonadeStand_1",
 			Type = "LemonadeStand",
+			Level = 1,
 
 			Transform =
 				deepCopy(oldStand.Transform),
@@ -386,9 +431,15 @@ local function sanitizePlacedBusinesses(
 
 		table.insert(
 			sanitized,
-			{
+						{
 				Id = businessId,
 				Type = businessType,
+
+				Level =
+					sanitizeBusinessLevel(
+						businessType,
+						rawBusiness.Level
+					),
 
 				Transform =
 					serializeCFrame(transform),
@@ -791,9 +842,15 @@ local function captureBusinessState(
 
 		table.insert(
 			savedBusinesses,
-			{
+						{
 				Id = businessId,
 				Type = businessType,
+
+				Level =
+					sanitizeBusinessLevel(
+						businessType,
+						instance:GetAttribute("Level")
+					),
 
 				Transform =
 					serializeCFrame(
@@ -1160,16 +1217,46 @@ function DataService.RestorePlot(
 	for _, savedBusiness in
 		profile.PlacedBusinesses do
 
+				local savedLevel =
+			sanitizeBusinessLevel(
+				savedBusiness.Type,
+				savedBusiness.Level
+			)
+
+		local templateName =
+			savedBusiness.Type
+
+		local businessConfig =
+			BusinessConfig[savedBusiness.Type]
+
+		if type(businessConfig) == "table"
+			and type(businessConfig.StandLevels) == "table" then
+
+			local levelConfig =
+				businessConfig.StandLevels[
+					savedLevel
+				]
+
+			if type(levelConfig) == "table"
+				and type(levelConfig.TemplateName)
+					== "string"
+				and levelConfig.TemplateName ~= "" then
+
+				templateName =
+					levelConfig.TemplateName
+			end
+		end
+
 		local template =
 			businessModels:FindFirstChild(
-				savedBusiness.Type
+				templateName
 			)
 
 		if not template
 			or not template:IsA("Model") then
 
 			warn(
-				`Business template "{savedBusiness.Type}" was not found.`
+				`Business template "{templateName}" was not found for {savedBusiness.Id}.`
 			)
 
 			continue
@@ -1228,9 +1315,28 @@ function DataService.RestorePlot(
 			savedBusiness.Id
 		)
 
-		stand:SetAttribute(
+				stand:SetAttribute(
 			"BusinessType",
 			savedBusiness.Type
+		)
+
+		stand:SetAttribute(
+			"Level",
+			savedLevel
+		)
+
+		stand:SetAttribute(
+			"TotalSales",
+			sanitizeStatistic(
+				savedBusiness.TotalSales
+			)
+		)
+
+		stand:SetAttribute(
+			"LifetimeEarnings",
+			sanitizeStatistic(
+				savedBusiness.LifetimeEarnings
+			)
 		)
 
 		stand:SetAttribute(
@@ -1253,8 +1359,10 @@ function DataService.RestorePlot(
 			false
 		)
 
-		local upgrades =
-			savedBusiness.Upgrades
+				local upgrades =
+			sanitizeUpgradeLevels(
+				savedBusiness.Upgrades
+			)
 
 		stand:SetAttribute(
 			"ServingSpeedLevel",
