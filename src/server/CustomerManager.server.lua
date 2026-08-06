@@ -46,6 +46,16 @@ local CUSTOMER_COLLISION_GROUP =
 local MIN_SPAWN_INTERVAL = 1.8
 local MAX_SPAWN_INTERVAL = 3.4
 
+-- Maximum number of customer NPCs that may belong
+-- to one plot at the same time.
+--
+-- This includes customers:
+-- walking to a stand,
+-- waiting in a queue,
+-- being served,
+-- and walking toward the exit.
+local BASE_PLOT_CUSTOMER_LIMIT = 6
+
 local MIN_COUNTER_RESET_TIME = 0.1
 local MAX_COUNTER_RESET_TIME = 0.25
 
@@ -173,6 +183,28 @@ local function getLemonadeStands(
 	end
 
 	return stands
+end
+
+local function getPlotCustomerCount(
+	plot: Model
+): number
+	local customerCount = 0
+
+	for _, customer in
+		customersFolder:GetChildren() do
+
+		if not customer:IsA("Model") then
+			continue
+		end
+
+		if customer:GetAttribute("PlotName")
+			== plot.Name then
+
+			customerCount += 1
+		end
+	end
+
+	return customerCount
 end
 
 local function getPlotFromStand(
@@ -1776,6 +1808,12 @@ local function spawnCustomerForStand(
 	stand: Model
 )
 	if not standIsAvailable(stand) then
+		return
+	end
+
+	if getPlotCustomerCount(plot)
+		>= BASE_PLOT_CUSTOMER_LIMIT then
+
 		return
 	end
 
