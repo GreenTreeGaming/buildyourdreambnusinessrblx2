@@ -112,12 +112,14 @@ type StandState = {
 
 	templateBag: {Model},
 	lastTemplate: Model?,
-
-	nextSpawnTime: number,
 }
 
 local standStates: {
 	[Model]: StandState
+} = {}
+
+local plotNextSpawnTimes: {
+	[Model]: number
 } = {}
 
 local function isLemonadeStand(
@@ -240,19 +242,12 @@ local function getStandState(
 		return existingState
 	end
 
-	local newState: StandState = {
+		local newState: StandState = {
 		queue = {},
 		isServing = false,
 
 		templateBag = {},
 		lastTemplate = nil,
-
-		nextSpawnTime =
-			time()
-			+ randomGenerator:NextNumber(
-				MIN_SPAWN_INTERVAL,
-				MAX_SPAWN_INTERVAL
-			),
 	}
 
 	standStates[stand] =
@@ -459,6 +454,96 @@ local function getQueueCapacity(
 		capacity,
 		availablePositions
 	)
+end
+
+local function getStandQueueSpace(
+	stand: Model
+): (boolean, number, number)
+	if not standIsAvailable(stand) then
+		return false, 0, 0
+	end
+
+	local queuePositions =
+		getQueuePositions(stand)
+
+	if #queuePositions == 0 then
+		return false, 0, 0
+	end
+
+	local queueCapacity =
+		getQueueCapacity(
+			stand,
+			#queuePositions
+		)
+
+	local state =
+		getStandState(stand)
+
+	local queueCount = 0
+
+	for _, entry in state.queue do
+		if entry.customer.Parent
+			and not entry.isLeaving then
+
+			queueCount += 1
+		end
+	end
+
+	return queueCount < queueCapacity,
+		queueCount,
+		queueCapacity
+end
+
+local function chooseStandForCustomer(
+	plot: Model
+): Model?
+	local availableStands: {Model} = {}
+
+	local lowestQueueCount =
+		math.huge
+
+	for _, stand in
+		getLemonadeStands(plot) do
+
+		local hasSpace, queueCount =
+			getStandQueueSpace(stand)
+
+		if not hasSpace then
+			continue
+		end
+
+		if queueCount < lowestQueueCount then
+			lowestQueueCount =
+				queueCount
+
+			table.clear(
+				availableStands
+			)
+
+			table.insert(
+				availableStands,
+				stand
+			)
+		elseif queueCount
+			== lowestQueueCount then
+
+			table.insert(
+				availableStands,
+				stand
+			)
+		end
+	end
+
+	if #availableStands == 0 then
+		return nil
+	end
+
+	return availableStands[
+		randomGenerator:NextInteger(
+			1,
+			#availableStands
+		)
+	]
 end
 
 local function setStandServingState(
@@ -1806,25 +1891,25 @@ end
 local function spawnCustomerForStand(
 	plot: Model,
 	stand: Model
-)
+): boolean
 	if not standIsAvailable(stand) then
-		return
+		return false
 	end
 
 	if getPlotCustomerCount(plot)
 		>= BASE_PLOT_CUSTOMER_LIMIT then
 
-		return
+		return false
 	end
 
 	local state =
 		getStandState(stand)
 
-		local queuePositions =
+	local queuePositions =
 		getQueuePositions(stand)
 
 	if #queuePositions == 0 then
-		return
+		return false
 	end
 
 	local queueCapacity =
@@ -1836,7 +1921,7 @@ local function spawnCustomerForStand(
 	if #state.queue
 		>= queueCapacity then
 
-		return
+		return false
 	end
 
 	local customerSpawn =
@@ -1849,14 +1934,14 @@ local function spawnCustomerForStand(
 			"BasePart"
 		) then
 
-		return
+		return false
 	end
 
 	local npcTemplate =
 		getNextNpcTemplate(state)
 
 	if not npcTemplate then
-		return
+		return false
 	end
 
 	local customer =
@@ -1905,14 +1990,14 @@ local function spawnCustomerForStand(
 	}
 
 	table.insert(
-	state.queue,
-	entry
-)
+		state.queue,
+		entry
+	)
 
-updateStandWaitingCount(
-	stand,
-	state
-)
+	updateStandWaitingCount(
+		stand,
+		state
+	)
 
 	moveQueueForward(
 		stand,
@@ -1924,6 +2009,8 @@ updateStandWaitingCount(
 		plot,
 		stand
 	)
+
+	return true
 end
 
 local function plotHasOwner(
@@ -2010,44 +2097,78 @@ while true do
 		end
 	end
 
+	for plot in plotNextSpawnTimes do
+		if not plot.Parent
+			or not plot:IsDescendantOf(
+				plotsFolder
+			) then
+
+			plotNextSpawnTimes[plot] =
+				nil
+		end
+	end
+
 	for _, plot in
 		plotsFolder:GetChildren() do
 
 		if not plot:IsA("Model")
 			or not plotHasOwner(plot) then
 
+			plotNextSpawnTimes[plot] =
+				nil
+
 			continue
 		end
 
-		local stands =
-			getLemonadeStands(plot)
+		local nextSpawnTime =
+			plotNextSpawnTimes[plot]
 
-		for _, stand in stands do
-			if not standIsAvailable(stand) then
-				continue
-			end
+		if typeof(nextSpawnTime)
+			~= "number" then
 
-			local state =
-				getStandState(stand)
-
-			if currentTime
-				< state.nextSpawnTime then
-
-				continue
-			end
-
-			spawnCustomerForStand(
-				plot,
-				stand
-			)
-
-			state.nextSpawnTime =
+			plotNextSpawnTimes[plot] =
 				currentTime
 				+ randomGenerator:NextNumber(
 					MIN_SPAWN_INTERVAL,
 					MAX_SPAWN_INTERVAL
 				)
+
+			continue
 		end
+
+		if currentTime
+			< nextSpawnTime then
+
+			continue
+		end
+
+		if getPlotCustomerCount(plot)
+			>= BASE_PLOT_CUSTOMER_LIMIT then
+
+			plotNextSpawnTimes[plot] =
+				currentTime + 0.5
+
+			continue
+		end
+
+		local selectedStand =
+			chooseStandForCustomer(
+				plot
+			)
+
+		if selectedStand then
+			spawnCustomerForStand(
+				plot,
+				selectedStand
+			)
+		end
+
+		plotNextSpawnTimes[plot] =
+			currentTime
+				+ randomGenerator:NextNumber(
+					MIN_SPAWN_INTERVAL,
+					MAX_SPAWN_INTERVAL
+				)
 	end
 
 	task.wait(0.2)
