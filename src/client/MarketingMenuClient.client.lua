@@ -295,7 +295,7 @@ local function createInterface(): Interface
 
 	screenGui.Name = "MarketingMenu"
 	screenGui.ResetOnSpawn = false
-	screenGui.IgnoreGuiInset = false
+	screenGui.IgnoreGuiInset = true
 	screenGui.DisplayOrder = 25
 	screenGui.ZIndexBehavior =
 		Enum.ZIndexBehavior.Sibling
@@ -381,24 +381,50 @@ local function createInterface(): Interface
 	windowScale.Scale = 0.92
 
 	-- Header.
-	local header =
-		Instance.new("Frame")
+local header =
+	Instance.new("Frame")
 
-	header.Name = "Header"
-	header.Size =
-		UDim2.fromScale(1, 0.145)
+header.Name = "Header"
+header.Size =
+	UDim2.fromScale(1, 0.16)
 
-	header.BackgroundColor3 =
-		Colors.SurfaceRaised
+header.BackgroundColor3 =
+	Colors.SurfaceRaised
 
-	header.BorderSizePixel = 0
-	header.Parent = window
+header.BorderSizePixel = 0
+header.ClipsDescendants = true
+header.Parent = window
 
-	UITheme.AddCorner(
-	header,
-	0.035
-)
+-- Use a pixel radius here. A scale radius becomes
+-- extremely small because the header is short.
+local headerCorner =
+	Instance.new("UICorner")
 
+headerCorner.CornerRadius =
+	UDim.new(0, 18)
+
+headerCorner.Parent = header
+
+local headerGradient =
+	Instance.new("UIGradient")
+
+headerGradient.Color =
+	ColorSequence.new({
+		ColorSequenceKeypoint.new(
+			0,
+			Colors.SurfaceRaised
+		),
+		ColorSequenceKeypoint.new(
+			1,
+			Colors.Surface
+		),
+	})
+
+headerGradient.Rotation = 90
+headerGradient.Parent = header
+
+-- Covers only the rounded bottom corners so the
+-- header joins cleanly with the content beneath it.
 local headerBottomCover =
 	Instance.new("Frame")
 
@@ -412,96 +438,110 @@ headerBottomCover.Position =
 	UDim2.fromScale(0, 1)
 
 headerBottomCover.Size =
-	UDim2.fromScale(1, 0.22)
+	UDim2.new(
+		1,
+		0,
+		0,
+		20
+	)
 
 headerBottomCover.BackgroundColor3 =
-	Colors.SurfaceRaised
+	Colors.Surface
 
 headerBottomCover.BorderSizePixel = 0
+headerBottomCover.ZIndex = 1
 headerBottomCover.Parent = header
 
-	local headerGradient =
-		Instance.new("UIGradient")
-
-	headerGradient.Color =
-		ColorSequence.new({
-			ColorSequenceKeypoint.new(
-				0,
-				Colors.SurfaceRaised
-			),
-			ColorSequenceKeypoint.new(
-				1,
-				Colors.Surface
-			),
-		})
-
-	headerGradient.Rotation = 90
-	headerGradient.Parent = header
-
-	local titleLabel =
-		createTextLabel(
-			header,
-			"Title",
-			"MARKETING",
-			UDim2.fromScale(0.05, 0.1),
-			UDim2.fromScale(0.7, 0.44),
-			18,
-			32,
-			Fonts.Black,
-			Colors.Text,
-			Enum.TextXAlignment.Left
-		)
-
-	local subtitleLabel =
-		createTextLabel(
-			header,
-			"Subtitle",
-			"Bring more customers to your businesses",
-			UDim2.fromScale(0.05, 0.53),
-			UDim2.fromScale(0.76, 0.3),
-			9,
-			15,
-			Fonts.Medium,
-			Colors.TextMuted,
-			Enum.TextXAlignment.Left
-		)
-
-	local closeButton =
-		Instance.new("TextButton")
-
-	closeButton.Name = "CloseButton"
-	closeButton.AnchorPoint =
-		Vector2.new(1, 0.5)
-
-	closeButton.Position =
-		UDim2.fromScale(0.955, 0.5)
-
-	closeButton.Size =
-		UDim2.fromScale(0.09, 0.56)
-
-	closeButton.Text = "×"
-	closeButton.Parent = header
-
-	UITheme.StyleText(
-		closeButton,
+local titleLabel =
+	createTextLabel(
+		header,
+		"Title",
+		"MARKETING",
+		UDim2.fromScale(0.05, 0.14),
+		UDim2.fromScale(0.72, 0.32),
 		18,
-		30,
+		32,
+		Fonts.Black,
 		Colors.Text,
-		Fonts.Black
+		Enum.TextXAlignment.Left
 	)
 
-	UITheme.StyleButton(
-		closeButton,
-		Colors.Danger,
-		Colors.DangerDark,
-		Colors.Text
+titleLabel.ZIndex = 2
+
+local subtitleLabel =
+	createTextLabel(
+		header,
+		"Subtitle",
+		"Bring more customers to your businesses",
+		UDim2.fromScale(0.05, 0.5),
+		UDim2.fromScale(0.72, 0.24),
+		9,
+		15,
+		Fonts.Medium,
+		Colors.TextMuted,
+		Enum.TextXAlignment.Left
 	)
 
-	local closeAspect =
-		Instance.new("UIAspectRatioConstraint")
+subtitleLabel.ZIndex = 2
 
-	closeAspect.AspectRatio = 1
-	closeAspect.Parent = closeButton
+local closeButton =
+	Instance.new("TextButton")
+
+closeButton.Name = "CloseButton"
+
+closeButton.AnchorPoint =
+	Vector2.new(1, 0.5)
+
+closeButton.Position =
+	UDim2.new(
+		1,
+		-22,
+		0.5,
+		-4
+	)
+
+closeButton.Size =
+	UDim2.fromOffset(
+		58,
+		58
+	)
+
+closeButton.Text = "×"
+closeButton.ZIndex = 3
+closeButton.Parent = header
+
+UITheme.StyleText(
+	closeButton,
+	18,
+	30,
+	Colors.Text,
+	Fonts.Black
+)
+
+UITheme.StyleButton(
+	closeButton,
+	Colors.Danger,
+	Colors.DangerDark,
+	Colors.Text
+)
+
+local closeSizeConstraint =
+	Instance.new("UISizeConstraint")
+
+closeSizeConstraint.MinSize =
+	Vector2.new(48, 48)
+
+closeSizeConstraint.MaxSize =
+	Vector2.new(58, 58)
+
+closeSizeConstraint.Parent =
+	closeButton
+
+local closeAspect =
+	Instance.new("UIAspectRatioConstraint")
+
+closeAspect.AspectRatio = 1
+closeAspect.Parent = closeButton
 
 	-- Main content container.
 	local content =
@@ -509,10 +549,10 @@ headerBottomCover.Parent = header
 
 	content.Name = "Content"
 	content.Position =
-		UDim2.fromScale(0, 0.145)
+	UDim2.fromScale(0, 0.16)
 
-	content.Size =
-		UDim2.fromScale(1, 0.855)
+content.Size =
+	UDim2.fromScale(1, 0.84)
 
 	content.BackgroundTransparency = 1
 	content.Parent = window
