@@ -7,6 +7,12 @@ local ReplicatedStorage =
 local Workspace =
 	game:GetService("Workspace")
 
+local TweenService =
+	game:GetService("TweenService")
+
+local UserInputService =
+	game:GetService("UserInputService")
+
 local player =
 	Players.LocalPlayer
 
@@ -83,7 +89,10 @@ local managementStand: Model? = nil
 
 local confirmationOverlay: Frame? = nil
 local confirmationWindow: Frame? = nil
-local confirmationShadow: Frame? = nil
+local confirmationWindowScale: UIScale? = nil
+
+local confirmationOpen = false
+local confirmationAnimating = false
 
 local confirmationTitle: TextLabel? = nil
 local confirmationSubtitle: TextLabel? = nil
@@ -851,22 +860,121 @@ end)
 	managementStand = stand
 end
 
-local function hideRemoveConfirmation()
-	if confirmationOverlay then
-		confirmationOverlay.Visible = false
+local function hideRemoveConfirmation(
+	clearPendingId: boolean?
+)
+	if not confirmationOverlay
+		or not confirmationWindowScale
+		or not confirmationOpen
+		or confirmationAnimating then
+
+		if clearPendingId ~= false then
+			removeRequestPending = false
+			pendingRemoveBusinessId = nil
+		end
+
+		return
 	end
 
-	removeRequestPending = false
-	pendingRemoveBusinessId = nil
+	confirmationOpen = false
+	confirmationAnimating = true
+
+	local overlayTween =
+		TweenService:Create(
+			confirmationOverlay,
+			TweenInfo.new(
+				0.16,
+				Enum.EasingStyle.Quad,
+				Enum.EasingDirection.In
+			),
+			{
+				BackgroundTransparency = 1,
+			}
+		)
+
+	local windowTween =
+		TweenService:Create(
+			confirmationWindowScale,
+			TweenInfo.new(
+				0.15,
+				Enum.EasingStyle.Quad,
+				Enum.EasingDirection.In
+			),
+			{
+				Scale = 0.94,
+			}
+		)
+
+	overlayTween:Play()
+	windowTween:Play()
+
+	windowTween.Completed:Once(function()
+		confirmationAnimating = false
+
+		if confirmationOpen then
+			return
+		end
+
+		if confirmationOverlay then
+			confirmationOverlay.Visible = false
+		end
+
+		if clearPendingId ~= false then
+			removeRequestPending = false
+			pendingRemoveBusinessId = nil
+		end
+	end)
 end
 
-local function updateConfirmationLayout()
+local function showRemoveConfirmation()
+	if not confirmationOverlay
+		or not confirmationWindowScale
+		or confirmationOpen then
+
+		return
+	end
+
+	updateConfirmationLayout()
+
+	confirmationOpen = true
+	confirmationAnimating = false
+
+	confirmationOverlay.Visible = true
+	confirmationOverlay.BackgroundTransparency = 1
+
+	confirmationWindowScale.Scale = 0.9
+
+	TweenService:Create(
+		confirmationOverlay,
+		TweenInfo.new(
+			0.18,
+			Enum.EasingStyle.Quad,
+			Enum.EasingDirection.Out
+		),
+		{
+			BackgroundTransparency = 0.28,
+		}
+	):Play()
+
+	TweenService:Create(
+		confirmationWindowScale,
+		TweenInfo.new(
+			0.23,
+			Enum.EasingStyle.Back,
+			Enum.EasingDirection.Out
+		),
+		{
+			Scale = 1,
+		}
+	):Play()
+end
+
+updateConfirmationLayout = function()
 	local camera =
 		Workspace.CurrentCamera
 
 	if not camera
 		or not confirmationWindow
-		or not confirmationShadow
 		or not confirmationButtons
 		or not confirmationButtonsLayout
 		or not keepStandButton
@@ -882,58 +990,28 @@ local function updateConfirmationLayout()
 	local viewport =
 		camera.ViewportSize
 
-	local portrait =
-		viewport.Y > viewport.X
-
-	local narrow =
-		viewport.X < 700
-
-	local shortScreen =
-		viewport.Y < 600
-
 	local mobile =
-		portrait or narrow
+		viewport.X < 700
+		or viewport.Y > viewport.X
 
-	local horizontalMargin = 24
-	local verticalMargin = 36
+	local veryNarrow =
+		viewport.X < 430
 
-	local maximumWidth =
-		mobile and 520 or 680
-
-	local maximumHeight =
-		mobile and 520 or 410
+	local availableWidth =
+		math.max(
+			280,
+			viewport.X - 32
+		)
 
 	local windowWidth =
 		math.min(
-			maximumWidth,
-			viewport.X - horizontalMargin * 2
+			mobile and 520 or 660,
+			availableWidth
 		)
 
+	-- Fit the window closely around its actual content.
 	local windowHeight =
-		math.min(
-			maximumHeight,
-			viewport.Y - verticalMargin * 2
-		)
-
-	windowWidth =
-		math.max(
-			300,
-			windowWidth
-		)
-
-	windowHeight =
-		math.max(
-			330,
-			windowHeight
-		)
-
-	if shortScreen then
-		windowHeight =
-			math.min(
-				windowHeight,
-				viewport.Y - 24
-			)
-	end
+		mobile and 410 or 348
 
 	confirmationWindow.Size =
 		UDim2.fromOffset(
@@ -941,67 +1019,61 @@ local function updateConfirmationLayout()
 			windowHeight
 		)
 
-	confirmationShadow.Size =
-		UDim2.fromOffset(
-			windowWidth,
-			windowHeight
-		)
-
-	confirmationShadow.Position =
-		UDim2.new(
-			0.5,
-			8,
-			0.5,
-			10
-		)
-
-	local contentPadding =
+	local horizontalPadding =
 		mobile and 22 or 34
 
+	local titleLeft =
+		mobile and 82 or 92
+
+	local rightReservedSpace =
+		mobile and 76 or 92
+
+	-- Keep the title to the right of the warning icon.
 	confirmationTitle.Position =
 		UDim2.fromOffset(
-			contentPadding,
-			mobile and 24 or 30
+			titleLeft,
+			20
 		)
 
 	confirmationTitle.Size =
 		UDim2.new(
 			1,
-			-contentPadding * 2,
+			-(titleLeft + rightReservedSpace),
 			0,
-			mobile and 52 or 48
+			38
 		)
 
+	-- Leave clear space between the subtitle and
+	-- the bottom edge of the header.
 	confirmationSubtitle.Position =
 		UDim2.fromOffset(
-			contentPadding,
-			mobile and 80 or 82
+			titleLeft,
+			60
 		)
 
 	confirmationSubtitle.Size =
 		UDim2.new(
 			1,
-			-contentPadding * 2,
+			-(titleLeft + rightReservedSpace),
 			0,
-			mobile and 42 or 36
+			26
 		)
 
-	local descriptionY =
-		mobile and 132 or 128
+	local descriptionY = 132
 
 	local descriptionHeight =
-		mobile and 84 or 76
+		mobile and 96 or 86
 
 	confirmationDescription.Position =
 		UDim2.fromOffset(
-			contentPadding,
+			horizontalPadding,
 			descriptionY
 		)
 
 	confirmationDescription.Size =
 		UDim2.new(
 			1,
-			-contentPadding * 2,
+			-horizontalPadding * 2,
 			0,
 			descriptionHeight
 		)
@@ -1011,11 +1083,52 @@ local function updateConfirmationLayout()
 			Enum.FillDirection.Vertical
 
 		confirmationButtonsLayout.Padding =
-			UDim.new(0, 12)
+			UDim.new(0, 10)
 
 		confirmationButtons.Position =
 			UDim2.fromOffset(
-				contentPadding,
+				horizontalPadding,
+				descriptionY
+					+ descriptionHeight
+					+ 16
+			)
+
+		confirmationButtons.Size =
+			UDim2.new(
+				1,
+				-horizontalPadding * 2,
+				0,
+				118
+			)
+
+		keepStandButton.Size =
+			UDim2.new(
+				1,
+				0,
+				0,
+				54
+			)
+
+		confirmRemoveButton.Size =
+			UDim2.new(
+				1,
+				0,
+				0,
+				54
+			)
+
+		confirmRemoveButton.LayoutOrder = 1
+		keepStandButton.LayoutOrder = 2
+	else
+		confirmationButtonsLayout.FillDirection =
+			Enum.FillDirection.Horizontal
+
+		confirmationButtonsLayout.Padding =
+			UDim.new(0, 14)
+
+		confirmationButtons.Position =
+			UDim2.fromOffset(
+				horizontalPadding,
 				descriptionY
 					+ descriptionHeight
 					+ 18
@@ -1024,53 +1137,15 @@ local function updateConfirmationLayout()
 		confirmationButtons.Size =
 			UDim2.new(
 				1,
-				-contentPadding * 2,
+				-horizontalPadding * 2,
 				0,
-				124
-			)
-
-		keepStandButton.Size =
-			UDim2.new(
-				1,
-				0,
-				0,
-				56
-			)
-
-		confirmRemoveButton.Size =
-			UDim2.new(
-				1,
-				0,
-				0,
-				56
-			)
-	else
-		confirmationButtonsLayout.FillDirection =
-			Enum.FillDirection.Horizontal
-
-		confirmationButtonsLayout.Padding =
-			UDim.new(0, 16)
-
-		confirmationButtons.Position =
-			UDim2.fromOffset(
-				contentPadding,
-				descriptionY
-					+ descriptionHeight
-					+ 24
-			)
-
-		confirmationButtons.Size =
-			UDim2.new(
-				1,
-				-contentPadding * 2,
-				0,
-				66
+				58
 			)
 
 		keepStandButton.Size =
 			UDim2.new(
 				0.5,
-				-8,
+				-7,
 				1,
 				0
 			)
@@ -1078,22 +1153,25 @@ local function updateConfirmationLayout()
 		confirmRemoveButton.Size =
 			UDim2.new(
 				0.5,
-				-8,
+				-7,
 				1,
 				0
 			)
+
+		keepStandButton.LayoutOrder = 1
+		confirmRemoveButton.LayoutOrder = 2
 	end
 
 	local toastWidth =
 		math.min(
 			560,
-			viewport.X - 32
+			viewport.X - 28
 		)
 
 	toastLabel.Size =
 		UDim2.fromOffset(
 			toastWidth,
-			mobile and 56 or 48
+			veryNarrow and 58 or 50
 		)
 end
 
@@ -1113,9 +1191,14 @@ local function createRemoveConfirmation()
 	screenGui.Name =
 		"RemoveBusinessConfirmation"
 
-	screenGui.IgnoreGuiInset = false
+	screenGui.IgnoreGuiInset = true
+
+	screenGui.ScreenInsets =
+		Enum.ScreenInsets.DeviceSafeInsets
+
 	screenGui.ResetOnSpawn = false
 	screenGui.DisplayOrder = 100
+
 	screenGui.ZIndexBehavior =
 		Enum.ZIndexBehavior.Sibling
 
@@ -1132,7 +1215,7 @@ local function createRemoveConfirmation()
 	overlay.BackgroundColor3 =
 		Colors.Shadow
 
-	overlay.BackgroundTransparency = 0.18
+	overlay.BackgroundTransparency = 1
 	overlay.BorderSizePixel = 0
 
 	overlay.Visible = false
@@ -1140,41 +1223,7 @@ local function createRemoveConfirmation()
 	overlay.ZIndex = 1
 	overlay.Parent = screenGui
 
-	local shadow =
-		Instance.new("Frame")
-
-	shadow.Name = "Shadow"
-
-	shadow.AnchorPoint =
-		Vector2.new(0.5, 0.5)
-
-	shadow.Position =
-		UDim2.new(
-			0.5,
-			8,
-			0.5,
-			10
-		)
-
-	shadow.Size =
-		UDim2.fromOffset(
-			680,
-			410
-		)
-
-	shadow.BackgroundColor3 =
-		Colors.Shadow
-
-	shadow.BackgroundTransparency = 0.2
-	shadow.BorderSizePixel = 0
-	shadow.ZIndex = 2
-	shadow.Parent = overlay
-
-	UITheme.AddCorner(
-		shadow,
-		0.05
-	)
-
+	-- No fake offset shadow frame.
 	local window =
 		Instance.new("Frame")
 
@@ -1191,8 +1240,8 @@ local function createRemoveConfirmation()
 
 	window.Size =
 		UDim2.fromOffset(
-			680,
-			410
+			660,
+			430
 		)
 
 	window.BackgroundColor3 =
@@ -1204,46 +1253,152 @@ local function createRemoveConfirmation()
 	window.ZIndex = 3
 	window.Parent = overlay
 
-	UITheme.AddCorner(
-		window,
-		0.05
-	)
+	local windowCorner =
+		Instance.new("UICorner")
+
+	windowCorner.CornerRadius =
+		UDim.new(0, 18)
+
+	windowCorner.Parent = window
 
 	UITheme.AddStroke(
 		window,
-		Colors.Danger,
+		Colors.Stroke,
 		2,
-		0.08
+		0.1
 	)
 
-	UITheme.AddGradient(
-		window,
-		Colors.SurfaceRaised,
-		Colors.Background
-	)
+	local windowScale =
+		Instance.new("UIScale")
 
-	local topAccent =
+	windowScale.Scale = 0.9
+	windowScale.Parent = window
+
+	-- Clean premium header.
+	local header =
 		Instance.new("Frame")
 
-	topAccent.Name = "TopAccent"
+	header.Name = "Header"
 
-	topAccent.Position =
-		UDim2.fromOffset(0, 0)
+	header.Size =
+	UDim2.new(
+		1,
+		0,
+		0,
+		112
+	)
 
-	topAccent.Size =
+	header.BackgroundColor3 =
+		Colors.Background
+
+	header.BorderSizePixel = 0
+	header.ClipsDescendants = true
+	header.ZIndex = 4
+	header.Parent = window
+
+	local headerCorner =
+		Instance.new("UICorner")
+
+	headerCorner.CornerRadius =
+		UDim.new(0, 18)
+
+	headerCorner.Parent = header
+
+	local headerBottomCover =
+		Instance.new("Frame")
+
+	headerBottomCover.Name =
+		"BottomCover"
+
+	headerBottomCover.AnchorPoint =
+		Vector2.new(0, 1)
+
+	headerBottomCover.Position =
+		UDim2.fromScale(0, 1)
+
+	headerBottomCover.Size =
 		UDim2.new(
 			1,
 			0,
 			0,
-			6
+			20
 		)
 
-	topAccent.BackgroundColor3 =
+	headerBottomCover.BackgroundColor3 =
+		Colors.Background
+
+	headerBottomCover.BorderSizePixel = 0
+	headerBottomCover.ZIndex = 4
+	headerBottomCover.Parent = header
+
+	local dangerIcon =
+		Instance.new("Frame")
+
+	dangerIcon.Name =
+		"DangerIcon"
+
+	dangerIcon.AnchorPoint =
+		Vector2.new(0, 0.5)
+
+	dangerIcon.Position =
+	UDim2.new(
+		0,
+		28,
+		0.5,
+		0
+	)
+
+	dangerIcon.Size =
+		UDim2.fromOffset(
+			48,
+			48
+		)
+
+	dangerIcon.BackgroundColor3 =
 		Colors.Danger
 
-	topAccent.BorderSizePixel = 0
-	topAccent.ZIndex = 4
-	topAccent.Parent = window
+	dangerIcon.BorderSizePixel = 0
+	dangerIcon.ZIndex = 5
+	dangerIcon.Parent = header
+
+	UITheme.AddCorner(
+		dangerIcon,
+		0.5
+	)
+
+	local dangerIconConstraint =
+	Instance.new("UISizeConstraint")
+
+dangerIconConstraint.MinSize =
+	Vector2.new(42, 42)
+
+dangerIconConstraint.MaxSize =
+	Vector2.new(48, 48)
+
+dangerIconConstraint.Parent =
+	dangerIcon
+
+	local warningLabel =
+		Instance.new("TextLabel")
+
+	warningLabel.Name =
+		"Warning"
+
+	warningLabel.Size =
+		UDim2.fromScale(1, 1)
+
+	warningLabel.BackgroundTransparency = 1
+	warningLabel.Text = "!"
+	warningLabel.ZIndex = 6
+	warningLabel.Parent = dangerIcon
+
+	UITheme.StyleText(
+		warningLabel,
+		20,
+		30,
+		Colors.Text,
+		Fonts.Black
+	)
 
 	local title =
 		Instance.new("TextLabel")
@@ -1252,16 +1407,16 @@ local function createRemoveConfirmation()
 
 	title.Position =
 		UDim2.fromOffset(
-			34,
-			30
+			92,
+			24
 		)
 
 	title.Size =
 		UDim2.new(
 			1,
-			-68,
+			-158,
 			0,
-			48
+			42
 		)
 
 	title.BackgroundTransparency = 1
@@ -1277,13 +1432,13 @@ local function createRemoveConfirmation()
 	title.TextYAlignment =
 		Enum.TextYAlignment.Center
 
-	title.ZIndex = 4
-	title.Parent = window
+	title.ZIndex = 5
+	title.Parent = header
 
 	UITheme.StyleText(
 		title,
-		17,
-		25,
+		16,
+		24,
 		Colors.Text,
 		Fonts.Black
 	)
@@ -1295,22 +1450,22 @@ local function createRemoveConfirmation()
 
 	subtitle.Position =
 		UDim2.fromOffset(
-			34,
-			82
+			92,
+			62
 		)
 
 	subtitle.Size =
 		UDim2.new(
 			1,
-			-68,
+			-158,
 			0,
-			36
+			28
 		)
 
 	subtitle.BackgroundTransparency = 1
 
 	subtitle.Text =
-		"You can build another stand later."
+	"Only this stand will be removed."
 
 	subtitle.TextWrapped = true
 
@@ -1320,26 +1475,77 @@ local function createRemoveConfirmation()
 	subtitle.TextYAlignment =
 		Enum.TextYAlignment.Center
 
-	subtitle.ZIndex = 4
-	subtitle.Parent = window
+	subtitle.ZIndex = 5
+	subtitle.Parent = header
 
 	UITheme.StyleText(
 		subtitle,
-		10,
-		15,
+		9,
+		14,
 		Colors.TextMuted,
 		Fonts.Medium
 	)
 
+	local closeButton =
+		Instance.new("TextButton")
+
+	closeButton.Name =
+		"CloseButton"
+
+	closeButton.AnchorPoint =
+		Vector2.new(1, 0.5)
+
+	closeButton.Position =
+		UDim2.new(
+			1,
+			-22,
+			0.5,
+			0
+		)
+
+	closeButton.Size =
+		UDim2.fromOffset(
+			48,
+			48
+		)
+
+	closeButton.Text = "×"
+	closeButton.ZIndex = 6
+	closeButton.Parent = header
+
+	UITheme.StyleText(
+		closeButton,
+		17,
+		25,
+		Colors.Text,
+		Fonts.Black
+	)
+
+	UITheme.StyleButton(
+		closeButton,
+		Colors.SurfaceLight,
+		Colors.SurfaceRaised,
+		Colors.Text
+	)
+
+	local closeAspect =
+		Instance.new(
+			"UIAspectRatioConstraint"
+		)
+
+	closeAspect.AspectRatio = 1
+	closeAspect.Parent = closeButton
+
 	local description =
 		Instance.new("TextLabel")
 
-	description.Name = "Description"
+	description.Name =
+		"Description"
 
 	description.Position =
 		UDim2.fromOffset(
 			34,
-			128
+			132
 		)
 
 	description.Size =
@@ -1347,13 +1553,12 @@ local function createRemoveConfirmation()
 			1,
 			-68,
 			0,
-			76
+			92
 		)
 
 	description.BackgroundColor3 =
-		Colors.Background
+		Colors.SurfaceRaised
 
-	description.BackgroundTransparency = 0.22
 	description.BorderSizePixel = 0
 
 	description.Text =
@@ -1362,7 +1567,7 @@ local function createRemoveConfirmation()
 	description.TextWrapped = true
 
 	description.TextXAlignment =
-		Enum.TextXAlignment.Center
+		Enum.TextXAlignment.Left
 
 	description.TextYAlignment =
 		Enum.TextYAlignment.Center
@@ -1372,20 +1577,38 @@ local function createRemoveConfirmation()
 
 	UITheme.AddCorner(
 		description,
-		0.09
+		0.08
 	)
 
 	UITheme.AddStroke(
 		description,
 		Colors.Stroke,
 		1,
-		0.45
+		0.4
 	)
+
+	local descriptionPadding =
+		Instance.new("UIPadding")
+
+	descriptionPadding.PaddingLeft =
+		UDim.new(0, 20)
+
+	descriptionPadding.PaddingRight =
+		UDim.new(0, 20)
+
+	descriptionPadding.PaddingTop =
+		UDim.new(0, 12)
+
+	descriptionPadding.PaddingBottom =
+		UDim.new(0, 12)
+
+	descriptionPadding.Parent =
+		description
 
 	UITheme.StyleText(
 		description,
-		10,
-		16,
+		9,
+		15,
 		Colors.TextMuted,
 		Fonts.Medium
 	)
@@ -1398,7 +1621,7 @@ local function createRemoveConfirmation()
 	buttons.Position =
 		UDim2.fromOffset(
 			34,
-			228
+			248
 		)
 
 	buttons.Size =
@@ -1406,7 +1629,7 @@ local function createRemoveConfirmation()
 			1,
 			-68,
 			0,
-			66
+			62
 		)
 
 	buttons.BackgroundTransparency = 1
@@ -1429,7 +1652,7 @@ local function createRemoveConfirmation()
 		Enum.SortOrder.LayoutOrder
 
 	layout.Padding =
-		UDim.new(0, 16)
+		UDim.new(0, 14)
 
 	layout.Parent = buttons
 
@@ -1459,26 +1682,49 @@ local function createRemoveConfirmation()
 		hideRemoveConfirmation()
 	end)
 
+	closeButton.Activated:Connect(function()
+		hideRemoveConfirmation()
+	end)
+
 	removeButton.Activated:Connect(function()
 		if removeRequestPending then
 			return
 		end
 
-		if not pendingRemoveBusinessId then
+		local businessId =
+			pendingRemoveBusinessId
+
+		if not businessId then
 			hideRemoveConfirmation()
 			return
 		end
 
 		removeRequestPending = true
-		overlay.Visible = false
+
+		removeButton.Text =
+			"REMOVING..."
+
+		removeButton.Active = false
+		removeButton.Selectable = false
+
+		-- Preserve the ID while the close animation plays.
+		hideRemoveConfirmation(false)
 
 		requestRemoveRemote:FireServer(
 			true,
-			pendingRemoveBusinessId
+			businessId
 		)
 
 		task.delay(2, function()
 			removeRequestPending = false
+
+			if removeButton then
+				removeButton.Text =
+					"REMOVE STAND"
+
+				removeButton.Active = true
+				removeButton.Selectable = true
+			end
 		end)
 	end)
 
@@ -1501,7 +1747,7 @@ local function createRemoveConfirmation()
 	toast.Size =
 		UDim2.fromOffset(
 			560,
-			48
+			50
 		)
 
 	toast.BackgroundColor3 =
@@ -1531,15 +1777,15 @@ local function createRemoveConfirmation()
 
 	UITheme.StyleText(
 		toast,
-		11,
-		17,
+		10,
+		16,
 		Colors.Text,
 		Fonts.Bold
 	)
 
 	confirmationOverlay = overlay
 	confirmationWindow = window
-	confirmationShadow = shadow
+	confirmationWindowScale = windowScale
 
 	confirmationTitle = title
 	confirmationSubtitle = subtitle
@@ -1572,19 +1818,39 @@ local function createRemoveConfirmation()
 		local newCamera =
 			Workspace.CurrentCamera
 
-		if newCamera then
-			updateConfirmationLayout()
-
-			newCamera:GetPropertyChangedSignal(
-				"ViewportSize"
-			):Connect(
-				updateConfirmationLayout
-			)
+		if not newCamera then
+			return
 		end
+
+		updateConfirmationLayout()
+
+		newCamera:GetPropertyChangedSignal(
+			"ViewportSize"
+		):Connect(
+			updateConfirmationLayout
+		)
 	end)
 end
 
 createRemoveConfirmation()
+
+UserInputService.InputBegan:Connect(
+	function(input, gameProcessed)
+		if gameProcessed
+			or not confirmationOpen then
+
+			return
+		end
+
+		if input.KeyCode
+			== Enum.KeyCode.Escape
+			or input.KeyCode
+				== Enum.KeyCode.ButtonB then
+
+			hideRemoveConfirmation()
+		end
+	end
+)
 
 interactionResultRemote.OnClientEvent:Connect(
 	function(
@@ -1596,12 +1862,7 @@ interactionResultRemote.OnClientEvent:Connect(
 
 			removeRequestPending = false
 
-			if confirmationOverlay then
-				updateConfirmationLayout()
-
-				confirmationOverlay.Visible =
-					true
-			end
+			showRemoveConfirmation()
 
 			return
 		end
