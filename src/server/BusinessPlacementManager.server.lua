@@ -486,17 +486,29 @@ local function canPlaceBusiness(
 			`You can only place {MAXIMUM_STANDS} Lemonade Stands.`
 	end
 
-	local template =
+	local template: Model?
+
+if editedStand then
+	-- Validate the actual stand being moved so upgraded
+	-- stand dimensions and PlacementBounds are respected.
+	template = editedStand
+else
+	local baseTemplate =
 		businessModels:FindFirstChild(
 			businessName
 		)
 
-	if not template
-		or not template:IsA("Model") then
+	if baseTemplate
+		and baseTemplate:IsA("Model") then
 
-		return false,
-			"The business model could not be found."
+		template = baseTemplate
 	end
+end
+
+if not template then
+	return false,
+		"The business model could not be found."
+end
 
 	if not template.PrimaryPart then
 		return false,
@@ -785,6 +797,11 @@ end
 			"BusinessType",
 			businessName
 		)
+
+		stand:SetAttribute(
+	"Level",
+	1
+)
 
 		stand:SetAttribute(
 			"OwnerUserId",

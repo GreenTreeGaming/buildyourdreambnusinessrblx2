@@ -1246,32 +1246,52 @@ end
 		return
 	end
 
-	local template =
+	local previewSource: Model?
+
+if editingExisting then
+	-- Clone the real stand so its current visual level,
+	-- decorations, dimensions, and PlacementBounds are preserved.
+	previewSource = existingStand
+else
+	local baseTemplate =
 		businessModels:FindFirstChild(
 			BUSINESS_NAME
 		)
 
-	if not template
-		or not template:IsA("Model") then
+	if baseTemplate
+		and baseTemplate:IsA("Model") then
 
-		warn(
-			"LemonadeStand was not found in ReplicatedStorage.BusinessModels."
-		)
+		previewSource = baseTemplate
+	end
+end
 
-		return
+if not previewSource then
+	warn(
+		"The lemonade stand preview source could not be found."
+	)
+
+	if editingExisting then
+		cancelEditRemote:FireServer()
 	end
 
-	if not template.PrimaryPart then
-		warn(
-			"LemonadeStand needs PlacementOrigin set as its PrimaryPart."
-		)
+	return
+end
 
-		return
+if not previewSource.PrimaryPart then
+	warn(
+		`${previewSource:GetFullName()} needs PlacementOrigin set as its PrimaryPart.`
+	)
+
+	if editingExisting then
+		cancelEditRemote:FireServer()
 	end
 
-	previewModel = template:Clone()
-	previewModel.Name =
-		"LemonadeStandPreview"
+	return
+end
+
+previewModel = previewSource:Clone()
+previewModel.Name =
+	"LemonadeStandPreview"
 
 	preparePreview(previewModel)
 
