@@ -87,6 +87,10 @@ local UPDATE_INTERVAL = 0.1
 local managementGui: BillboardGui? = nil
 local managementStand: Model? = nil
 
+local managementScale: UIScale? = nil
+local managementVisible = false
+local managementVisibilityVersion = 0
+
 local confirmationOverlay: Frame? = nil
 local confirmationWindow: Frame? = nil
 local confirmationWindowScale: UIScale? = nil
@@ -399,65 +403,348 @@ local function createActionButton(
 	parent: Instance,
 	name: string,
 	text: string,
-	topColor: Color3,
-	bottomColor: Color3
+	iconOrTopColor: string | Color3,
+	topOrBottomColor: Color3,
+	optionalBottomColor: Color3?
 ): TextButton
+	local iconText: string? = nil
+	local topColor: Color3
+	local bottomColor: Color3
+
+	if typeof(iconOrTopColor) == "string" then
+		iconText = iconOrTopColor
+		topColor = topOrBottomColor
+
+		if not optionalBottomColor then
+			error(
+				`{name} is missing its bottom button color.`
+			)
+		end
+
+		bottomColor = optionalBottomColor
+	else
+		topColor = iconOrTopColor
+		bottomColor = topOrBottomColor
+	end
+
 	local button =
 		Instance.new("TextButton")
 
 	button.Name = name
 
-	button.Size =
-		UDim2.fromScale(
-			0.48,
-			1
-		)
+	-- 3-button management row needs narrower buttons.
+	-- 2-button confirmation modal keeps wider buttons.
+	if iconText then
+		button.Size =
+			UDim2.new(
+				1 / 3,
+				-6,
+				1,
+				0
+			)
+	else
+		button.Size =
+			UDim2.new(
+				0.48,
+				0,
+				1,
+				0
+			)
+	end
 
-	button.BackgroundColor3 =
-		topColor
-
+	button.BackgroundColor3 = topColor
 	button.BorderSizePixel = 0
+	button.Text = ""
 
-	button.Text = text
-	button.TextWrapped = true
-	button.TextColor3 = Colors.Text
-	button.TextTransparency = 0
-
-	button.AutoButtonColor = true
+	button.AutoButtonColor = false
 	button.Active = true
-
+	button.Selectable = true
 	button.ZIndex = 10
 	button.Parent = parent
 
-	UITheme.StyleText(
+	UITheme.AddCorner(
 		button,
-		11,
-		17,
-		Colors.Text,
-		Fonts.Black
+		0.16
 	)
 
-	UITheme.StyleButton(
+	UITheme.AddStroke(
+		button,
+		topColor:Lerp(
+			Color3.new(1, 1, 1),
+			0.28
+		),
+		1.25,
+		0.34
+	)
+
+	UITheme.AddGradient(
 		button,
 		topColor,
-		bottomColor,
-		Colors.Text
+		bottomColor
 	)
 
-	button.TextColor3 =
-		Colors.Text
+	local buttonScale =
+		Instance.new("UIScale")
 
-	button.TextTransparency = 0
+	buttonScale.Scale = 1
+	buttonScale.Parent = button
+
+	if iconText then
+		local icon =
+			Instance.new("Frame")
+
+		icon.Name = "Icon"
+		icon.AnchorPoint = Vector2.new(0, 0.5)
+		icon.Position = UDim2.new(0, 8, 0.5, 0)
+		icon.Size = UDim2.fromOffset(26, 26)
+		icon.BackgroundColor3 = Color3.new(1, 1, 1)
+		icon.BackgroundTransparency = 0.82
+		icon.BorderSizePixel = 0
+		icon.ZIndex = 11
+		icon.Parent = button
+
+		UITheme.AddCorner(icon, 0.28)
+
+		local iconLabel =
+			Instance.new("TextLabel")
+
+		iconLabel.Name = "IconLabel"
+		iconLabel.Size = UDim2.fromScale(1, 1)
+		iconLabel.BackgroundTransparency = 1
+		iconLabel.Text = iconText
+		iconLabel.TextColor3 = Colors.Text
+		iconLabel.TextXAlignment = Enum.TextXAlignment.Center
+		iconLabel.TextYAlignment = Enum.TextYAlignment.Center
+		iconLabel.ZIndex = 12
+		iconLabel.Parent = icon
+
+		UITheme.StyleText(
+			iconLabel,
+			12,
+			18,
+			Colors.Text,
+			Fonts.Black
+		)
+
+		local label =
+			Instance.new("TextLabel")
+
+		label.Name = "Label"
+		label.AnchorPoint = Vector2.new(0, 0.5)
+		label.Position = UDim2.new(0, 40, 0.5, 0)
+		label.Size = UDim2.new(1, -46, 1, 0)
+		label.BackgroundTransparency = 1
+		label.Text = text
+		label.TextColor3 = Colors.Text
+		label.TextWrapped = false
+		label.TextXAlignment = Enum.TextXAlignment.Left
+		label.TextYAlignment = Enum.TextYAlignment.Center
+		label.ZIndex = 11
+		label.Parent = button
+
+		UITheme.StyleText(
+			label,
+			8,
+			13,
+			Colors.Text,
+			Fonts.Black
+		)
+	else
+		local label =
+			Instance.new("TextLabel")
+
+		label.Name = "Label"
+		label.Size = UDim2.new(1, -24, 1, 0)
+		label.Position = UDim2.fromOffset(12, 0)
+		label.BackgroundTransparency = 1
+		label.Text = text
+		label.TextColor3 = Colors.Text
+		label.TextWrapped = true
+		label.TextXAlignment = Enum.TextXAlignment.Center
+		label.TextYAlignment = Enum.TextYAlignment.Center
+		label.ZIndex = 11
+		label.Parent = button
+
+		UITheme.StyleText(
+			label,
+			10,
+			17,
+			Colors.Text,
+			Fonts.Black
+		)
+	end
+
+	local activeTween: Tween? = nil
+
+	local function tweenScale(
+		scale: number,
+		duration: number
+	)
+		if activeTween then
+			activeTween:Cancel()
+		end
+
+		activeTween =
+			TweenService:Create(
+				buttonScale,
+				TweenInfo.new(
+					duration,
+					Enum.EasingStyle.Quad,
+					Enum.EasingDirection.Out
+				),
+				{
+					Scale = scale,
+				}
+			)
+
+		activeTween:Play()
+	end
+
+	button.MouseEnter:Connect(function()
+		if button.Active then
+			tweenScale(1.025, 0.1)
+		end
+	end)
+
+	button.MouseLeave:Connect(function()
+		tweenScale(1, 0.1)
+	end)
+
+	button.InputBegan:Connect(function(input)
+		if not button.Active then
+			return
+		end
+
+		if input.UserInputType == Enum.UserInputType.MouseButton1
+			or input.UserInputType == Enum.UserInputType.Touch then
+
+			tweenScale(0.95, 0.06)
+		end
+	end)
+
+	button.InputEnded:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1
+			or input.UserInputType == Enum.UserInputType.Touch then
+
+			tweenScale(1, 0.09)
+		end
+	end)
 
 	return button
 end
 
+local function updateManagementLayout()
+	if not managementGui then
+		return
+	end
+
+	local camera =
+		Workspace.CurrentCamera
+
+	if not camera then
+		return
+	end
+
+	local viewport =
+		camera.ViewportSize
+
+	local mobile =
+		viewport.X < 700
+		or viewport.Y > viewport.X
+
+	if mobile then
+		managementGui.Size =
+			UDim2.fromOffset(
+				310,
+				112
+			)
+	else
+		managementGui.Size =
+			UDim2.fromOffset(
+				346,
+				116
+			)
+	end
+end
+
+
+local function setManagementVisible(
+	visible: boolean
+)
+	if not managementGui
+		or not managementScale then
+
+		return
+	end
+
+	if managementVisible == visible then
+		return
+	end
+
+	managementVisible = visible
+	managementVisibilityVersion += 1
+
+	local currentVersion =
+		managementVisibilityVersion
+
+	if visible then
+		managementGui.Enabled = true
+		managementScale.Scale = 0.9
+
+		TweenService:Create(
+			managementScale,
+			TweenInfo.new(
+				0.18,
+				Enum.EasingStyle.Back,
+				Enum.EasingDirection.Out
+			),
+			{
+				Scale = 1,
+			}
+		):Play()
+
+		return
+	end
+
+	TweenService:Create(
+	managementScale,
+	TweenInfo.new(
+		0.11,
+		Enum.EasingStyle.Quad,
+		Enum.EasingDirection.In
+	),
+	{
+		Scale = 0.94,
+	}
+):Play()
+
+task.delay(
+	0.11,
+	function()
+		if currentVersion
+				~= managementVisibilityVersion
+			or managementVisible then
+
+			return
+		end
+
+		if managementGui then
+			managementGui.Enabled = false
+		end
+	end
+)
+end
+
 local function destroyManagementUI()
+	managementVisibilityVersion += 1
+	managementVisible = false
+
 	if managementGui then
 		managementGui:Destroy()
 		managementGui = nil
 	end
 
+	managementScale = nil
 	managementStand = nil
 end
 
@@ -480,24 +767,28 @@ local function createManagementUI(
 		return
 	end
 
+
 	local billboard =
 		Instance.new("BillboardGui")
 
 	billboard.Name =
 		"BusinessManagementUI"
 
-	billboard.Adornee = adornee
+	billboard.Adornee =
+		adornee
 
+	-- Pixel sizing is much more consistent across
+	-- desktop, tablet, and mobile than stud scaling.
 	billboard.Size =
-	UDim2.fromScale(
-		9.4,
-		2.25
-	)
+		UDim2.fromOffset(
+			346,
+			116
+		)
 
 	billboard.StudsOffsetWorldSpace =
 		Vector3.new(
 			0,
-			3.1,
+			3.25,
 			0
 		)
 
@@ -510,33 +801,57 @@ local function createManagementUI(
 	billboard.Active = true
 	billboard.Enabled = false
 	billboard.ResetOnSpawn = false
-	billboard.Parent = playerGui
 
+	billboard.Parent =
+		playerGui
+
+
+	-- Whole widget animation.
+	local rootScale =
+		Instance.new("UIScale")
+
+	rootScale.Scale = 0.9
+	rootScale.Parent = billboard
+
+
+	-- Subtle shadow rather than the large hard shadow
+	-- used by the old widget.
 	local shadow =
 		Instance.new("Frame")
 
-	shadow.Name = "Shadow"
+	shadow.Name =
+		"Shadow"
 
 	shadow.AnchorPoint =
-		Vector2.new(0.5, 0.5)
+		Vector2.new(
+			0.5,
+			0.5
+		)
 
 	shadow.Position =
-		UDim2.fromScale(
-			0.51,
-			0.54
+		UDim2.new(
+			0.5,
+			0,
+			0.5,
+			4
 		)
 
 	shadow.Size =
-		UDim2.fromScale(
-			0.98,
-			0.96
+		UDim2.new(
+			1,
+			-4,
+			1,
+			-4
 		)
 
 	shadow.BackgroundColor3 =
 		Colors.Shadow
 
-	shadow.BackgroundTransparency = 0.28
+	shadow.BackgroundTransparency =
+		0.42
+
 	shadow.BorderSizePixel = 0
+	shadow.ZIndex = 1
 	shadow.Parent = billboard
 
 	UITheme.AddCorner(
@@ -544,13 +859,18 @@ local function createManagementUI(
 		0.12
 	)
 
+
 	local container =
 		Instance.new("Frame")
 
-	container.Name = "Container"
+	container.Name =
+		"Container"
 
 	container.AnchorPoint =
-		Vector2.new(0.5, 0.5)
+		Vector2.new(
+			0.5,
+			0.5
+		)
 
 	container.Position =
 		UDim2.fromScale(
@@ -559,9 +879,11 @@ local function createManagementUI(
 		)
 
 	container.Size =
-		UDim2.fromScale(
-			0.98,
-			0.96
+		UDim2.new(
+			1,
+			-4,
+			1,
+			-4
 		)
 
 	container.BackgroundColor3 =
@@ -569,6 +891,8 @@ local function createManagementUI(
 
 	container.BorderSizePixel = 0
 	container.Active = true
+	container.ClipsDescendants = true
+
 	container.ZIndex = 2
 	container.Parent = billboard
 
@@ -579,8 +903,8 @@ local function createManagementUI(
 
 	UITheme.AddStroke(
 		container,
-		Colors.Primary,
-		2,
+		Colors.Stroke,
+		1.5,
 		0.18
 	)
 
@@ -590,91 +914,209 @@ local function createManagementUI(
 		Colors.Background
 	)
 
-	local accent =
+
+	-- Thin premium-colored top accent.
+	local topAccent =
 		Instance.new("Frame")
 
-	accent.Name = "Accent"
+	topAccent.Name =
+		"TopAccent"
 
-	accent.Position =
-		UDim2.fromScale(
-			0.03,
-			0.08
+	topAccent.Size =
+		UDim2.new(
+			1,
+			0,
+			0,
+			4
 		)
 
-	accent.Size =
-		UDim2.fromScale(
-			0.025,
-			0.84
-		)
-
-	accent.BackgroundColor3 =
+	topAccent.BackgroundColor3 =
 		Colors.Primary
 
-	accent.BorderSizePixel = 0
-	accent.ZIndex = 3
-	accent.Parent = container
+	topAccent.BorderSizePixel = 0
+	topAccent.ZIndex = 3
+	topAccent.Parent = container
 
-	UITheme.AddCorner(
-		accent,
-		0.5
-	)
+
+	-- Header.
+	local header =
+		Instance.new("Frame")
+
+	header.Name =
+		"Header"
+
+	header.Position =
+		UDim2.fromOffset(
+			14,
+			10
+		)
+
+	header.Size =
+		UDim2.new(
+			1,
+			-28,
+			0,
+			30
+		)
+
+	header.BackgroundTransparency =
+		1
+
+	header.ZIndex = 4
+	header.Parent = container
+
 
 	local title =
 		Instance.new("TextLabel")
 
-	title.Name = "Title"
+	title.Name =
+		"Title"
 
 	title.Position =
-		UDim2.fromScale(
-			0.09,
-			0.08
+		UDim2.fromOffset(
+			0,
+			0
 		)
 
 	title.Size =
-		UDim2.fromScale(
-			0.82,
-			0.23
-		)
+	UDim2.new(
+		1,
+		0,
+		0,
+		18
+	)
 
-	title.BackgroundTransparency = 1
-	title.Text = "LEMONADE STAND"
-	title.TextWrapped = true
+	title.BackgroundTransparency =
+		1
+
+	title.Text =
+		"LEMONADE STAND"
+
+	title.TextWrapped = false
 
 	title.TextXAlignment =
 		Enum.TextXAlignment.Left
 
-	title.ZIndex = 3
-	title.Parent = container
+	title.TextYAlignment =
+		Enum.TextYAlignment.Center
+
+	title.ZIndex = 5
+	title.Parent = header
 
 	UITheme.StyleText(
 		title,
 		11,
-		17,
+		16,
 		Colors.Text,
 		Fonts.Black
 	)
 
+
+	local subtitle =
+		Instance.new("TextLabel")
+
+	subtitle.Name =
+		"Subtitle"
+
+	subtitle.Position =
+		UDim2.fromOffset(
+			0,
+			17
+		)
+
+	subtitle.Size =
+	UDim2.new(
+		1,
+		0,
+		0,
+		13
+	)
+
+	subtitle.BackgroundTransparency =
+		1
+
+	subtitle.Text =
+		"Manage this location"
+
+	subtitle.TextWrapped = false
+
+	subtitle.TextXAlignment =
+		Enum.TextXAlignment.Left
+
+	subtitle.TextYAlignment =
+		Enum.TextYAlignment.Center
+
+	subtitle.ZIndex = 5
+	subtitle.Parent = header
+
+	UITheme.StyleText(
+		subtitle,
+		8,
+		11,
+		Colors.TextMuted,
+		Fonts.Medium
+	)
+
+
+	local divider =
+		Instance.new("Frame")
+
+	divider.Name =
+		"Divider"
+
+	divider.Position =
+		UDim2.fromOffset(
+			14,
+			47
+		)
+
+	divider.Size =
+		UDim2.new(
+			1,
+			-28,
+			0,
+			1
+		)
+
+	divider.BackgroundColor3 =
+		Colors.Stroke
+
+	divider.BackgroundTransparency =
+		0.65
+
+	divider.BorderSizePixel = 0
+	divider.ZIndex = 4
+	divider.Parent = container
+
+
+	-- Action area.
 	local buttons =
 		Instance.new("Frame")
 
-	buttons.Name = "Buttons"
+	buttons.Name =
+		"Buttons"
 
 	buttons.Position =
-		UDim2.fromScale(
-			0.09,
-			0.5
-		)
+	UDim2.fromOffset(
+		14,
+		56
+	)
 
-	buttons.Size =
-		UDim2.fromScale(
-			0.82,
-			0.36
-		)
+buttons.Size =
+	UDim2.new(
+		1,
+		-28,
+		0,
+		44
+	)
 
-	buttons.BackgroundTransparency = 1
+	buttons.BackgroundTransparency =
+		1
+
 	buttons.Active = true
 	buttons.ZIndex = 4
 	buttons.Parent = container
+
 
 	local layout =
 		Instance.new("UIListLayout")
@@ -688,176 +1130,200 @@ local function createManagementUI(
 	layout.VerticalAlignment =
 		Enum.VerticalAlignment.Center
 
+	layout.SortOrder =
+		Enum.SortOrder.LayoutOrder
+
 	layout.Padding =
-	UDim.new(0.025, 0)
+	UDim.new(
+		0,
+		6
+	)
 
 	layout.Parent = buttons
 
+
 	local editButton =
-	createActionButton(
-		buttons,
-		"EditButton",
-		"MOVE",
-		Colors.Info,
-		Colors.InfoDark
-	)
+		createActionButton(
+			buttons,
+			"EditButton",
+			"MOVE",
+			"↔",
+			Colors.Info,
+			Colors.InfoDark
+		)
 
-local upgradeButton =
-	createActionButton(
-		buttons,
-		"UpgradeButton",
-		"UPGRADE",
-		Colors.Primary,
-		Colors.PrimaryDark
-	)
+	editButton.LayoutOrder = 1
 
-local removeButton =
-	createActionButton(
-		buttons,
-		"RemoveButton",
-		"REMOVE",
-		Colors.Danger,
-		Colors.DangerDark
-	)
 
-editButton.Size =
-	UDim2.fromScale(
-		0.31,
-		1
-	)
+	local upgradeButton =
+		createActionButton(
+			buttons,
+			"UpgradeButton",
+			"UPGRADE",
+			"↑",
+			Colors.Primary,
+			Colors.PrimaryDark
+		)
 
-upgradeButton.Size =
-	UDim2.fromScale(
-		0.31,
-		1
-	)
+	upgradeButton.LayoutOrder = 2
 
-removeButton.Size =
-	UDim2.fromScale(
-		0.31,
-		1
-	)
 
-	editButton.Activated:Connect(function()
-		if stand
-			~= getClosestOwnedStand() then
+	local removeButton =
+		createActionButton(
+			buttons,
+			"RemoveButton",
+			"REMOVE",
+			"×",
+			Colors.Danger,
+			Colors.DangerDark
+		)
 
-			showToast(
-				"Your lemonade stand could not be found.",
-				true
+	removeButton.LayoutOrder = 3
+
+
+	editButton.Activated:Connect(
+		function()
+			if stand
+				~= getClosestOwnedStand() then
+
+				showToast(
+					"Your lemonade stand could not be found.",
+					true
+				)
+
+				return
+			end
+
+			if stand:GetAttribute(
+				"IsBeingEdited"
+			) == true then
+
+				return
+			end
+
+			local businessId =
+				stand:GetAttribute(
+					"BusinessId"
+				) or stand.Name
+
+			setManagementVisible(
+				false
 			)
 
-			return
+			requestEditRemote:FireServer(
+				businessId
+			)
 		end
-
-		if stand:GetAttribute(
-			"IsBeingEdited"
-		) == true then
-
-			return
-		end
-
-		local businessId =
-			stand:GetAttribute(
-				"BusinessId"
-			) or stand.Name
-
-		billboard.Enabled = false
-
-		requestEditRemote:FireServer(
-			businessId
-		)
-	end)
-
-	upgradeButton.Activated:Connect(function()
-	if stand
-		~= getClosestOwnedStand() then
-
-		showToast(
-			"Your lemonade stand could not be found.",
-			true
-		)
-
-		return
-	end
-
-	if stand:GetAttribute(
-		"IsBeingEdited"
-	) == true then
-
-		showToast(
-			"Finish moving this stand first.",
-			true
-		)
-
-		return
-	end
-
-	if stand:GetAttribute(
-		"StandUnavailable"
-	) == true then
-
-		showToast(
-			"This stand is currently unavailable.",
-			true
-		)
-
-		return
-	end
-
-	local businessId =
-		stand:GetAttribute(
-			"BusinessId"
-		)
-
-	if typeof(businessId) ~= "string"
-		or businessId == "" then
-
-		businessId = stand.Name
-	end
-
-	billboard.Enabled = false
-
-	openUpgradeMenuEvent:Fire(
-		businessId
 	)
-end)
 
-	removeButton.Activated:Connect(function()
-		if removeRequestPending then
-			return
-		end
 
-		if stand
-			~= getClosestOwnedStand() then
+	upgradeButton.Activated:Connect(
+		function()
+			if stand
+				~= getClosestOwnedStand() then
 
-			showToast(
-				"Your lemonade stand could not be found.",
-				true
+				showToast(
+					"Your lemonade stand could not be found.",
+					true
+				)
+
+				return
+			end
+
+			if stand:GetAttribute(
+				"IsBeingEdited"
+			) == true then
+
+				showToast(
+					"Finish moving this stand first.",
+					true
+				)
+
+				return
+			end
+
+			if stand:GetAttribute(
+				"StandUnavailable"
+			) == true then
+
+				showToast(
+					"This stand is currently unavailable.",
+					true
+				)
+
+				return
+			end
+
+			local businessId =
+				stand:GetAttribute(
+					"BusinessId"
+				)
+
+			if typeof(businessId)
+					~= "string"
+				or businessId == "" then
+
+				businessId =
+					stand.Name
+			end
+
+			setManagementVisible(
+				false
 			)
 
-			return
+			openUpgradeMenuEvent:Fire(
+				businessId
+			)
 		end
+	)
 
-		pendingRemoveBusinessId =
-			stand:GetAttribute(
-				"BusinessId"
-			) or stand.Name
 
-		removeRequestPending = true
+	removeButton.Activated:Connect(
+		function()
+			if removeRequestPending then
+				return
+			end
 
-		requestRemoveRemote:FireServer(
-			false,
-			pendingRemoveBusinessId
-		)
+			if stand
+				~= getClosestOwnedStand() then
 
-		task.delay(2, function()
-			removeRequestPending = false
-		end)
-	end)
+				showToast(
+					"Your lemonade stand could not be found.",
+					true
+				)
+
+				return
+			end
+
+			pendingRemoveBusinessId =
+				stand:GetAttribute(
+					"BusinessId"
+				) or stand.Name
+
+			removeRequestPending = true
+
+			requestRemoveRemote:FireServer(
+				false,
+				pendingRemoveBusinessId
+			)
+
+			task.delay(
+				2,
+				function()
+					removeRequestPending =
+						false
+				end
+			)
+		end
+	)
+
 
 	managementGui = billboard
 	managementStand = stand
+	managementScale = rootScale
+	managementVisible = false
+
+	updateManagementLayout()
 end
 
 local function hideRemoveConfirmation(
@@ -1834,6 +2300,41 @@ end
 
 createRemoveConfirmation()
 
+local function connectManagementCamera(
+	camera: Camera
+)
+	camera:GetPropertyChangedSignal(
+		"ViewportSize"
+	):Connect(function()
+		updateManagementLayout()
+	end)
+end
+
+
+if Workspace.CurrentCamera then
+	connectManagementCamera(
+		Workspace.CurrentCamera
+	)
+end
+
+
+Workspace:GetPropertyChangedSignal(
+	"CurrentCamera"
+):Connect(function()
+	local camera =
+		Workspace.CurrentCamera
+
+	if not camera then
+		return
+	end
+
+	updateManagementLayout()
+
+	connectManagementCamera(
+		camera
+	)
+end)
+
 UserInputService.InputBegan:Connect(
 	function(input, gameProcessed)
 		if gameProcessed
@@ -1870,9 +2371,9 @@ interactionResultRemote.OnClientEvent:Connect(
 		if action == "BeginEdit" then
 			hideRemoveConfirmation()
 
-			if managementGui then
-				managementGui.Enabled = false
-			end
+			setManagementVisible(
+	false
+)
 
 			return
 		end
@@ -1909,9 +2410,9 @@ interactionResultRemote.OnClientEvent:Connect(
 		end
 
 		if action == "EditFailed" then
-			if managementGui then
-				managementGui.Enabled = false
-			end
+			setManagementVisible(
+	false
+)
 
 			showToast(
 				typeof(message) == "string"
@@ -1924,9 +2425,9 @@ interactionResultRemote.OnClientEvent:Connect(
 )
 
 player.CharacterRemoving:Connect(function()
-	if managementGui then
-		managementGui.Enabled = false
-	end
+	setManagementVisible(
+	false
+)
 
 	hideRemoveConfirmation()
 end)
@@ -1943,20 +2444,26 @@ task.spawn(function()
 			if stand
 				and not managementCreationPending then
 
-				managementCreationPending = true
+				managementCreationPending =
+					true
 
 				task.spawn(function()
 					createManagementUI(
 						stand
 					)
 
-					managementCreationPending = false
+					managementCreationPending =
+						false
 				end)
+
 			elseif not stand then
 				destroyManagementUI()
-				managementCreationPending = false
+
+				managementCreationPending =
+					false
 			end
 		end
+
 
 		local shouldShow = false
 
@@ -1972,13 +2479,15 @@ task.spawn(function()
 			) ~= true then
 
 			local adornee =
-				getUIAdornee(stand)
+				getUIAdornee(
+					stand
+				)
 
 			if adornee then
 				local distance =
 					(
 						rootPart.Position
-							- adornee.Position
+						- adornee.Position
 					).Magnitude
 
 				shouldShow =
@@ -1987,10 +2496,10 @@ task.spawn(function()
 			end
 		end
 
-		if managementGui then
-			managementGui.Enabled =
-				shouldShow
-		end
+
+		setManagementVisible(
+			shouldShow
+		)
 
 		task.wait(
 			UPDATE_INTERVAL
