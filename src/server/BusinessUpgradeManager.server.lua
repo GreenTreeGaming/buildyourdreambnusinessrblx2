@@ -1,6 +1,14 @@
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Workspace = game:GetService("Workspace")
+local Players =
+	game:GetService("Players")
+
+local ReplicatedStorage =
+	game:GetService("ReplicatedStorage")
+
+local TweenService =
+	game:GetService("TweenService")
+
+local Workspace =
+	game:GetService("Workspace")
 
 local BusinessConfig = require(
 	ReplicatedStorage
@@ -20,6 +28,25 @@ local plotsFolder =
 local BUSINESS_NAME = "LemonadeStand"
 local REQUEST_COOLDOWN = 0.5
 local MANAGEMENT_DISTANCE = 22
+
+-- Appearance upgrade construction animation.
+local CONSTRUCTION_START_OFFSET =
+	Vector3.new(0, -2.25, 0)
+
+local CONSTRUCTION_MIN_STAGGER = 0.008
+local CONSTRUCTION_MAX_STAGGER = 0.018
+
+local CONSTRUCTION_MOVE_TIME = 0.20
+local CONSTRUCTION_SETTLE_TIME = 0.07
+
+local CONSTRUCTION_START_SCALE = 0.08
+
+local constructionRandom = Random.new()
+
+local CONSTRUCTION_OVERSHOOT =
+	Vector3.new(0, 0.15, 0)
+
+local MINIMUM_PART_SIZE = 0.05
 
 local requestUpgradeRemote =
 	remotes:FindFirstChild("RequestBusinessUpgrade")
@@ -258,6 +285,248 @@ local function isLemonadeStand(
 			stand.Name,
 			"^LemonadeStand_"
 		) ~= nil
+end
+
+type ConstructionPartState = {
+	Part: BasePart,
+	FinalCFrame: CFrame,
+	FinalSize: Vector3,
+	FinalTransparency: number,
+}
+
+local function isConstructionVisual(
+	part: BasePart
+): boolean
+	-- Completely invisible parts are generally placement,
+	-- interaction, queue, or other gameplay helpers.
+	if part.Transparency >= 1 then
+		return false
+	end
+
+	-- Never animate the model's gameplay helper pieces,
+	-- even if one is accidentally made visible later.
+	local ignoredNames = {
+		PlacementOrigin = true,
+		PlacementBounds = true,
+		ManagementUIPosition = true,
+		CooldownUIPosition = true,
+		SaleEffectPosition = true,
+		CustomerFacingPosition = true,
+	}
+
+	if ignoredNames[part.Name] then
+		return false
+	end
+
+	-- Queue position parts are descendants of this folder/model.
+	local current: Instance? = part.Parent
+
+	while current do
+		if current.Name == "QueuePositions" then
+			return false
+		end
+
+		current = current.Parent
+	end
+
+	return true
+end
+
+local function getConstructionParts(
+	model: Model
+): {ConstructionPartState}
+	local parts: {ConstructionPartState} = {}
+
+	for _, descendant in model:GetDescendants() do
+		if not descendant:IsA("BasePart") then
+			continue
+		end
+
+		if not isConstructionVisual(descendant) then
+			continue
+		end
+
+		table.insert(
+			parts,
+			{
+				Part = descendant,
+				FinalCFrame = descendant.CFrame,
+				FinalSize = descendant.Size,
+				FinalTransparency =
+					descendant.Transparency,
+			}
+		)
+	end
+
+	-- Construct from the bottom upward.
+	--
+	-- This makes legs/base pieces appear first, followed
+	-- naturally by counters, walls, signs, roofs, etc.
+	table.sort(
+		parts,
+		function(
+			a: ConstructionPartState,
+			b: ConstructionPartState
+		): boolean
+			return a.FinalCFrame.Position.Y
+				< b.FinalCFrame.Position.Y
+		end
+	)
+
+	return parts
+end
+
+local function getScaledStartingSize(
+	size: Vector3
+): Vector3
+	return Vector3.new(
+		math.max(
+			size.X * CONSTRUCTION_START_SCALE,
+			MINIMUM_PART_SIZE
+		),
+
+		math.max(
+			size.Y * CONSTRUCTION_START_SCALE,
+			MINIMUM_PART_SIZE
+		),
+
+		math.max(
+			size.Z * CONSTRUCTION_START_SCALE,
+			MINIMUM_PART_SIZE
+		)
+	)
+end
+
+local function prepareConstructionAnimation(
+	states: {ConstructionPartState}
+)
+	for _, state in states do
+		local part = state.Part
+
+		if not part.Parent then
+			continue
+		end
+
+		part.Size =
+			getScaledStartingSize(
+				state.FinalSize
+			)
+
+		part.CFrame =
+			state.FinalCFrame
+			+ CONSTRUCTION_START_OFFSET
+
+		part.Transparency = 1
+	end
+end
+
+local function animateConstructionPart(
+	state: ConstructionPartState
+)
+	local part = state.Part
+
+	if not part.Parent then
+		return
+	end
+
+	-- First movement goes just slightly above the final
+	-- position, giving each piece a satisfying pop.
+	local overshootCFrame =
+		state.FinalCFrame
+		+ CONSTRUCTION_OVERSHOOT
+
+	local appearTween =
+		TweenService:Create(
+			part,
+			TweenInfo.new(
+				CONSTRUCTION_MOVE_TIME,
+				Enum.EasingStyle.Back,
+				Enum.EasingDirection.Out
+			),
+			{
+				CFrame = overshootCFrame,
+				Size = state.FinalSize,
+				Transparency =
+					state.FinalTransparency,
+			}
+		)
+
+	appearTween:Play()
+	appearTween.Completed:Wait()
+
+	if not part.Parent then
+		return
+	end
+
+	local settleTween =
+		TweenService:Create(
+			part,
+			TweenInfo.new(
+				CONSTRUCTION_SETTLE_TIME,
+				Enum.EasingStyle.Quad,
+				Enum.EasingDirection.Out
+			),
+			{
+				CFrame = state.FinalCFrame,
+			}
+		)
+
+	settleTween:Play()
+	settleTween.Completed:Wait()
+end
+
+local function playConstructionAnimation(
+	model: Model
+)
+	local states =
+		getConstructionParts(model)
+
+	if #states == 0 then
+		return
+	end
+
+	prepareConstructionAnimation(states)
+
+	for index, state in states do
+		task.delay(
+			(index - 1)
+				* constructionRandom:NextNumber(
+	CONSTRUCTION_MIN_STAGGER,
+	CONSTRUCTION_MAX_STAGGER
+),
+			function()
+				animateConstructionPart(state)
+			end
+		)
+	end
+
+	-- Determine approximately when the last piece has
+	-- completed both its construction and settling tween.
+	local maximumStagger =
+		(#states - 1)
+		* CONSTRUCTION_MAX_STAGGER
+
+	task.wait(
+		maximumStagger
+			+ CONSTRUCTION_MOVE_TIME
+			+ CONSTRUCTION_SETTLE_TIME
+			+ 0.05
+	)
+
+	-- Force exact final state in case a tween was interrupted
+	-- by lag or some other system touching the stand.
+	for _, state in states do
+		if state.Part.Parent then
+			state.Part.CFrame =
+				state.FinalCFrame
+
+			state.Part.Size =
+				state.FinalSize
+
+			state.Part.Transparency =
+				state.FinalTransparency
+		end
+	end
 end
 
 local function performUpgrade(player: Player, stand: Model)
@@ -554,31 +823,104 @@ end
 
 			setModelPlacedState(upgradedStand)
 
-			upgradedStand.Name =
-	stand.Name .. "_UpgradePending"
+			local finalName = stand.Name
+
+upgradedStand.Name =
+	finalName .. "_UpgradePending"
+
+upgradedStand:SetAttribute(
+	"StandUnavailable",
+	true
+)
+
+setPromptsEnabled(
+	upgradedStand,
+	false
+)
 
 upgradedStand.Parent =
 	placedBusinesses
 
 upgradedStand:PivotTo(oldPivot)
 
-local finalName = stand.Name
+-- Capture all final transforms AFTER PivotTo().
+--
+-- This is important because the construction animation
+-- needs the world-space destination of every piece.
+local constructionStates =
+	getConstructionParts(upgradedStand)
 
-stand:SetAttribute(
-	"StandUnavailable",
-	true
+prepareConstructionAnimation(
+	constructionStates
 )
 
-task.wait(0.1)
-
+-- Remove the old appearance only once the replacement is
+-- fully prepared. That prevents a visible empty gap if
+-- anything above fails.
 stand:Destroy()
 
+-- Give the replacement its real identity immediately.
+-- Systems looking for this business can find the model,
+-- while StandUnavailable keeps customers out.
 upgradedStand.Name = finalName
 
-			setPromptsEnabled(
-				upgradedStand,
-				true
+-- Build the new appearance in place.
+do
+	local states =
+		constructionStates
+
+	for index, state in states do
+		local stagger =
+			constructionRandom:NextNumber(
+				CONSTRUCTION_MIN_STAGGER,
+				CONSTRUCTION_MAX_STAGGER
 			)
+
+		task.delay(
+			(index - 1) * stagger,
+			function()
+				animateConstructionPart(
+					state
+				)
+			end
+		)
+	end
+
+	local maximumStagger =
+		(#states - 1)
+		* CONSTRUCTION_MAX_STAGGER
+
+	task.wait(
+		maximumStagger
+			+ CONSTRUCTION_MOVE_TIME
+			+ CONSTRUCTION_SETTLE_TIME
+			+ 0.05
+	)
+
+	for _, state in states do
+		if state.Part.Parent then
+			state.Part.CFrame =
+				state.FinalCFrame
+
+			state.Part.Size =
+				state.FinalSize
+
+			state.Part.Transparency =
+				state.FinalTransparency
+		end
+	end
+end
+
+-- The new stand becomes usable only after construction.
+upgradedStand:SetAttribute(
+	"StandUnavailable",
+	false
+)
+
+setPromptsEnabled(
+	upgradedStand,
+	true
+)
 		end)
 
 	if not success then
