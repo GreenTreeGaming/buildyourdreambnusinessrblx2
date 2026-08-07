@@ -4,11 +4,15 @@ local Players =
 local ReplicatedStorage =
 	game:GetService("ReplicatedStorage")
 
+local Workspace =
+	game:GetService("Workspace")
+
 local TweenService =
 	game:GetService("TweenService")
 
 local UserInputService =
 	game:GetService("UserInputService")
+
 
 local player =
 	Players.LocalPlayer
@@ -16,10 +20,12 @@ local player =
 local playerGui =
 	player:WaitForChild("PlayerGui")
 
+
 local remotes =
 	ReplicatedStorage:WaitForChild(
 		"Remotes"
 	)
+
 
 local getMarketingStateRemote =
 	remotes:WaitForChild(
@@ -36,14 +42,20 @@ local marketingResultRemote =
 		"MarketingResult"
 	)
 
+
 local UITheme = require(
 	ReplicatedStorage
 		:WaitForChild("Shared")
 		:WaitForChild("UITheme")
 )
 
-local Colors = UITheme.Colors
-local Fonts = UITheme.Fonts
+
+local Colors =
+	UITheme.Colors
+
+local Fonts =
+	UITheme.Fonts
+
 
 type MarketingState = {
 	Success: boolean,
@@ -62,13 +74,23 @@ type MarketingState = {
 	MaximumSpawnInterval: number?,
 }
 
+
 type Interface = {
 	ScreenGui: ScreenGui,
+
 	OpenButton: TextButton,
 
 	Overlay: Frame,
+
 	Window: Frame,
 	WindowScale: UIScale,
+
+	Header: Frame,
+	Body: ScrollingFrame,
+	Footer: Frame,
+
+	TitleLabel: TextLabel,
+	SubtitleLabel: TextLabel,
 
 	CloseButton: TextButton,
 
@@ -86,11 +108,18 @@ type Interface = {
 	PurchaseButton: TextButton,
 }
 
+
 local interface: Interface
 
-local menuOpen = false
-local requestPending = false
-local currentState: MarketingState? = nil
+local menuOpen =
+	false
+
+local requestPending =
+	false
+
+local currentState:
+	MarketingState? = nil
+
 
 local function createTextLabel(
 	parent: Instance,
@@ -105,16 +134,27 @@ local function createTextLabel(
 	alignment: Enum.TextXAlignment?
 ): TextLabel
 	local label =
-		Instance.new("TextLabel")
+		Instance.new(
+			"TextLabel"
+		)
 
-	label.Name = name
-	label.Position = position
-	label.Size = size
+	label.Name =
+		name
 
-	label.BackgroundTransparency = 1
-	label.BorderSizePixel = 0
+	label.Position =
+		position
 
-	label.Text = text
+	label.Size =
+		size
+
+	label.BackgroundTransparency =
+		1
+
+	label.BorderSizePixel =
+		0
+
+	label.Text =
+		text
 
 	label.TextXAlignment =
 		alignment
@@ -123,7 +163,8 @@ local function createTextLabel(
 	label.TextYAlignment =
 		Enum.TextYAlignment.Center
 
-	label.Parent = parent
+	label.Parent =
+		parent
 
 	UITheme.StyleText(
 		label,
@@ -136,63 +177,6 @@ local function createTextLabel(
 	return label
 end
 
-local function createResponsiveWindow(
-	parent: Instance
-): (Frame, UIScale)
-	local window =
-		Instance.new("Frame")
-
-	window.Name = "MarketingWindow"
-	window.AnchorPoint =
-		Vector2.new(0.5, 0.5)
-
-	window.Position =
-		UDim2.fromScale(0.5, 0.5)
-
-	window.Size =
-		UDim2.fromScale(
-			0.88,
-			0.84
-		)
-
-	window.BackgroundColor3 =
-		Colors.Surface
-
-	window.BorderSizePixel = 0
-	window.ClipsDescendants = true
-	window.Parent = parent
-
-	UITheme.AddCorner(
-		window,
-		0.035
-	)
-
-	UITheme.AddStroke(
-		window,
-		Colors.Stroke,
-		2,
-		0.05
-	)
-
-	local sizeConstraint =
-		Instance.new("UISizeConstraint")
-
-	sizeConstraint.MinSize =
-		Vector2.new(290, 430)
-
-	sizeConstraint.MaxSize =
-		Vector2.new(720, 680)
-
-	sizeConstraint.Parent = window
-
-	local scale =
-		Instance.new("UIScale")
-
-	scale.Scale = 1
-	scale.Parent = window
-
-	return window, scale
-end
 
 local function createStatCard(
 	parent: Instance,
@@ -204,21 +188,28 @@ local function createStatCard(
 	local card =
 		Instance.new("Frame")
 
-	card.Name = name
-	card.LayoutOrder = layoutOrder
+	card.Name =
+		name
+
+	card.LayoutOrder =
+		layoutOrder
+
 	card.Size =
 		UDim2.new(
 			0.5,
-			-6,
-			1,
-			0
+			-5,
+			0,
+			72
 		)
 
 	card.BackgroundColor3 =
 		Colors.SurfaceRaised
 
-	card.BorderSizePixel = 0
-	card.Parent = parent
+	card.BorderSizePixel =
+		0
+
+	card.Parent =
+		parent
 
 	UITheme.AddCorner(
 		card,
@@ -232,15 +223,24 @@ local function createStatCard(
 		0.3
 	)
 
+
 	local icon =
 		createTextLabel(
 			card,
 			"Icon",
 			iconText,
-			UDim2.fromScale(0.05, 0.08),
-			UDim2.fromScale(0.2, 0.34),
-			15,
-			26,
+			UDim2.new(
+				0,
+				10,
+				0,
+				8
+			),
+			UDim2.fromOffset(
+				32,
+				26
+			),
+			13,
+			21,
 			Fonts.Black,
 			Colors.Primary,
 			Enum.TextXAlignment.Center
@@ -249,29 +249,50 @@ local function createStatCard(
 	icon.TextYAlignment =
 		Enum.TextYAlignment.Center
 
-	local titleLabel =
-		createTextLabel(
-			card,
-			"Title",
-			title,
-			UDim2.fromScale(0.24, 0.08),
-			UDim2.fromScale(0.7, 0.3),
-			9,
-			14,
-			Fonts.Bold,
-			Colors.TextMuted,
-			Enum.TextXAlignment.Left
-		)
+
+	createTextLabel(
+		card,
+		"Title",
+		title,
+		UDim2.new(
+			0,
+			44,
+			0,
+			8
+		),
+		UDim2.new(
+			1,
+			-54,
+			0,
+			21
+		),
+		8,
+		12,
+		Fonts.Bold,
+		Colors.TextMuted,
+		Enum.TextXAlignment.Left
+	)
+
 
 	local valueLabel =
 		createTextLabel(
 			card,
 			"Value",
 			"--",
-			UDim2.fromScale(0.08, 0.4),
-			UDim2.fromScale(0.84, 0.45),
-			15,
-			28,
+			UDim2.new(
+				0,
+				10,
+				0,
+				32
+			),
+			UDim2.new(
+				1,
+				-20,
+				0,
+				31
+			),
+			13,
+			22,
 			Fonts.Black,
 			Colors.Text,
 			Enum.TextXAlignment.Center
@@ -279,6 +300,7 @@ local function createStatCard(
 
 	return valueLabel
 end
+
 
 local function createInterface(): Interface
 	local existing =
@@ -290,49 +312,71 @@ local function createInterface(): Interface
 		existing:Destroy()
 	end
 
+
 	local screenGui =
 		Instance.new("ScreenGui")
 
-	screenGui.Name = "MarketingMenu"
-	screenGui.ResetOnSpawn = false
-	screenGui.IgnoreGuiInset = true
-	screenGui.DisplayOrder = 25
+	screenGui.Name =
+		"MarketingMenu"
+
+	screenGui.ResetOnSpawn =
+		false
+
+	-- Respect Roblox's top bar instead of drawing
+	-- underneath the mobile controls.
+	screenGui.IgnoreGuiInset =
+		false
+
+	screenGui.ScreenInsets =
+		Enum.ScreenInsets.DeviceSafeInsets
+
+	screenGui.DisplayOrder =
+		25
+
 	screenGui.ZIndexBehavior =
 		Enum.ZIndexBehavior.Sibling
 
-	screenGui.Parent = playerGui
+	screenGui.Parent =
+		playerGui
+
 
 	-- Permanent HUD button.
 	local openButton =
 		Instance.new("TextButton")
 
-	openButton.Name = "OpenMarketingButton"
+	openButton.Name =
+		"OpenMarketingButton"
+
 	openButton.AnchorPoint =
-		Vector2.new(0, 0.5)
+		Vector2.new(
+			0,
+			0.5
+		)
 
 	openButton.Position =
 		UDim2.new(
 			0,
-			14,
+			12,
 			0.58,
 			0
 		)
 
 	openButton.Size =
 		UDim2.fromOffset(
-			158,
-			54
+			146,
+			50
 		)
 
 	openButton.Text =
 		"MARKETING"
 
-	openButton.Parent = screenGui
+	openButton.Parent =
+		screenGui
 
 	UITheme.StyleText(
 		openButton,
-		11,
-		18,
+		10,
+		17,
 		Colors.TextDark,
 		Fonts.Black
 	)
@@ -344,267 +388,382 @@ local function createInterface(): Interface
 		Colors.TextDark
 	)
 
-	local openSizeConstraint =
-		Instance.new("UISizeConstraint")
 
-	openSizeConstraint.MinSize =
-		Vector2.new(126, 46)
-
-	openSizeConstraint.MaxSize =
-		Vector2.new(170, 58)
-
-	openSizeConstraint.Parent =
-		openButton
-
-	-- Darkened background behind the menu.
 	local overlay =
 		Instance.new("Frame")
 
-	overlay.Name = "Overlay"
+	overlay.Name =
+		"Overlay"
+
 	overlay.Size =
-		UDim2.fromScale(1, 1)
+		UDim2.fromScale(
+			1,
+			1
+		)
 
 	overlay.BackgroundColor3 =
 		Colors.Shadow
 
-	overlay.BackgroundTransparency = 1
-	overlay.BorderSizePixel = 0
-	overlay.Visible = false
-	overlay.Active = true
-	overlay.Parent = screenGui
+	overlay.BackgroundTransparency =
+		1
 
-	local window, windowScale =
-		createResponsiveWindow(
-			overlay
-		)
+	overlay.BorderSizePixel =
+		0
 
-	windowScale.Scale = 0.92
+	overlay.Visible =
+		false
 
-	-- Header.
-local header =
-	Instance.new("Frame")
+	overlay.Active =
+		true
 
-header.Name = "Header"
-header.Size =
-	UDim2.fromScale(1, 0.16)
+	overlay.Parent =
+		screenGui
 
-header.BackgroundColor3 =
-	Colors.SurfaceRaised
 
-header.BorderSizePixel = 0
-header.ClipsDescendants = true
-header.Parent = window
-
--- Use a pixel radius here. A scale radius becomes
--- extremely small because the header is short.
-local headerCorner =
-	Instance.new("UICorner")
-
-headerCorner.CornerRadius =
-	UDim.new(0, 18)
-
-headerCorner.Parent = header
-
-local headerGradient =
-	Instance.new("UIGradient")
-
-headerGradient.Color =
-	ColorSequence.new({
-		ColorSequenceKeypoint.new(
-			0,
-			Colors.SurfaceRaised
-		),
-		ColorSequenceKeypoint.new(
-			1,
-			Colors.Surface
-		),
-	})
-
-headerGradient.Rotation = 90
-headerGradient.Parent = header
-
--- Covers only the rounded bottom corners so the
--- header joins cleanly with the content beneath it.
-local headerBottomCover =
-	Instance.new("Frame")
-
-headerBottomCover.Name =
-	"HeaderBottomCover"
-
-headerBottomCover.AnchorPoint =
-	Vector2.new(0, 1)
-
-headerBottomCover.Position =
-	UDim2.fromScale(0, 1)
-
-headerBottomCover.Size =
-	UDim2.new(
-		1,
-		0,
-		0,
-		20
-	)
-
-headerBottomCover.BackgroundColor3 =
-	Colors.Surface
-
-headerBottomCover.BorderSizePixel = 0
-headerBottomCover.ZIndex = 1
-headerBottomCover.Parent = header
-
-local titleLabel =
-	createTextLabel(
-		header,
-		"Title",
-		"MARKETING",
-		UDim2.fromScale(0.05, 0.14),
-		UDim2.fromScale(0.72, 0.32),
-		18,
-		32,
-		Fonts.Black,
-		Colors.Text,
-		Enum.TextXAlignment.Left
-	)
-
-titleLabel.ZIndex = 2
-
-local subtitleLabel =
-	createTextLabel(
-		header,
-		"Subtitle",
-		"Bring more customers to your businesses",
-		UDim2.fromScale(0.05, 0.5),
-		UDim2.fromScale(0.72, 0.24),
-		9,
-		15,
-		Fonts.Medium,
-		Colors.TextMuted,
-		Enum.TextXAlignment.Left
-	)
-
-subtitleLabel.ZIndex = 2
-
-local closeButton =
-	Instance.new("TextButton")
-
-closeButton.Name = "CloseButton"
-
-closeButton.AnchorPoint =
-	Vector2.new(1, 0.5)
-
-closeButton.Position =
-	UDim2.new(
-		1,
-		-22,
-		0.5,
-		-4
-	)
-
-closeButton.Size =
-	UDim2.fromOffset(
-		58,
-		58
-	)
-
-closeButton.Text = "×"
-closeButton.ZIndex = 3
-closeButton.Parent = header
-
-UITheme.StyleText(
-	closeButton,
-	18,
-	30,
-	Colors.Text,
-	Fonts.Black
-)
-
-UITheme.StyleButton(
-	closeButton,
-	Colors.Danger,
-	Colors.DangerDark,
-	Colors.Text
-)
-
-local closeSizeConstraint =
-	Instance.new("UISizeConstraint")
-
-closeSizeConstraint.MinSize =
-	Vector2.new(48, 48)
-
-closeSizeConstraint.MaxSize =
-	Vector2.new(58, 58)
-
-closeSizeConstraint.Parent =
-	closeButton
-
-local closeAspect =
-	Instance.new("UIAspectRatioConstraint")
-
-closeAspect.AspectRatio = 1
-closeAspect.Parent = closeButton
-
-	-- Main content container.
-	local content =
+	local window =
 		Instance.new("Frame")
 
-	content.Name = "Content"
-	content.Position =
-	UDim2.fromScale(0, 0.16)
+	window.Name =
+		"MarketingWindow"
 
-content.Size =
-	UDim2.fromScale(1, 0.84)
+	window.AnchorPoint =
+		Vector2.new(
+			0.5,
+			0.5
+		)
 
-	content.BackgroundTransparency = 1
-	content.Parent = window
+	window.Position =
+		UDim2.fromScale(
+			0.5,
+			0.5
+		)
 
-	local contentPadding =
+	window.Size =
+		UDim2.fromOffset(
+			680,
+			580
+		)
+
+	window.BackgroundColor3 =
+		Colors.Surface
+
+	window.BorderSizePixel =
+		0
+
+	window.ClipsDescendants =
+		true
+
+	window.Parent =
+		overlay
+
+	UITheme.AddCorner(
+		window,
+		0.035
+	)
+
+	UITheme.AddStroke(
+		window,
+		Colors.Stroke,
+		2,
+		0.05
+	)
+
+
+	local windowScale =
+		Instance.new("UIScale")
+
+	windowScale.Scale =
+		0.92
+
+	windowScale.Parent =
+		window
+
+
+	-- Header.
+	local header =
+		Instance.new("Frame")
+
+	header.Name =
+		"Header"
+
+	header.Size =
+		UDim2.new(
+			1,
+			0,
+			0,
+			88
+		)
+
+	header.BackgroundColor3 =
+		Colors.SurfaceRaised
+
+	header.BorderSizePixel =
+		0
+
+	header.ClipsDescendants =
+		true
+
+	header.Parent =
+		window
+
+
+	local headerGradient =
+		Instance.new("UIGradient")
+
+	headerGradient.Color =
+		ColorSequence.new({
+			ColorSequenceKeypoint.new(
+				0,
+				Colors.SurfaceRaised
+			),
+
+			ColorSequenceKeypoint.new(
+				1,
+				Colors.Surface
+			),
+		})
+
+	headerGradient.Rotation =
+		90
+
+	headerGradient.Parent =
+		header
+
+
+	local titleLabel =
+		createTextLabel(
+			header,
+			"Title",
+			"MARKETING",
+			UDim2.fromOffset(
+				24,
+				12
+			),
+			UDim2.new(
+				1,
+				-100,
+				0,
+				31
+			),
+			16,
+			28,
+			Fonts.Black,
+			Colors.Text,
+			Enum.TextXAlignment.Left
+		)
+
+	titleLabel.ZIndex =
+		2
+
+
+	local subtitleLabel =
+		createTextLabel(
+			header,
+			"Subtitle",
+			"Bring more customers to your businesses",
+			UDim2.fromOffset(
+				24,
+				45
+			),
+			UDim2.new(
+				1,
+				-100,
+				0,
+				22
+			),
+			8,
+			13,
+			Fonts.Medium,
+			Colors.TextMuted,
+			Enum.TextXAlignment.Left
+		)
+
+	subtitleLabel.ZIndex =
+		2
+
+
+	local closeButton =
+		Instance.new("TextButton")
+
+	closeButton.Name =
+		"CloseButton"
+
+	closeButton.AnchorPoint =
+		Vector2.new(
+			1,
+			0.5
+		)
+
+	closeButton.Position =
+		UDim2.new(
+			1,
+			-16,
+			0.5,
+			0
+		)
+
+	closeButton.Size =
+		UDim2.fromOffset(
+			48,
+			48
+		)
+
+	closeButton.Text =
+		"×"
+
+	closeButton.ZIndex =
+		3
+
+	closeButton.Parent =
+		header
+
+	UITheme.StyleText(
+		closeButton,
+		16,
+		25,
+		Colors.Text,
+		Fonts.Black
+	)
+
+	UITheme.StyleButton(
+		closeButton,
+		Colors.Danger,
+		Colors.DangerDark,
+		Colors.Text
+	)
+
+
+	-- Scrolling content.
+	local body =
+		Instance.new("ScrollingFrame")
+
+	body.Name =
+		"Body"
+
+	body.Position =
+		UDim2.fromOffset(
+			0,
+			88
+		)
+
+	body.Size =
+		UDim2.new(
+			1,
+			0,
+			1,
+			-166
+		)
+
+	body.BackgroundTransparency =
+		1
+
+	body.BorderSizePixel =
+		0
+
+	body.CanvasSize =
+		UDim2.fromOffset(
+			0,
+			0
+		)
+
+	body.AutomaticCanvasSize =
+		Enum.AutomaticSize.Y
+
+	body.ScrollBarThickness =
+		3
+
+	body.ScrollBarImageColor3 =
+		Colors.Primary
+
+	body.ScrollingDirection =
+		Enum.ScrollingDirection.Y
+
+	body.ElasticBehavior =
+		Enum.ElasticBehavior.WhenScrollable
+
+	body.Parent =
+		window
+
+
+	local bodyPadding =
 		Instance.new("UIPadding")
 
-	contentPadding.PaddingLeft =
-		UDim.new(0.045, 0)
+	bodyPadding.PaddingLeft =
+		UDim.new(
+			0,
+			18
+		)
 
-	contentPadding.PaddingRight =
-		UDim.new(0.045, 0)
+	bodyPadding.PaddingRight =
+		UDim.new(
+			0,
+			24
+		)
 
-	contentPadding.PaddingTop =
-		UDim.new(0.035, 0)
+	bodyPadding.PaddingTop =
+		UDim.new(
+			0,
+			14
+		)
 
-	contentPadding.PaddingBottom =
-		UDim.new(0.035, 0)
+	bodyPadding.PaddingBottom =
+		UDim.new(
+			0,
+			16
+		)
 
-	contentPadding.Parent = content
+	bodyPadding.Parent =
+		body
 
-	local layout =
+
+	local bodyLayout =
 		Instance.new("UIListLayout")
 
-	layout.FillDirection =
+	bodyLayout.FillDirection =
 		Enum.FillDirection.Vertical
 
-	layout.HorizontalAlignment =
+	bodyLayout.HorizontalAlignment =
 		Enum.HorizontalAlignment.Center
 
-	layout.SortOrder =
+	bodyLayout.SortOrder =
 		Enum.SortOrder.LayoutOrder
 
-	layout.Padding =
-		UDim.new(0.018, 0)
+	bodyLayout.Padding =
+		UDim.new(
+			0,
+			10
+		)
 
-	layout.Parent = content
+	bodyLayout.Parent =
+		body
 
-	-- Level and current marketing name.
+
+	-- Hero card.
 	local heroCard =
 		Instance.new("Frame")
 
-	heroCard.Name = "HeroCard"
-	heroCard.LayoutOrder = 1
+	heroCard.Name =
+		"HeroCard"
+
+	heroCard.LayoutOrder =
+		1
+
 	heroCard.Size =
-		UDim2.new(1, 0, 0.25, 0)
+		UDim2.new(
+			1,
+			0,
+			0,
+			116
+		)
 
 	heroCard.BackgroundColor3 =
 		Colors.SurfaceRaised
 
-	heroCard.BorderSizePixel = 0
-	heroCard.Parent = content
+	heroCard.BorderSizePixel =
+		0
+
+	heroCard.Parent =
+		body
 
 	UITheme.AddCorner(
 		heroCard,
@@ -618,80 +777,135 @@ content.Size =
 		0.2
 	)
 
+
 	local accent =
 		Instance.new("Frame")
 
-	accent.Name = "Accent"
+	accent.Name =
+		"Accent"
+
 	accent.Size =
-		UDim2.fromScale(0.025, 1)
+		UDim2.new(
+			0,
+			6,
+			1,
+			0
+		)
 
 	accent.BackgroundColor3 =
 		Colors.Primary
 
-	accent.BorderSizePixel = 0
-	accent.Parent = heroCard
+	accent.BorderSizePixel =
+		0
+
+	accent.Parent =
+		heroCard
 
 	UITheme.AddCorner(
 		accent,
-		0.25
+		0.4
 	)
+
 
 	local levelLabel =
 		createTextLabel(
 			heroCard,
 			"Level",
 			"LEVEL 0",
-			UDim2.fromScale(0.07, 0.08),
-			UDim2.fromScale(0.38, 0.22),
-			10,
-			16,
+			UDim2.fromOffset(
+				24,
+				10
+			),
+			UDim2.new(
+				1,
+				-46,
+				0,
+				20
+			),
+			9,
+			14,
 			Fonts.Black,
 			Colors.Primary,
 			Enum.TextXAlignment.Left
 		)
+
 
 	local nameLabel =
 		createTextLabel(
 			heroCard,
 			"MarketingName",
 			"WORD OF MOUTH",
-			UDim2.fromScale(0.07, 0.29),
-			UDim2.fromScale(0.86, 0.28),
-			15,
-			27,
+			UDim2.fromOffset(
+				24,
+				31
+			),
+			UDim2.new(
+				1,
+				-46,
+				0,
+				31
+			),
+			13,
+			22,
 			Fonts.Black,
 			Colors.Text,
 			Enum.TextXAlignment.Left
 		)
+
 
 	local descriptionLabel =
 		createTextLabel(
 			heroCard,
 			"Description",
 			"Customers discover your businesses naturally.",
-			UDim2.fromScale(0.07, 0.58),
-			UDim2.fromScale(0.86, 0.32),
-			9,
-			15,
+			UDim2.fromOffset(
+				24,
+				65
+			),
+			UDim2.new(
+				1,
+				-46,
+				0,
+				42
+			),
+			8,
+			13,
 			Fonts.Medium,
 			Colors.TextMuted,
 			Enum.TextXAlignment.Left
 		)
 
+	descriptionLabel.TextWrapped =
+		true
+
 	descriptionLabel.TextYAlignment =
 		Enum.TextYAlignment.Top
 
-	-- Statistics.
+
+	-- Statistics row.
 	local statRow =
 		Instance.new("Frame")
 
-	statRow.Name = "StatRow"
-	statRow.LayoutOrder = 2
-	statRow.Size =
-		UDim2.new(1, 0, 0.18, 0)
+	statRow.Name =
+		"StatRow"
 
-	statRow.BackgroundTransparency = 1
-	statRow.Parent = content
+	statRow.LayoutOrder =
+		2
+
+	statRow.Size =
+		UDim2.new(
+			1,
+			0,
+			0,
+			72
+		)
+
+	statRow.BackgroundTransparency =
+		1
+
+	statRow.Parent =
+		body
+
 
 	local statLayout =
 		Instance.new("UIListLayout")
@@ -706,9 +920,14 @@ content.Size =
 		Enum.VerticalAlignment.Center
 
 	statLayout.Padding =
-		UDim.new(0, 12)
+		UDim.new(
+			0,
+			10
+		)
 
-	statLayout.Parent = statRow
+	statLayout.Parent =
+		statRow
+
 
 	local customerLimitValue =
 		createStatCard(
@@ -719,6 +938,7 @@ content.Size =
 			1
 		)
 
+
 	local spawnSpeedValue =
 		createStatCard(
 			statRow,
@@ -728,20 +948,33 @@ content.Size =
 			2
 		)
 
-	-- Progress.
+
+	-- Progress card.
 	local progressCard =
 		Instance.new("Frame")
 
-	progressCard.Name = "ProgressCard"
-	progressCard.LayoutOrder = 3
+	progressCard.Name =
+		"ProgressCard"
+
+	progressCard.LayoutOrder =
+		3
+
 	progressCard.Size =
-		UDim2.new(1, 0, 0.15, 0)
+		UDim2.new(
+			1,
+			0,
+			0,
+			68
+		)
 
 	progressCard.BackgroundColor3 =
 		Colors.SurfaceRaised
 
-	progressCard.BorderSizePixel = 0
-	progressCard.Parent = content
+	progressCard.BorderSizePixel =
+		0
+
+	progressCard.Parent =
+		body
 
 	UITheme.AddCorner(
 		progressCard,
@@ -755,97 +988,218 @@ content.Size =
 		0.3
 	)
 
+
 	local progressLabel =
 		createTextLabel(
 			progressCard,
 			"ProgressLabel",
 			"MARKETING PROGRESS",
-			UDim2.fromScale(0.05, 0.08),
-			UDim2.fromScale(0.9, 0.34),
-			9,
-			14,
+			UDim2.fromOffset(
+				16,
+				7
+			),
+			UDim2.new(
+				1,
+				-32,
+				0,
+				22
+			),
+			8,
+			12,
 			Fonts.Bold,
 			Colors.TextMuted,
 			Enum.TextXAlignment.Left
 		)
 
+
 	local progressTrack =
 		Instance.new("Frame")
 
-	progressTrack.Name = "ProgressTrack"
+	progressTrack.Name =
+		"ProgressTrack"
+
 	progressTrack.Position =
-		UDim2.fromScale(0.05, 0.58)
+		UDim2.new(
+			0,
+			16,
+			0,
+			40
+		)
 
 	progressTrack.Size =
-		UDim2.fromScale(0.9, 0.22)
+		UDim2.new(
+			1,
+			-32,
+			0,
+			10
+		)
 
 	progressTrack.BackgroundColor3 =
 		Colors.ProgressTrack
 
-	progressTrack.BorderSizePixel = 0
-	progressTrack.ClipsDescendants = true
-	progressTrack.Parent = progressCard
+	progressTrack.BorderSizePixel =
+		0
+
+	progressTrack.ClipsDescendants =
+		true
+
+	progressTrack.Parent =
+		progressCard
 
 	UITheme.AddCorner(
 		progressTrack,
 		0.5
 	)
 
+
 	local progressFill =
 		Instance.new("Frame")
 
-	progressFill.Name = "ProgressFill"
+	progressFill.Name =
+		"ProgressFill"
+
 	progressFill.Size =
-		UDim2.fromScale(0, 1)
+		UDim2.fromScale(
+			0,
+			1
+		)
 
 	progressFill.BackgroundColor3 =
 		Colors.Primary
 
-	progressFill.BorderSizePixel = 0
-	progressFill.Parent = progressTrack
+	progressFill.BorderSizePixel =
+		0
+
+	progressFill.Parent =
+		progressTrack
 
 	UITheme.AddCorner(
 		progressFill,
 		0.5
 	)
 
-	-- Status.
+
+	-- Fixed bottom footer.
+	local footer =
+		Instance.new("Frame")
+
+	footer.Name =
+		"Footer"
+
+	footer.AnchorPoint =
+		Vector2.new(
+			0,
+			1
+		)
+
+	footer.Position =
+		UDim2.fromScale(
+			0,
+			1
+		)
+
+	footer.Size =
+		UDim2.new(
+			1,
+			0,
+			0,
+			78
+		)
+
+	footer.BackgroundColor3 =
+		Colors.Surface
+
+	footer.BorderSizePixel =
+		0
+
+	footer.Parent =
+		window
+
+
+	local footerLine =
+		Instance.new("Frame")
+
+	footerLine.Name =
+		"Divider"
+
+	footerLine.Size =
+		UDim2.new(
+			1,
+			0,
+			0,
+			1
+		)
+
+	footerLine.BackgroundColor3 =
+		Colors.Stroke
+
+	footerLine.BackgroundTransparency =
+		0.55
+
+	footerLine.BorderSizePixel =
+		0
+
+	footerLine.Parent =
+		footer
+
+
 	local statusLabel =
 		createTextLabel(
-			content,
+			footer,
 			"StatusLabel",
 			"",
-			UDim2.new(),
-			UDim2.new(1, 0, 0.08, 0),
-			9,
-			15,
+			UDim2.new(
+				0,
+				18,
+				0,
+				4
+			),
+			UDim2.new(
+				1,
+				-36,
+				0,
+				20
+			),
+			8,
+			12,
 			Fonts.Semibold,
 			Colors.TextMuted,
 			Enum.TextXAlignment.Center
 		)
 
-	statusLabel.LayoutOrder = 4
 
-	-- Purchase button.
 	local purchaseButton =
 		Instance.new("TextButton")
 
 	purchaseButton.Name =
 		"PurchaseButton"
 
-	purchaseButton.LayoutOrder = 5
+	purchaseButton.Position =
+		UDim2.new(
+			0,
+			18,
+			0,
+			26
+		)
+
 	purchaseButton.Size =
-		UDim2.new(1, 0, 0.14, 0)
+		UDim2.new(
+			1,
+			-36,
+			0,
+			46
+		)
 
 	purchaseButton.Text =
 		"LOADING..."
 
-	purchaseButton.Parent = content
+	purchaseButton.Parent =
+		footer
 
 	UITheme.StyleText(
 		purchaseButton,
-		13,
-		23,
+		11,
+		18,
 		Colors.TextDark,
 		Fonts.Black
 	)
@@ -857,25 +1211,23 @@ content.Size =
 		Colors.TextDark
 	)
 
-	local buttonSizeConstraint =
-		Instance.new("UISizeConstraint")
-
-	buttonSizeConstraint.MinSize =
-		Vector2.new(0, 52)
-
-	buttonSizeConstraint.MaxSize =
-		Vector2.new(1000, 76)
-
-	buttonSizeConstraint.Parent =
-		purchaseButton
 
 	return {
 		ScreenGui = screenGui,
+
 		OpenButton = openButton,
 
 		Overlay = overlay,
+
 		Window = window,
 		WindowScale = windowScale,
+
+		Header = header,
+		Body = body,
+		Footer = footer,
+
+		TitleLabel = titleLabel,
+		SubtitleLabel = subtitleLabel,
 
 		CloseButton = closeButton,
 
@@ -890,20 +1242,359 @@ content.Size =
 		SpawnSpeedValue =
 			spawnSpeedValue,
 
-		ProgressFill = progressFill,
-		ProgressLabel = progressLabel,
+		ProgressFill =
+			progressFill,
 
-		StatusLabel = statusLabel,
-		PurchaseButton = purchaseButton,
+		ProgressLabel =
+			progressLabel,
+
+		StatusLabel =
+			statusLabel,
+
+		PurchaseButton =
+			purchaseButton,
 	}
 end
+
+
+local function updateResponsiveLayout()
+	local camera =
+		Workspace.CurrentCamera
+
+	if not camera then
+		return
+	end
+
+
+	local viewport =
+		camera.ViewportSize
+
+	local touchDevice =
+		UserInputService.TouchEnabled
+
+	local narrow =
+		viewport.X < 520
+
+	local shortLandscape =
+		touchDevice
+		and viewport.X > viewport.Y
+		and viewport.Y < 560
+
+
+	local widthMargin =
+		shortLandscape
+		and 32
+		or narrow
+			and 26
+			or 70
+
+	local verticalReserve =
+		shortLandscape
+		and 82
+		or touchDevice
+			and 64
+			or 70
+
+
+	local windowWidth =
+		math.min(
+			shortLandscape
+				and 700
+				or 720,
+			math.max(
+				290,
+				viewport.X
+					- widthMargin
+			)
+		)
+
+	local windowHeight =
+		math.min(
+			touchDevice
+				and 650
+				or 680,
+			math.max(
+				260,
+				viewport.Y
+					- verticalReserve
+			)
+		)
+
+
+	interface.Window.Size =
+		UDim2.fromOffset(
+			windowWidth,
+			windowHeight
+		)
+
+
+	local headerHeight: number
+	local footerHeight: number
+
+
+	if shortLandscape then
+		headerHeight = 54
+		footerHeight = 66
+	elseif narrow then
+		headerHeight = 86
+		footerHeight = 82
+	else
+		headerHeight = 88
+		footerHeight = 78
+	end
+
+
+	interface.Header.Size =
+		UDim2.new(
+			1,
+			0,
+			0,
+			headerHeight
+		)
+
+	interface.Footer.Size =
+		UDim2.new(
+			1,
+			0,
+			0,
+			footerHeight
+		)
+
+	interface.Body.Position =
+		UDim2.fromOffset(
+			0,
+			headerHeight
+		)
+
+	interface.Body.Size =
+		UDim2.new(
+			1,
+			0,
+			1,
+			-(
+				headerHeight
+				+ footerHeight
+			)
+		)
+
+
+	if shortLandscape then
+		interface.TitleLabel.Position =
+			UDim2.fromOffset(
+				18,
+				12
+			)
+
+		interface.TitleLabel.Size =
+			UDim2.new(
+				1,
+				-84,
+				0,
+				28
+			)
+
+		interface.SubtitleLabel.Visible =
+			false
+
+		interface.CloseButton.Position =
+			UDim2.new(
+				1,
+				-10,
+				0.5,
+				0
+			)
+
+		interface.CloseButton.Size =
+			UDim2.fromOffset(
+				40,
+				40
+			)
+
+	elseif narrow then
+		interface.TitleLabel.Position =
+			UDim2.fromOffset(
+				18,
+				10
+			)
+
+		interface.TitleLabel.Size =
+			UDim2.new(
+				1,
+				-78,
+				0,
+				27
+			)
+
+		interface.SubtitleLabel.Visible =
+			true
+
+		interface.SubtitleLabel.Position =
+			UDim2.fromOffset(
+				18,
+				39
+			)
+
+		interface.SubtitleLabel.Size =
+			UDim2.new(
+				1,
+				-78,
+				0,
+				26
+			)
+
+		interface.CloseButton.Position =
+			UDim2.new(
+				1,
+				-12,
+				0,
+				12
+			)
+
+		interface.CloseButton.Size =
+			UDim2.fromOffset(
+				42,
+				42
+			)
+
+	else
+		interface.TitleLabel.Position =
+			UDim2.fromOffset(
+				24,
+				12
+			)
+
+		interface.TitleLabel.Size =
+			UDim2.new(
+				1,
+				-100,
+				0,
+				31
+			)
+
+		interface.SubtitleLabel.Visible =
+			true
+
+		interface.SubtitleLabel.Position =
+			UDim2.fromOffset(
+				24,
+				45
+			)
+
+		interface.SubtitleLabel.Size =
+			UDim2.new(
+				1,
+				-100,
+				0,
+				22
+			)
+
+		interface.CloseButton.Position =
+			UDim2.new(
+				1,
+				-16,
+				0.5,
+				0
+			)
+
+		interface.CloseButton.Size =
+			UDim2.fromOffset(
+				48,
+				48
+			)
+	end
+
+
+	if shortLandscape then
+		interface.StatusLabel.Position =
+			UDim2.new(
+				0,
+				14,
+				0,
+				2
+			)
+
+		interface.StatusLabel.Size =
+			UDim2.new(
+				1,
+				-28,
+				0,
+				17
+			)
+
+		interface.PurchaseButton.Position =
+			UDim2.new(
+				0,
+				14,
+				0,
+				20
+			)
+
+		interface.PurchaseButton.Size =
+			UDim2.new(
+				1,
+				-28,
+				0,
+				40
+			)
+	else
+		interface.StatusLabel.Position =
+			UDim2.new(
+				0,
+				18,
+				0,
+				4
+			)
+
+		interface.StatusLabel.Size =
+			UDim2.new(
+				1,
+				-36,
+				0,
+				20
+			)
+
+		interface.PurchaseButton.Position =
+			UDim2.new(
+				0,
+				18,
+				0,
+				26
+			)
+
+		interface.PurchaseButton.Size =
+			UDim2.new(
+				1,
+				-36,
+				0,
+				46
+			)
+	end
+
+
+	if touchDevice then
+		interface.OpenButton.Size =
+			UDim2.fromOffset(
+				126,
+				46
+			)
+	else
+		interface.OpenButton.Size =
+			UDim2.fromOffset(
+				146,
+				50
+			)
+	end
+end
+
 
 local function formatSpawnTime(
 	minimum: number?,
 	maximum: number?
 ): string
-	if typeof(minimum) ~= "number"
-		or typeof(maximum) ~= "number" then
+	if typeof(minimum)
+			~= "number"
+		or typeof(maximum)
+			~= "number" then
 
 		return "--"
 	end
@@ -914,6 +1605,7 @@ local function formatSpawnTime(
 		maximum
 	)
 end
+
 
 local function setStatus(
 	message: string,
@@ -928,6 +1620,7 @@ local function setStatus(
 		or Colors.TextMuted
 end
 
+
 local function setPurchaseButtonEnabled(
 	enabled: boolean
 )
@@ -937,50 +1630,69 @@ local function setPurchaseButtonEnabled(
 	interface.PurchaseButton.Selectable =
 		enabled
 
+
 	if enabled then
-		interface.PurchaseButton.BackgroundColor3 =
+		interface.PurchaseButton
+			.BackgroundColor3 =
 			Colors.Primary
 
-		interface.PurchaseButton.TextColor3 =
+		interface.PurchaseButton
+			.TextColor3 =
 			Colors.TextDark
 
-		interface.PurchaseButton.BackgroundTransparency =
+		interface.PurchaseButton
+			.BackgroundTransparency =
 			0
 	else
-		interface.PurchaseButton.BackgroundColor3 =
+		interface.PurchaseButton
+			.BackgroundColor3 =
 			Colors.SurfaceLight
 
-		interface.PurchaseButton.TextColor3 =
+		interface.PurchaseButton
+			.TextColor3 =
 			Colors.TextMuted
 
-		interface.PurchaseButton.BackgroundTransparency =
+		interface.PurchaseButton
+			.BackgroundTransparency =
 			0.1
 	end
 end
 
+
 local function updateInterface(
 	state: MarketingState
 )
-	currentState = state
+	currentState =
+		state
+
 
 	local currentLevel =
-		typeof(state.CurrentLevel) == "number"
-		and math.max(
-			0,
-			math.floor(state.CurrentLevel)
-		)
-		or 0
+		typeof(state.CurrentLevel)
+				== "number"
+			and math.max(
+				0,
+				math.floor(
+					state.CurrentLevel
+				)
+			)
+			or 0
+
 
 	local maximumLevel =
-		typeof(state.MaximumLevel) == "number"
-		and math.max(
-			0,
-			math.floor(state.MaximumLevel)
-		)
-		or 0
+		typeof(state.MaximumLevel)
+				== "number"
+			and math.max(
+				0,
+				math.floor(
+					state.MaximumLevel
+				)
+			)
+			or 0
+
 
 	interface.LevelLabel.Text =
 		`LEVEL {currentLevel} / {maximumLevel}`
+
 
 	interface.NameLabel.Text =
 		string.upper(
@@ -988,28 +1700,38 @@ local function updateInterface(
 			or "Marketing"
 		)
 
+
 	interface.DescriptionLabel.Text =
 		state.Description
 		or "Increase customer demand across your plot."
 
+
 	local customerLimit =
-		typeof(state.CustomerLimit) == "number"
-		and math.max(
-			1,
-			math.floor(state.CustomerLimit)
-		)
-		or 0
+		typeof(state.CustomerLimit)
+				== "number"
+			and math.max(
+				1,
+				math.floor(
+					state.CustomerLimit
+				)
+			)
+			or 0
+
 
 	interface.CustomerLimitValue.Text =
 		customerLimit > 0
-		and tostring(customerLimit)
+		and tostring(
+			customerLimit
+		)
 		or "--"
+
 
 	interface.SpawnSpeedValue.Text =
 		formatSpawnTime(
 			state.MinimumSpawnInterval,
 			state.MaximumSpawnInterval
 		)
+
 
 	local progress = 0
 
@@ -1022,6 +1744,7 @@ local function updateInterface(
 				1
 			)
 	end
+
 
 	TweenService:Create(
 		interface.ProgressFill,
@@ -1039,14 +1762,20 @@ local function updateInterface(
 		}
 	):Play()
 
+
 	interface.ProgressLabel.Text =
 		`MARKETING PROGRESS  •  {currentLevel} / {maximumLevel}`
 
-	if currentLevel >= maximumLevel then
+
+	if currentLevel
+			>= maximumLevel then
+
 		interface.PurchaseButton.Text =
 			"MAXIMUM LEVEL"
 
-		setPurchaseButtonEnabled(false)
+		setPurchaseButtonEnabled(
+			false
+		)
 
 		setStatus(
 			"Your marketing is fully upgraded."
@@ -1055,21 +1784,29 @@ local function updateInterface(
 		return
 	end
 
+
 	local nextCost =
 		state.NextCost
 
-	if typeof(nextCost) == "number" then
+
+	if typeof(nextCost)
+			== "number" then
+
 		interface.PurchaseButton.Text =
-			`UPGRADE MARKETING  •  ${math.floor(nextCost)}`
+			`UPGRADE MARKETING  •  $${math.floor(nextCost)}`
+
 	else
 		interface.PurchaseButton.Text =
 			"UPGRADE UNAVAILABLE"
 	end
 
+
 	setPurchaseButtonEnabled(
-		typeof(nextCost) == "number"
+		typeof(nextCost)
+				== "number"
 			and not requestPending
 	)
+
 
 	if state.Success == false then
 		setStatus(
@@ -1085,17 +1822,23 @@ local function updateInterface(
 	end
 end
 
+
 local function requestState()
 	if requestPending then
 		return
 	end
 
-	requestPending = true
+
+	requestPending =
+		true
 
 	interface.PurchaseButton.Text =
 		"LOADING..."
 
-	setPurchaseButtonEnabled(false)
+	setPurchaseButtonEnabled(
+		false
+	)
+
 
 	local success, result =
 		pcall(function()
@@ -1103,10 +1846,14 @@ local function requestState()
 				:InvokeServer()
 		end)
 
-	requestPending = false
+
+	requestPending =
+		false
+
 
 	if not success
-		or type(result) ~= "table" then
+		or type(result)
+			~= "table" then
 
 		setStatus(
 			"Marketing data could not be loaded.",
@@ -1116,29 +1863,40 @@ local function requestState()
 		interface.PurchaseButton.Text =
 			"TRY AGAIN"
 
-		setPurchaseButtonEnabled(true)
+		setPurchaseButtonEnabled(
+			true
+		)
 
 		return
 	end
+
 
 	updateInterface(
 		result :: MarketingState
 	)
 end
 
+
 local function openMenu()
 	if menuOpen then
 		return
 	end
 
-	menuOpen = true
-	interface.Overlay.Visible = true
+
+	menuOpen =
+		true
+
+	updateResponsiveLayout()
+
+	interface.Overlay.Visible =
+		true
 
 	interface.Overlay.BackgroundTransparency =
 		1
 
 	interface.WindowScale.Scale =
 		0.92
+
 
 	TweenService:Create(
 		interface.Overlay,
@@ -1153,6 +1911,7 @@ local function openMenu()
 		}
 	):Play()
 
+
 	TweenService:Create(
 		interface.WindowScale,
 		TweenInfo.new(
@@ -1165,15 +1924,20 @@ local function openMenu()
 		}
 	):Play()
 
+
 	requestState()
 end
+
 
 local function closeMenu()
 	if not menuOpen then
 		return
 	end
 
-	menuOpen = false
+
+	menuOpen =
+		false
+
 
 	local overlayTween =
 		TweenService:Create(
@@ -1189,6 +1953,7 @@ local function closeMenu()
 			}
 		)
 
+
 	local windowTween =
 		TweenService:Create(
 			interface.WindowScale,
@@ -1202,63 +1967,118 @@ local function closeMenu()
 			}
 		)
 
+
 	overlayTween:Play()
 	windowTween:Play()
 
-	windowTween.Completed:Once(function()
-		if not menuOpen then
-			interface.Overlay.Visible =
-				false
+
+	windowTween.Completed:Once(
+		function()
+			if not menuOpen then
+				interface.Overlay.Visible =
+					false
+			end
 		end
-	end)
+	)
 end
 
-interface = createInterface()
+
+interface =
+	createInterface()
+
+updateResponsiveLayout()
+
+
+local function connectCamera(
+	camera: Camera
+)
+	camera:GetPropertyChangedSignal(
+		"ViewportSize"
+	):Connect(
+		updateResponsiveLayout
+	)
+end
+
+
+if Workspace.CurrentCamera then
+	connectCamera(
+		Workspace.CurrentCamera
+	)
+end
+
+
+Workspace:GetPropertyChangedSignal(
+	"CurrentCamera"
+):Connect(function()
+	local camera =
+		Workspace.CurrentCamera
+
+	if not camera then
+		return
+	end
+
+	updateResponsiveLayout()
+	connectCamera(camera)
+end)
+
 
 interface.OpenButton.Activated:Connect(
 	openMenu
 )
 
+
 interface.CloseButton.Activated:Connect(
 	closeMenu
 )
 
+
 interface.Overlay.InputBegan:Connect(
 	function(input)
 		if input.UserInputType
-			== Enum.UserInputType.MouseButton1 then
+				~= Enum.UserInputType.MouseButton1
+			and input.UserInputType
+				~= Enum.UserInputType.Touch then
 
-			local position =
-				input.Position
+			return
+		end
 
-			local windowPosition =
-				interface.Window.AbsolutePosition
 
-			local windowSize =
-				interface.Window.AbsoluteSize
+		local position =
+			input.Position
 
-			local outsideWindow =
-				position.X < windowPosition.X
-				or position.X
-					> windowPosition.X
-						+ windowSize.X
-				or position.Y < windowPosition.Y
-				or position.Y
-					> windowPosition.Y
-						+ windowSize.Y
+		local windowPosition =
+			interface.Window.AbsolutePosition
 
-			if outsideWindow then
-				closeMenu()
-			end
+		local windowSize =
+			interface.Window.AbsoluteSize
+
+
+		local outsideWindow =
+			position.X
+				< windowPosition.X
+			or position.X
+				> windowPosition.X
+					+ windowSize.X
+			or position.Y
+				< windowPosition.Y
+			or position.Y
+				> windowPosition.Y
+					+ windowSize.Y
+
+
+		if outsideWindow then
+			closeMenu()
 		end
 	end
 )
+
 
 interface.PurchaseButton.Activated:Connect(
 	function()
 		if requestPending then
 			return
 		end
+
 
 		local state =
 			currentState
@@ -1268,38 +2088,53 @@ interface.PurchaseButton.Activated:Connect(
 			return
 		end
 
+
 		local currentLevel =
 			state.CurrentLevel or 0
 
 		local maximumLevel =
 			state.MaximumLevel or 0
 
-		if currentLevel >= maximumLevel then
+
+		if currentLevel
+				>= maximumLevel then
+
 			return
 		end
+
 
 		if typeof(state.NextCost)
-			~= "number" then
+				~= "number" then
 
 			return
 		end
 
-		requestPending = true
+
+		requestPending =
+			true
 
 		interface.PurchaseButton.Text =
 			"PURCHASING..."
 
-		setPurchaseButtonEnabled(false)
+		setPurchaseButtonEnabled(
+			false
+		)
 
-		purchaseMarketingRemote:FireServer()
+		purchaseMarketingRemote
+			:FireServer()
 	end
 )
 
+
 marketingResultRemote.OnClientEvent:Connect(
 	function(result)
-		requestPending = false
+		requestPending =
+			false
 
-		if type(result) ~= "table" then
+
+		if type(result)
+				~= "table" then
+
 			setStatus(
 				"An invalid response was received.",
 				true
@@ -1309,22 +2144,28 @@ marketingResultRemote.OnClientEvent:Connect(
 			return
 		end
 
+
 		updateInterface(
 			result :: MarketingState
 		)
 	end
 )
 
+
 UserInputService.InputBegan:Connect(
-	function(input, gameProcessed)
+	function(
+		input,
+		gameProcessed
+	)
 		if gameProcessed
 			or not menuOpen then
 
 			return
 		end
 
+
 		if input.KeyCode
-			== Enum.KeyCode.Escape
+				== Enum.KeyCode.Escape
 			or input.KeyCode
 				== Enum.KeyCode.ButtonB then
 
@@ -1332,6 +2173,7 @@ UserInputService.InputBegan:Connect(
 		end
 	end
 )
+
 
 player:GetAttributeChangedSignal(
 	"DataLoaded"
