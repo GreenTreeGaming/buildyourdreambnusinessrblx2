@@ -69,10 +69,20 @@ local BUSINESS_NAME =
 	"LemonadeStand"
 
 
+-- Popup animation.
+local POP_IN_TIME = 0.18
+local POP_OUT_TIME = 0.12
+
+local POP_START_SCALE = 0.82
+local POP_END_SCALE = 0.86
+
+
 type StandUIState = {
 	Stand: Model,
 
 	Billboard: BillboardGui,
+	Frame: Frame,
+	Scale: UIScale,
 
 	TimerLabel: TextLabel,
 	StatusLabel: TextLabel,
@@ -81,6 +91,10 @@ type StandUIState = {
 	ProgressFullSize: UDim2,
 
 	PositionPart: BasePart,
+	VisibilityTween: Tween?,
+
+	IsVisible: boolean,
+	VisibilityToken: number,
 }
 
 
@@ -135,9 +149,6 @@ local function disableLegacyWorldUI(
 		return
 	end
 
-	-- Prevent old timers embedded directly in
-	-- stand models from appearing at the same
-	-- time as the new replicated template.
 	instance.Enabled = false
 end
 
@@ -213,8 +224,6 @@ local function getTimerPosition(
 	end
 
 
-	-- A newly placed/upgraded stand can replicate
-	-- before every helper part has arrived.
 	local startedAt =
 		time()
 
@@ -238,6 +247,33 @@ local function getTimerPosition(
 	)
 end
 
+local function setProgress(
+	state: StandUIState,
+	remainingFraction: number
+)
+	remainingFraction =
+		math.clamp(
+			remainingFraction,
+			0,
+			1
+		)
+
+	local fullSize =
+		state.ProgressFullSize
+
+	state.ProgressFill.Size =
+		UDim2.new(
+			fullSize.X.Scale
+				* remainingFraction,
+
+			fullSize.X.Offset
+				* remainingFraction,
+
+			fullSize.Y.Scale,
+			fullSize.Y.Offset
+		)
+end
+
 
 local function getServingTemplateObjects(
 	billboard: BillboardGui
@@ -256,11 +292,7 @@ local function getServingTemplateObjects(
 	if not frame
 		or not frame:IsA("Frame") then
 
-		return nil,
-			nil,
-			nil,
-			nil,
-			nil
+		return nil, nil, nil, nil, nil
 	end
 
 
@@ -274,11 +306,7 @@ local function getServingTemplateObjects(
 			"TextLabel"
 		) then
 
-		return nil,
-			nil,
-			nil,
-			nil,
-			nil
+		return nil, nil, nil, nil, nil
 	end
 
 
@@ -292,11 +320,7 @@ local function getServingTemplateObjects(
 			"TextLabel"
 		) then
 
-		return nil,
-			nil,
-			nil,
-			nil,
-			nil
+		return nil, nil, nil, nil, nil
 	end
 
 
@@ -310,11 +334,7 @@ local function getServingTemplateObjects(
 			"Frame"
 		) then
 
-		return nil,
-			nil,
-			nil,
-			nil,
-			nil
+		return nil, nil, nil, nil, nil
 	end
 
 
@@ -326,11 +346,7 @@ local function getServingTemplateObjects(
 	if not bar
 		or not bar:IsA("Frame") then
 
-		return nil,
-			nil,
-			nil,
-			nil,
-			nil
+		return nil, nil, nil, nil, nil
 	end
 
 
@@ -342,6 +358,163 @@ local function getServingTemplateObjects(
 end
 
 
+local function cancelProgressTween(
+	state: StandUIState
+)
+	if state.ProgressTween then
+		state.ProgressTween:Cancel()
+		state.ProgressTween = nil
+	end
+end
+
+
+local function cancelVisibilityTween(
+	state: StandUIState
+)
+	if state.VisibilityTween then
+		state.VisibilityTween:Cancel()
+		state.VisibilityTween = nil
+	end
+end
+
+
+local function showStandUI(
+	state: StandUIState
+)
+	if state.IsVisible then
+		return
+	end
+
+	state.IsVisible = true
+	state.VisibilityToken += 1
+
+	cancelVisibilityTween(
+		state
+	)
+
+	state.Billboard.Enabled =
+		true
+
+	state.Scale.Scale =
+		POP_START_SCALE
+
+
+	local tween =
+		TweenService:Create(
+			state.Scale,
+
+			TweenInfo.new(
+				POP_IN_TIME,
+				Enum.EasingStyle.Back,
+				Enum.EasingDirection.Out
+			),
+
+			{
+				Scale = 1,
+			}
+		)
+
+	state.VisibilityTween =
+		tween
+
+	tween:Play()
+end
+
+
+local function hideStandUI(
+	state: StandUIState,
+	immediate: boolean?
+)
+	if immediate then
+		state.IsVisible = false
+		state.VisibilityToken += 1
+
+		cancelVisibilityTween(
+			state
+		)
+
+		state.Scale.Scale =
+			1
+
+		state.Billboard.Enabled =
+			false
+
+		return
+	end
+
+
+	if not state.IsVisible then
+		return
+	end
+
+
+	state.IsVisible = false
+	state.VisibilityToken += 1
+
+	local token =
+		state.VisibilityToken
+
+
+	cancelVisibilityTween(
+		state
+	)
+
+
+	local tween =
+		TweenService:Create(
+			state.Scale,
+
+			TweenInfo.new(
+				POP_OUT_TIME,
+				Enum.EasingStyle.Quad,
+				Enum.EasingDirection.In
+			),
+
+			{
+				Scale =
+					POP_END_SCALE,
+			}
+		)
+
+	state.VisibilityTween =
+		tween
+
+
+	tween.Completed:Connect(
+		function()
+			if not state.Billboard.Parent then
+				return
+			end
+
+			if state.VisibilityToken
+				~= token then
+
+				return
+			end
+
+			if state.IsVisible then
+				return
+			end
+
+			state.Billboard.Enabled =
+				false
+
+			state.Scale.Scale =
+				1
+		end
+	)
+
+
+	tween:Play()
+end
+
+local function resetProgress(
+	state: StandUIState
+)
+	state.ProgressFill.Size =
+		state.ProgressFullSize
+end
+
 local function removeStandUI(
 	stand: Model
 )
@@ -352,46 +525,21 @@ local function removeStandUI(
 		return
 	end
 
+
+	cancelProgressTween(
+		state
+	)
+
+	cancelVisibilityTween(
+		state
+	)
+
+
 	if state.Billboard.Parent then
 		state.Billboard:Destroy()
 	end
 
 	standStates[stand] = nil
-end
-
-
-local function setProgress(
-	state: StandUIState,
-	progress: number
-)
-	progress =
-		math.clamp(
-			progress,
-			0,
-			1
-		)
-
-	local fullSize =
-		state.ProgressFullSize
-
-	-- Preserve the exact Y sizing and the intended
-	-- maximum X sizing from the Studio template.
-	--
-	-- This means you can redesign ServingCustomer
-	-- without needing to change this script.
-	state.ProgressFill.Size =
-		UDim2.new(
-			fullSize.X.Scale
-				* progress,
-
-			math.round(
-				fullSize.X.Offset
-					* progress
-			),
-
-			fullSize.Y.Scale,
-			fullSize.Y.Offset
-		)
 end
 
 
@@ -436,8 +584,6 @@ local function createStandUI(
 	)
 
 
-	-- Clone the UI designed in Studio instead of
-	-- constructing the service timer in Lua.
 	local billboard =
 		servingCustomerTemplate:Clone()
 
@@ -476,7 +622,7 @@ local function createStandUI(
 		billboard:Destroy()
 
 		warn(
-			"ServingCustomer BillboardGui has an invalid hierarchy. "
+			"ServingCustomer has an invalid hierarchy. "
 				.. "Expected Frame.Title, Frame.Time, "
 				.. "Frame.Background, and Frame.Background.Bar."
 		)
@@ -485,10 +631,44 @@ local function createStandUI(
 	end
 
 
-	-- Stop the bar from drawing outside of its
-	-- progress-track background.
 	background.ClipsDescendants =
 		true
+
+
+	-- UIScale gives us the same clean pop behavior
+	-- as the management Billboard UI without changing
+	-- any of the Studio-designed positions/sizes.
+	local uiScale =
+		frame:FindFirstChild(
+			"PopupScale"
+		)
+
+	if uiScale
+		and not uiScale:IsA(
+			"UIScale"
+		) then
+
+		uiScale:Destroy()
+		uiScale = nil
+	end
+
+
+	if not uiScale then
+		uiScale =
+			Instance.new(
+				"UIScale"
+			)
+
+		uiScale.Name =
+			"PopupScale"
+
+		uiScale.Parent =
+			frame
+	end
+
+
+	uiScale.Scale =
+		1
 
 
 	local progressFullSize =
@@ -499,26 +679,34 @@ local function createStandUI(
 		Stand = stand,
 
 		Billboard = billboard,
+		Frame = frame,
+		Scale = uiScale,
 
 		TimerLabel = timerLabel,
 		StatusLabel = statusLabel,
 
-		ProgressFill = progressFill,
+		ProgressFill =
+			progressFill,
+
 		ProgressFullSize =
 			progressFullSize,
 
 		PositionPart =
 			positionPart,
+		VisibilityTween = nil,
+
+		IsVisible = false,
+		VisibilityToken = 0,
 	}
 
 
 	local state =
 		standStates[stand]
 
-	setProgress(
-		state,
-		0
-	)
+
+	-- Timer begins visually full.
+	state.ProgressFill.Size =
+		state.ProgressFullSize
 
 
 	stand.Destroying:Connect(
@@ -878,6 +1066,7 @@ local function watchPlacedBusinesses(
 		return
 	end
 
+
 	watchedFolders[folder] =
 		true
 
@@ -929,6 +1118,7 @@ local function watchPlot(
 		plot:FindFirstChild(
 			"PlacedBusinesses"
 		)
+
 
 	if placedBusinesses then
 		watchPlacedBusinesses(
@@ -1053,8 +1243,13 @@ RunService.RenderStepped:Connect(
 			if unavailable
 				or beingEdited then
 
-				state.Billboard.Enabled =
-					false
+				resetProgress(
+					state
+				)
+
+				hideStandUI(
+					state
+				)
 
 				continue
 			end
@@ -1074,8 +1269,13 @@ RunService.RenderStepped:Connect(
 			if not manualActive
 				and not customerActive then
 
-				state.Billboard.Enabled =
-					false
+				resetProgress(
+					state
+				)
+
+				hideStandUI(
+					state
+				)
 
 				continue
 			end
@@ -1089,7 +1289,6 @@ RunService.RenderStepped:Connect(
 
 			local statusText:
 				string
-
 
 			if manualActive then
 				startedAt =
@@ -1126,63 +1325,66 @@ RunService.RenderStepped:Connect(
 					~= "number"
 				or duration <= 0 then
 
-				state.Billboard.Enabled =
-					false
+				resetProgress(
+					state
+				)
+
+				hideStandUI(
+					state
+				)
 
 				continue
 			end
 
 
 			local elapsed =
-				math.max(
-					0,
-					serverTime
-						- startedAt
-				)
+	math.max(
+		0,
+		serverTime - startedAt
+	)
 
+local remaining =
+	math.max(
+		0,
+		duration - elapsed
+	)
 
-			local progress =
-				math.clamp(
-					elapsed
-						/ duration,
+local progress =
+	math.clamp(
+		elapsed / duration,
+		0,
+		1
+	)
 
-					0,
-					1
-				)
+local remainingFraction =
+	math.clamp(
+		remaining / duration,
+		0,
+		1
+	)
 
+setProgress(
+	state,
+	remainingFraction
+)
 
-			local remaining =
-				math.max(
-					0,
-					duration
-						- elapsed
-				)
+state.TimerLabel.Text =
+	string.format(
+		"%.1fs",
+		remaining
+	)
 
+if progress >= 1 then
+	state.StatusLabel.Text =
+		"Finishing Sale"
+else
+	state.StatusLabel.Text =
+		statusText
+end
 
-			setProgress(
-				state,
-				progress
-			)
-
-
-			state.TimerLabel.Text =
-				string.format(
-					"%.1fs",
-					remaining
-				)
-
-
-			if progress >= 1 then
-				state.StatusLabel.Text =
-					"Finishing Sale"
-			else
-				state.StatusLabel.Text =
-					statusText
-			end
-
-
-			state.Billboard.Enabled =
-				true
+showStandUI(
+	state
+)
 		end
 	end
 )
