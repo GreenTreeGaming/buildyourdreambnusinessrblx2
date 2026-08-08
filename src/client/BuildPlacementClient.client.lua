@@ -43,9 +43,6 @@ local BusinessConfig =
 local Colors =
 	UITheme.Colors
 
-local Fonts =
-	UITheme.Fonts
-
 
 local IS_TOUCH_DEVICE =
 	UserInputService.TouchEnabled
@@ -68,10 +65,12 @@ local placeBusinessRemote =
 		"PlaceBusiness"
 	)
 
+
 local interactionResultRemote =
 	remotes:WaitForChild(
 		"BusinessInteractionResult"
 	)
+
 
 local cancelEditRemote =
 	remotes:WaitForChild(
@@ -85,9 +84,6 @@ local plotsFolder =
 	)
 
 
--- The server currently only supports LemonadeStand.
--- The selection menu itself is already data-driven so
--- future businesses will automatically appear.
 local DEFAULT_BUSINESS_NAME =
 	"LemonadeStand"
 
@@ -147,7 +143,186 @@ local selectedBusinessName =
 
 
 --==================================================
--- PLOT / BUSINESS HELPERS
+-- CUSTOM UI
+--==================================================
+
+local screenGui =
+	playerGui:WaitForChild(
+		"AddBusiness"
+	) :: ScreenGui
+
+
+local addButton =
+	screenGui:WaitForChild(
+		"Add"
+	) :: TextButton
+
+
+local addFrame =
+	screenGui:WaitForChild(
+		"AddFrame"
+	) :: Frame
+
+
+local scrollingFrame =
+	addFrame:WaitForChild(
+		"ScrollingFrame"
+	) :: ScrollingFrame
+
+
+local businessTemplate =
+	scrollingFrame:WaitForChild(
+		"Template"
+	) :: TextButton
+
+
+local addButtons =
+	screenGui:WaitForChild(
+		"AddButtons"
+	) :: Frame
+
+
+local rotateButton =
+	addButtons:WaitForChild(
+		"Rotate"
+	) :: TextButton
+
+
+local placeButton =
+	addButtons:WaitForChild(
+		"Place"
+	) :: TextButton
+
+
+local cancelButton =
+	addButtons:WaitForChild(
+		"Cancel"
+	) :: TextButton
+
+local function preparePlacementButton(
+	button: TextButton
+)
+	button.Active = true
+	button.Selectable = true
+	button.AutoButtonColor = false
+
+	-- Make sure the button itself receives the input,
+	-- not the text sitting inside of it.
+	local text =
+		button:FindFirstChild("X")
+
+	if text
+		and text:IsA("GuiObject") then
+
+		text.Active = false
+		text.Selectable = false
+	end
+
+	-- Keep these controls above the placement notice
+	-- and other UI in this ScreenGui.
+	button.ZIndex = 20
+
+	for _, descendant in
+		button:GetDescendants() do
+
+		if descendant:IsA("GuiObject") then
+			descendant.ZIndex =
+				math.max(
+					descendant.ZIndex,
+					21
+				)
+
+			descendant.Active = false
+		end
+	end
+end
+
+
+addButtons.ZIndex = 19
+
+preparePlacementButton(
+	rotateButton
+)
+
+preparePlacementButton(
+	placeButton
+)
+
+preparePlacementButton(
+	cancelButton
+)
+
+
+local noticeWhilePlacing =
+	screenGui:WaitForChild(
+		"NoticeWhilePlacing"
+	) :: Frame
+
+
+local noticeText =
+	noticeWhilePlacing:WaitForChild(
+		"X"
+	) :: TextLabel
+
+
+--==================================================
+-- STORED UI POSITIONS
+--==================================================
+
+local addFrameOpenPosition =
+	addFrame.Position
+
+local addFrameOpenSize =
+	addFrame.Size
+
+
+local addButtonsOpenPosition =
+	addButtons.Position
+
+
+local noticeOpenPosition =
+	noticeWhilePlacing.Position
+
+
+local addButtonsHiddenPosition =
+	UDim2.new(
+		addButtonsOpenPosition.X.Scale,
+		addButtonsOpenPosition.X.Offset,
+		addButtonsOpenPosition.Y.Scale,
+		addButtonsOpenPosition.Y.Offset + 26
+	)
+
+
+local noticeHiddenPosition =
+	UDim2.new(
+		noticeOpenPosition.X.Scale,
+		noticeOpenPosition.X.Offset,
+		noticeOpenPosition.Y.Scale,
+		noticeOpenPosition.Y.Offset - 18
+	)
+
+
+local businessMenuOpen =
+	false
+
+
+local activeAddFrameTween:
+	Tween? =
+	nil
+
+
+local activeAddButtonsTween:
+	Tween? =
+	nil
+
+
+local activeNoticeTween:
+	Tween? =
+	nil
+
+
+--==================================================
+-- BASIC BUSINESS HELPERS
 --==================================================
 
 local function getOwnedPlot(): Model?
@@ -275,7 +450,6 @@ local function findStandByBusinessId(
 ): Model?
 
 	if not ownedPlot
-		or type(businessId) ~= "string"
 		or businessId == "" then
 
 		return nil
@@ -335,54 +509,8 @@ end
 
 
 --==================================================
--- CUSTOM ADD BUSINESS UI
+-- ADD FRAME ANIMATION
 --==================================================
-
-local screenGui =
-	playerGui:WaitForChild(
-		"AddBusiness"
-	) :: ScreenGui
-
-
-local addButton =
-	screenGui:WaitForChild(
-		"Add"
-	) :: TextButton
-
-
-local addFrame =
-	screenGui:WaitForChild(
-		"AddFrame"
-	) :: Frame
-
-
-local scrollingFrame =
-	addFrame:WaitForChild(
-		"ScrollingFrame"
-	) :: ScrollingFrame
-
-
-local businessTemplate =
-	scrollingFrame:WaitForChild(
-		"Template"
-	) :: TextButton
-
-
-local businessMenuOpen =
-	false
-
-
-local originalAddFramePosition =
-	addFrame.Position
-
-local originalAddFrameSize =
-	addFrame.Size
-
-
-local activeAddFrameTween:
-	Tween? =
-	nil
-
 
 local function scaleUDim2(
 	value: UDim2,
@@ -392,7 +520,6 @@ local function scaleUDim2(
 	return UDim2.new(
 		value.X.Scale * scale,
 		value.X.Offset * scale,
-
 		value.Y.Scale * scale,
 		value.Y.Offset * scale
 	)
@@ -413,19 +540,20 @@ local function getCenteredScaledPosition(
 		)
 
 
-	local differenceXScale =
+	local xScaleDifference =
 		size.X.Scale
 		- scaledSize.X.Scale
 
-	local differenceXOffset =
+	local xOffsetDifference =
 		size.X.Offset
 		- scaledSize.X.Offset
 
-	local differenceYScale =
+
+	local yScaleDifference =
 		size.Y.Scale
 		- scaledSize.Y.Scale
 
-	local differenceYOffset =
+	local yOffsetDifference =
 		size.Y.Offset
 		- scaledSize.Y.Offset
 
@@ -436,49 +564,49 @@ local function getCenteredScaledPosition(
 				0.5
 				- anchorPoint.X
 			)
-			* differenceXScale,
+			* xScaleDifference,
 
 		position.X.Offset
 			+ (
 				0.5
 				- anchorPoint.X
 			)
-			* differenceXOffset,
+			* xOffsetDifference,
 
 		position.Y.Scale
 			+ (
 				0.5
 				- anchorPoint.Y
 			)
-			* differenceYScale,
+			* yScaleDifference,
 
 		position.Y.Offset
 			+ (
 				0.5
 				- anchorPoint.Y
 			)
-			* differenceYOffset
+			* yOffsetDifference
 	)
 end
 
 
-local CLOSED_MENU_SCALE =
+local ADD_FRAME_CLOSED_SCALE =
 	0.9
 
 
-local closedAddFrameSize =
+local addFrameClosedSize =
 	scaleUDim2(
-		originalAddFrameSize,
-		CLOSED_MENU_SCALE
+		addFrameOpenSize,
+		ADD_FRAME_CLOSED_SCALE
 	)
 
 
-local closedAddFramePosition =
+local addFrameClosedPosition =
 	getCenteredScaledPosition(
-		originalAddFramePosition,
-		originalAddFrameSize,
+		addFrameOpenPosition,
+		addFrameOpenSize,
 		addFrame.AnchorPoint,
-		CLOSED_MENU_SCALE
+		ADD_FRAME_CLOSED_SCALE
 	)
 
 
@@ -489,25 +617,6 @@ local function stopAddFrameTween()
 		activeAddFrameTween =
 			nil
 	end
-end
-
-
-local function showAddButton()
-	if isPlacementActive
-		or isEditingExistingStand then
-
-		return
-	end
-
-
-	addButton.Visible =
-		true
-end
-
-
-local function hideAddButton()
-	addButton.Visible =
-		false
 end
 
 
@@ -527,10 +636,10 @@ local function openBusinessMenu()
 
 
 	addFrame.Position =
-		closedAddFramePosition
+		addFrameClosedPosition
 
 	addFrame.Size =
-		closedAddFrameSize
+		addFrameClosedSize
 
 	addFrame.Visible =
 		true
@@ -546,10 +655,10 @@ local function openBusinessMenu()
 			),
 			{
 				Position =
-					originalAddFramePosition,
+					addFrameOpenPosition,
 
 				Size =
-					originalAddFrameSize,
+					addFrameOpenSize,
 			}
 		)
 
@@ -575,13 +684,6 @@ end
 local function closeBusinessMenu(
 	immediate: boolean?
 )
-	if not businessMenuOpen
-		and not addFrame.Visible then
-
-		return
-	end
-
-
 	businessMenuOpen =
 		false
 
@@ -594,11 +696,16 @@ local function closeBusinessMenu(
 			false
 
 		addFrame.Position =
-			originalAddFramePosition
+			addFrameOpenPosition
 
 		addFrame.Size =
-			originalAddFrameSize
+			addFrameOpenSize
 
+		return
+	end
+
+
+	if not addFrame.Visible then
 		return
 	end
 
@@ -613,10 +720,10 @@ local function closeBusinessMenu(
 			),
 			{
 				Position =
-					closedAddFramePosition,
+					addFrameClosedPosition,
 
 				Size =
-					closedAddFrameSize,
+					addFrameClosedSize,
 			}
 		)
 
@@ -646,14 +753,348 @@ local function closeBusinessMenu(
 			false
 
 		addFrame.Position =
-			originalAddFramePosition
+			addFrameOpenPosition
 
 		addFrame.Size =
-			originalAddFrameSize
+			addFrameOpenSize
 	end)
 
 
 	tween:Play()
+end
+
+
+--==================================================
+-- PLACEMENT UI ANIMATIONS
+--==================================================
+
+local function stopPlacementUITweens()
+	if activeAddButtonsTween then
+		activeAddButtonsTween:Cancel()
+
+		activeAddButtonsTween =
+			nil
+	end
+
+
+	if activeNoticeTween then
+		activeNoticeTween:Cancel()
+
+		activeNoticeTween =
+			nil
+	end
+end
+
+
+local function showPlacementUI()
+	stopPlacementUITweens()
+
+
+	addButtons.Position =
+		addButtonsHiddenPosition
+
+	addButtons.Visible =
+		true
+
+
+	noticeWhilePlacing.Position =
+		noticeHiddenPosition
+
+	noticeWhilePlacing.Visible =
+		true
+
+
+	local buttonsTween =
+		TweenService:Create(
+			addButtons,
+			TweenInfo.new(
+				0.22,
+				Enum.EasingStyle.Back,
+				Enum.EasingDirection.Out
+			),
+			{
+				Position =
+					addButtonsOpenPosition,
+			}
+		)
+
+
+	local noticeTween =
+		TweenService:Create(
+			noticeWhilePlacing,
+			TweenInfo.new(
+				0.2,
+				Enum.EasingStyle.Quad,
+				Enum.EasingDirection.Out
+			),
+			{
+				Position =
+					noticeOpenPosition,
+			}
+		)
+
+
+	activeAddButtonsTween =
+		buttonsTween
+
+	activeNoticeTween =
+		noticeTween
+
+
+	buttonsTween:Play()
+	noticeTween:Play()
+end
+
+
+local function hidePlacementUI(
+	immediate: boolean?
+)
+	stopPlacementUITweens()
+
+
+	if immediate then
+		addButtons.Visible =
+			false
+
+		addButtons.Position =
+			addButtonsOpenPosition
+
+
+		noticeWhilePlacing.Visible =
+			false
+
+		noticeWhilePlacing.Position =
+			noticeOpenPosition
+
+		return
+	end
+
+
+	if not addButtons.Visible
+		and not noticeWhilePlacing.Visible then
+
+		return
+	end
+
+
+	local buttonsTween =
+		TweenService:Create(
+			addButtons,
+			TweenInfo.new(
+				0.14,
+				Enum.EasingStyle.Quad,
+				Enum.EasingDirection.In
+			),
+			{
+				Position =
+					addButtonsHiddenPosition,
+			}
+		)
+
+
+	local noticeTween =
+		TweenService:Create(
+			noticeWhilePlacing,
+			TweenInfo.new(
+				0.12,
+				Enum.EasingStyle.Quad,
+				Enum.EasingDirection.In
+			),
+			{
+				Position =
+					noticeHiddenPosition,
+			}
+		)
+
+
+	activeAddButtonsTween =
+		buttonsTween
+
+	activeNoticeTween =
+		noticeTween
+
+
+	buttonsTween:Play()
+	noticeTween:Play()
+
+
+	buttonsTween.Completed:Once(function()
+		if activeAddButtonsTween
+			~= buttonsTween then
+
+			return
+		end
+
+
+		activeAddButtonsTween =
+			nil
+
+
+		if not isPlacementActive then
+			addButtons.Visible =
+				false
+
+			addButtons.Position =
+				addButtonsOpenPosition
+		end
+	end)
+
+
+	noticeTween.Completed:Once(function()
+		if activeNoticeTween
+			~= noticeTween then
+
+			return
+		end
+
+
+		activeNoticeTween =
+			nil
+
+
+		if not isPlacementActive then
+			noticeWhilePlacing.Visible =
+				false
+
+			noticeWhilePlacing.Position =
+				noticeOpenPosition
+		end
+	end)
+end
+
+
+--==================================================
+-- BUTTON HOVER EFFECTS
+--==================================================
+
+local function setupButtonHover(
+	button: TextButton
+)
+	local normalColor =
+		button.BackgroundColor3
+
+
+	local hoverColor =
+		normalColor:Lerp(
+			Color3.new(
+				1,
+				1,
+				1
+			),
+			0.12
+		)
+
+
+	local pressedColor =
+		normalColor:Lerp(
+			Color3.new(
+				0,
+				0,
+				0
+			),
+			0.12
+		)
+
+
+	local activeTween:
+		Tween? =
+		nil
+
+
+	local function tweenColor(
+		color: Color3,
+		duration: number
+	)
+		if activeTween then
+			activeTween:Cancel()
+		end
+
+
+		activeTween =
+			TweenService:Create(
+				button,
+				TweenInfo.new(
+					duration,
+					Enum.EasingStyle.Quad,
+					Enum.EasingDirection.Out
+				),
+				{
+					BackgroundColor3 =
+						color,
+				}
+			)
+
+
+		activeTween:Play()
+	end
+
+
+	button.MouseEnter:Connect(function()
+		tweenColor(
+			hoverColor,
+			0.1
+		)
+	end)
+
+
+	button.MouseLeave:Connect(function()
+		tweenColor(
+			normalColor,
+			0.1
+		)
+	end)
+
+
+	button.MouseButton1Down:Connect(function()
+		tweenColor(
+			pressedColor,
+			0.06
+		)
+	end)
+
+
+	button.MouseButton1Up:Connect(function()
+		tweenColor(
+			hoverColor,
+			0.08
+		)
+	end)
+end
+
+
+setupButtonHover(
+	rotateButton
+)
+
+setupButtonHover(
+	placeButton
+)
+
+setupButtonHover(
+	cancelButton
+)
+
+
+--==================================================
+-- GENERAL UI VISIBILITY
+--==================================================
+
+local function showAddButton()
+	if isPlacementActive
+		or isEditingExistingStand then
+
+		return
+	end
+
+
+	addButton.Visible =
+		true
+end
+
+
+local function hideAddButton()
+	addButton.Visible =
+		false
 end
 
 
@@ -676,409 +1117,76 @@ end
 
 
 --==================================================
--- PLACEMENT STATUS + CONTROLS
+-- NOTICE TEXT
 --==================================================
 
-local statusLabel =
-	Instance.new(
-		"TextLabel"
-	)
-
-statusLabel.Name =
-	"PlacementStatus"
-
-statusLabel.AnchorPoint =
-	Vector2.new(
-		0.5,
-		0
-	)
-
-statusLabel.Position =
-	UDim2.fromScale(
-		0.5,
-		0.055
-	)
-
-statusLabel.Size =
-	UDim2.fromScale(
-		0.52,
-		0.075
-	)
-
-statusLabel.BackgroundColor3 =
-	Colors.Surface
-
-statusLabel.BackgroundTransparency =
-	0.03
-
-statusLabel.BorderSizePixel =
-	0
-
-statusLabel.Text =
-	""
-
-statusLabel.Visible =
-	false
-
-statusLabel.ZIndex =
-	15
-
-statusLabel.Parent =
-	screenGui
-
-
-UITheme.AddCorner(
-	statusLabel,
-	0.25
-)
-
-
-UITheme.AddStroke(
-	statusLabel,
-	Colors.Stroke,
-	1.5,
-	0.2
-)
-
-
-UITheme.StyleText(
-	statusLabel,
-	11,
-	17,
-	Colors.Text,
-	Fonts.Bold
-)
-
-
-local placementControls =
-	Instance.new(
-		"Frame"
-	)
-
-placementControls.Name =
-	"PlacementControls"
-
-placementControls.AnchorPoint =
-	Vector2.new(
-		0.5,
-		1
-	)
-
-placementControls.Position =
-	UDim2.fromScale(
-		0.5,
-		0.96
-	)
-
-placementControls.Size =
-	UDim2.fromScale(
-		0.5,
-		0.095
-	)
-
-placementControls.BackgroundColor3 =
-	Colors.Surface
-
-placementControls.BackgroundTransparency =
-	0.02
-
-placementControls.BorderSizePixel =
-	0
-
-placementControls.Visible =
-	false
-
-placementControls.ZIndex =
-	20
-
-placementControls.Parent =
-	screenGui
-
-
-UITheme.AddCorner(
-	placementControls,
-	0.18
-)
-
-
-UITheme.AddStroke(
-	placementControls,
-	Colors.Primary,
-	1.5,
-	0.25
-)
-
-
-UITheme.AddPadding(
-	placementControls,
-	0.035,
-	0.035,
-	0.14,
-	0.14
-)
-
-
-local controlLayout =
-	Instance.new(
-		"UIListLayout"
-	)
-
-controlLayout.FillDirection =
-	Enum.FillDirection.Horizontal
-
-controlLayout.HorizontalAlignment =
-	Enum.HorizontalAlignment.Center
-
-controlLayout.VerticalAlignment =
-	Enum.VerticalAlignment.Center
-
-controlLayout.Padding =
-	UDim.new(
-		0.035,
-		0
-	)
-
-controlLayout.Parent =
-	placementControls
-
-
-local function createControlButton(
-	name: string,
-	text: string,
-	topColor: Color3,
-	bottomColor: Color3
-): TextButton
-
-	local button =
-		Instance.new(
-			"TextButton"
-		)
-
-
-	button.Name =
-		name
-
-	button.Size =
-		UDim2.fromScale(
-			0.31,
-			1
-		)
-
-	button.Text =
-		text
-
-	button.ZIndex =
-		21
-
-	button.Parent =
-		placementControls
-
-
-	UITheme.StyleText(
-		button,
-		10,
-		16,
-		Colors.Text,
-		Fonts.Black
-	)
-
-
-	UITheme.StyleButton(
-		button,
-		topColor,
-		bottomColor
-	)
-
-
-	button.TextColor3 =
-		Colors.Text
-
-	button.TextTransparency =
-		0
-
-
-	return button
-end
-
-
-local rotateButton =
-	createControlButton(
-		"RotateButton",
-		"ROTATE",
-		Colors.Info,
-		Colors.InfoDark
-	)
-
-
-local placeButton =
-	createControlButton(
-		"PlaceButton",
-		"PLACE",
-		Colors.Success,
-		Colors.SuccessDark
-	)
-
-
-local cancelPlacementButton =
-	createControlButton(
-		"CancelButton",
-		"CANCEL",
-		Colors.Danger,
-		Colors.DangerDark
-	)
-
-
-local function updateResponsiveLayout()
-	local camera =
-		Workspace.CurrentCamera
-
-
-	if not camera then
-		return
-	end
-
-
-	local viewport =
-		camera.ViewportSize
-
-
-	local portrait =
-		viewport.Y
-		> viewport.X
-
-
-	local compact =
-		viewport.X < 800
-		or viewport.Y < 550
-
-
-	if portrait then
-		placementControls.Size =
-			UDim2.fromScale(
-				0.94,
-				0.1
-			)
-
-		statusLabel.Size =
-			UDim2.fromScale(
-				0.9,
-				0.07
-			)
-
-	elseif compact then
-
-		placementControls.Size =
-			UDim2.fromScale(
-				0.68,
-				0.13
-			)
-
-		statusLabel.Size =
-			UDim2.fromScale(
-				0.65,
-				0.1
-			)
-
-	else
-
-		placementControls.Size =
-			UDim2.fromScale(
-				0.5,
-				0.095
-			)
-
-		statusLabel.Size =
-			UDim2.fromScale(
-				0.52,
-				0.075
-			)
-	end
-end
-
-
-updateResponsiveLayout()
-
-
-local camera =
-	Workspace.CurrentCamera
-
-
-if camera then
-	camera:GetPropertyChangedSignal(
-		"ViewportSize"
-	):Connect(
-		updateResponsiveLayout
-	)
-end
-
-
-Workspace:GetPropertyChangedSignal(
-	"CurrentCamera"
-):Connect(function()
-	local newCamera =
-		Workspace.CurrentCamera
-
-
-	if not newCamera then
-		return
-	end
-
-
-	updateResponsiveLayout()
-
-
-	newCamera:GetPropertyChangedSignal(
-		"ViewportSize"
-	):Connect(
-		updateResponsiveLayout
-	)
-end)
-
-
---==================================================
--- STATUS
---==================================================
-
-local statusVersion =
+local noticeVersion =
 	0
 
 
-local function showStatus(
+local function getDefaultPlacementNotice(): string
+	if IS_TOUCH_DEVICE then
+		return "Move the business, then tap Place."
+	end
+
+
+	return "Click to place  •  R rotate  •  Esc cancel"
+end
+
+
+local function setPlacementNotice(
+	message: string
+)
+	noticeVersion += 1
+
+
+	noticeText.Text =
+		message
+end
+
+
+local function showTemporaryNotice(
 	message: string,
-	duration: number?
+	duration: number
 )
-	statusVersion += 1
+	noticeVersion += 1
 
 
 	local version =
-		statusVersion
+		noticeVersion
 
 
-	statusLabel.Text =
+	noticeText.Text =
 		message
 
-	statusLabel.Visible =
+	noticeWhilePlacing.Visible =
 		true
 
 
-	if duration then
-		task.delay(
-			duration,
-			function()
-				if statusVersion
-					== version then
+	task.delay(
+		duration,
+		function()
+			if noticeVersion
+				~= version then
 
-					statusLabel.Visible =
-						false
-				end
+				return
 			end
-		)
-	end
+
+
+			if isPlacementActive then
+				noticeText.Text =
+					getDefaultPlacementNotice()
+			else
+				noticeWhilePlacing.Visible =
+					false
+			end
+		end
+	)
 end
 
 
 --==================================================
--- PREVIEW
+-- PREVIEW APPEARANCE
 --==================================================
 
 local function setOriginalStandVisible(
@@ -1186,13 +1294,16 @@ local function preparePreview(
 			descendant.CanQuery =
 				false
 
+
 			descendant.Transparency =
 				math.max(
 					descendant.Transparency,
 					0.45
 				)
 
-		elseif descendant:IsA("Script")
+		elseif descendant:IsA(
+			"Script"
+		)
 			or descendant:IsA(
 				"LocalScript"
 			) then
@@ -1267,6 +1378,7 @@ local function setPreviewColor(
 
 	local fillColor:
 		Color3
+
 
 	local outlineColor:
 		Color3
@@ -1389,6 +1501,7 @@ local function isPreviewInsideGround(
 
 	local halfX =
 		placementBounds.Size.X / 2
+
 
 	local halfZ =
 		placementBounds.Size.Z / 2
@@ -1519,6 +1632,7 @@ local function rectanglesOverlapXZ(
 	local firstHalfZ =
 		firstSize.Z / 2
 
+
 	local secondHalfX =
 		secondSize.X / 2
 
@@ -1564,8 +1678,7 @@ local function rectanglesOverlapXZ(
 
 
 		if distance >=
-			firstRadius
-				+ secondRadius then
+			firstRadius + secondRadius then
 
 			return false
 		end
@@ -1700,8 +1813,7 @@ local function finishPlacementMode()
 		false
 
 
-	placementControls.Visible =
-		false
+	hidePlacementUI()
 end
 
 
@@ -1720,13 +1832,11 @@ local function startPlacement(
 		or DEFAULT_BUSINESS_NAME
 
 
-	-- IMPORTANT:
-	-- BusinessPlacementManager currently accepts
-	-- LemonadeStand only.
+	-- The current server is still lemonade-only.
 	if requestedBusiness
 		~= DEFAULT_BUSINESS_NAME then
 
-		showStatus(
+		showTemporaryNotice(
 			"This business cannot be placed yet.",
 			2
 		)
@@ -1746,7 +1856,7 @@ local function startPlacement(
 
 
 	if not ownedPlot then
-		showStatus(
+		showTemporaryNotice(
 			"Waiting for your plot...",
 			2
 		)
@@ -1763,17 +1873,16 @@ local function startPlacement(
 
 
 	if editingExisting then
-		if type(businessId)
+		if typeof(businessId)
 			~= "string"
 			or businessId == "" then
 
-			showStatus(
+			showTemporaryNotice(
 				"The selected lemonade stand could not be identified.",
 				2
 			)
 
-			cancelEditRemote
-				:FireServer()
+			cancelEditRemote:FireServer()
 
 			return
 		end
@@ -1790,7 +1899,7 @@ local function startPlacement(
 		and getStandCount()
 			>= MAXIMUM_STANDS then
 
-		showStatus(
+		showTemporaryNotice(
 			`You can only place {MAXIMUM_STANDS} Lemonade Stands.`,
 			2
 		)
@@ -1804,13 +1913,12 @@ local function startPlacement(
 	if editingExisting
 		and not existingStand then
 
-		showStatus(
+		showTemporaryNotice(
 			"Your lemonade stand could not be found.",
 			2
 		)
 
-		cancelEditRemote
-			:FireServer()
+		cancelEditRemote:FireServer()
 
 		return
 	end
@@ -1822,11 +1930,8 @@ local function startPlacement(
 
 
 	if editingExisting then
-		-- Use the actual placed stand while editing so
-		-- appearance upgrades and dimensions are preserved.
 		previewSource =
 			existingStand
-
 	else
 		local baseTemplate =
 			businessModels:FindFirstChild(
@@ -1852,8 +1957,7 @@ local function startPlacement(
 
 
 		if editingExisting then
-			cancelEditRemote
-				:FireServer()
+			cancelEditRemote:FireServer()
 		else
 			showAddButton()
 		end
@@ -1870,8 +1974,7 @@ local function startPlacement(
 
 
 		if editingExisting then
-			cancelEditRemote
-				:FireServer()
+			cancelEditRemote:FireServer()
 		else
 			showAddButton()
 		end
@@ -1926,7 +2029,6 @@ local function startPlacement(
 		previewModel:PivotTo(
 			existingStand:GetPivot()
 		)
-
 	else
 		originalStand =
 			nil
@@ -1951,15 +2053,12 @@ local function startPlacement(
 	)
 
 
-	placementControls.Visible =
-		true
-
-
-	showStatus(
-		IS_TOUCH_DEVICE
-			and "Move the preview, then tap Place."
-			or "Click to place  •  R rotate  •  Esc cancel"
+	setPlacementNotice(
+		getDefaultPlacementNotice()
 	)
+
+
+	showPlacementUI()
 end
 
 
@@ -1990,13 +2089,8 @@ local function cancelPlacement()
 	finishPlacementMode()
 
 
-	statusLabel.Visible =
-		false
-
-
 	if wasEditing then
-		cancelEditRemote
-			:FireServer()
+		cancelEditRemote:FireServer()
 	else
 		setBuildMenuVisible(
 			true
@@ -2016,8 +2110,8 @@ local function requestCurrentPlacement()
 	if not placementValid
 		or not currentPlacementCFrame then
 
-		showStatus(
-			"The stand must be inside your plot and cannot overlap another business.",
+		showTemporaryNotice(
+			"The business must be inside your plot and cannot overlap another business.",
 			1.75
 		)
 
@@ -2035,7 +2129,7 @@ local function requestCurrentPlacement()
 	)
 
 
-	showStatus(
+	setPlacementNotice(
 		isEditingExistingStand
 			and "Moving lemonade stand..."
 			or "Building lemonade stand..."
@@ -2044,7 +2138,7 @@ end
 
 
 --==================================================
--- BUSINESS SELECTOR
+-- BUSINESS LIST
 --==================================================
 
 local businessButtons: {
@@ -2056,10 +2150,7 @@ local function clearBusinessButtons()
 	for businessName, button in
 		businessButtons do
 
-		if button.Parent then
-			button:Destroy()
-		end
-
+		button:Destroy()
 
 		businessButtons[
 			businessName
@@ -2068,14 +2159,21 @@ local function clearBusinessButtons()
 end
 
 
-local function getBusinessNames(): { string }
+local function populateBusinessList()
+	clearBusinessButtons()
+
+
+	businessTemplate.Visible =
+		false
+
+
 	local names = {}
 
 
 	for businessName, config in
 		BusinessConfig do
 
-		if type(businessName)
+		if typeof(businessName)
 			~= "string"
 			or type(config)
 				~= "table" then
@@ -2099,52 +2197,25 @@ local function getBusinessNames(): { string }
 		): boolean
 
 			local firstConfig =
-				BusinessConfig[
-					first
-				]
+				BusinessConfig[first]
 
 			local secondConfig =
-				BusinessConfig[
-					second
-				]
-
-
-			local firstName =
-				firstConfig.DisplayName
-				or first
-
-			local secondName =
-				secondConfig.DisplayName
-				or second
+				BusinessConfig[second]
 
 
 			return string.lower(
-				firstName
+				firstConfig.DisplayName
+				or first
 			) < string.lower(
-				secondName
+				secondConfig.DisplayName
+				or second
 			)
 		end
 	)
 
 
-	return names
-end
-
-
-local function populateBusinessList()
-	clearBusinessButtons()
-
-
-	businessTemplate.Visible =
-		false
-
-
-	local businessNames =
-		getBusinessNames()
-
-
 	for index, businessName in
-		businessNames do
+		names do
 
 		local config =
 			BusinessConfig[
@@ -2192,6 +2263,11 @@ local function populateBusinessList()
 		end
 
 
+		setupButtonHover(
+			button
+		)
+
+
 		button.Activated:Connect(
 			function()
 				if isPlacementActive then
@@ -2199,8 +2275,6 @@ local function populateBusinessList()
 				end
 
 
-				-- Hide the selection UI immediately so
-				-- placement feels responsive.
 				closeBusinessMenu(
 					true
 				)
@@ -2224,25 +2298,23 @@ local function populateBusinessList()
 end
 
 
-addButton.Activated:Connect(
-	function()
-		if isPlacementActive then
-			return
-		end
+--==================================================
+-- UI BUTTON CONNECTIONS
+--==================================================
 
-
-		if businessMenuOpen then
-			closeBusinessMenu()
-		else
-			openBusinessMenu()
-		end
+addButton.Activated:Connect(function()
+	if isPlacementActive then
+		return
 	end
-)
 
 
---==================================================
--- PLACEMENT BUTTONS
---==================================================
+	if businessMenuOpen then
+		closeBusinessMenu()
+	else
+		openBusinessMenu()
+	end
+end)
+
 
 rotateButton.Activated:Connect(
 	rotatePlacement
@@ -2254,7 +2326,7 @@ placeButton.Activated:Connect(
 )
 
 
-cancelPlacementButton.Activated:Connect(
+cancelButton.Activated:Connect(
 	cancelPlacement
 )
 
@@ -2285,26 +2357,13 @@ UserInputService.InputBegan:Connect(
 		input: InputObject,
 		gameProcessed: boolean
 	)
-		if gameProcessed
-			or not isPlacementActive then
-
+		if not isPlacementActive then
 			return
 		end
 
 
-		if input.UserInputType
-			== Enum.UserInputType.Touch then
-
-			lastTouchPosition =
-				Vector2.new(
-					input.Position.X,
-					input.Position.Y
-				)
-
-			return
-		end
-
-
+		-- Keyboard shortcuts should still work even
+		-- when Roblox has processed another UI input.
 		if input.KeyCode
 			== Enum.KeyCode.R then
 
@@ -2318,6 +2377,24 @@ UserInputService.InputBegan:Connect(
 			== Enum.KeyCode.Escape then
 
 			cancelPlacement()
+
+			return
+		end
+
+
+		if gameProcessed then
+			return
+		end
+
+
+		if input.UserInputType
+			== Enum.UserInputType.Touch then
+
+			lastTouchPosition =
+				Vector2.new(
+					input.Position.X,
+					input.Position.Y
+				)
 
 			return
 		end
@@ -2368,11 +2445,11 @@ RunService.RenderStepped:Connect(
 		end
 
 
-		local currentCamera =
+		local camera =
 			Workspace.CurrentCamera
 
 
-		if not currentCamera then
+		if not camera then
 			return
 		end
 
@@ -2384,11 +2461,10 @@ RunService.RenderStepped:Connect(
 
 
 		local ray =
-			currentCamera
-				:ViewportPointToRay(
-					pointerPosition.X,
-					pointerPosition.Y
-				)
+			camera:ViewportPointToRay(
+				pointerPosition.X,
+				pointerPosition.Y
+			)
 
 
 		local raycastParams =
@@ -2482,21 +2558,84 @@ placeBusinessRemote.OnClientEvent:Connect(
 				getOwnedPlot()
 
 
-			task.defer(
-				function()
-					setBuildMenuVisible(
-						getStandCount()
-							< MAXIMUM_STANDS
-					)
-				end
-			)
+			task.defer(function()
+				setBuildMenuVisible(
+					getStandCount()
+						< MAXIMUM_STANDS
+				)
+			end)
 
 
-			showStatus(
+			noticeVersion += 1
+
+
+			noticeText.Text =
 				message ~= ""
 					and message
-					or "Lemonade stand placed!",
-				2
+					or "Lemonade stand placed!"
+
+
+			noticeWhilePlacing.Position =
+				noticeHiddenPosition
+
+			noticeWhilePlacing.Visible =
+				true
+
+
+			local tween =
+				TweenService:Create(
+					noticeWhilePlacing,
+					TweenInfo.new(
+						0.18,
+						Enum.EasingStyle.Back,
+						Enum.EasingDirection.Out
+					),
+					{
+						Position =
+							noticeOpenPosition,
+					}
+				)
+
+
+			tween:Play()
+
+
+			task.delay(
+				1.5,
+				function()
+					if isPlacementActive then
+						return
+					end
+
+
+					local exitTween =
+						TweenService:Create(
+							noticeWhilePlacing,
+							TweenInfo.new(
+								0.12,
+								Enum.EasingStyle.Quad,
+								Enum.EasingDirection.In
+							),
+							{
+								Position =
+									noticeHiddenPosition,
+							}
+						)
+
+
+					exitTween:Play()
+
+
+					exitTween.Completed:Once(function()
+						if not isPlacementActive then
+							noticeWhilePlacing.Visible =
+								false
+
+							noticeWhilePlacing.Position =
+								noticeOpenPosition
+						end
+					end)
+				end
 			)
 
 
@@ -2504,11 +2643,22 @@ placeBusinessRemote.OnClientEvent:Connect(
 		end
 
 
-		showStatus(
+		setPlacementNotice(
 			message ~= ""
 				and message
-				or "The stand could not be placed.",
-			2
+				or "The stand could not be placed."
+		)
+
+
+		task.delay(
+			1.75,
+			function()
+				if isPlacementActive then
+					setPlacementNotice(
+						getDefaultPlacementNotice()
+					)
+				end
+			end
 		)
 	end
 )
@@ -2527,8 +2677,6 @@ interactionResultRemote.OnClientEvent:Connect(
 		if action
 			== "ShowRemoveConfirmation" then
 
-			-- BusinessManagementClient owns
-			-- this interface.
 			return
 		end
 
@@ -2540,13 +2688,12 @@ interactionResultRemote.OnClientEvent:Connect(
 				~= "string"
 				or businessId == "" then
 
-				showStatus(
+				showTemporaryNotice(
 					"The selected lemonade stand could not be identified.",
 					2
 				)
 
-				cancelEditRemote
-					:FireServer()
+				cancelEditRemote:FireServer()
 
 				return
 			end
@@ -2580,23 +2727,12 @@ interactionResultRemote.OnClientEvent:Connect(
 				getOwnedPlot()
 
 
-			task.defer(
-				function()
-					setBuildMenuVisible(
-						getStandCount()
-							< MAXIMUM_STANDS
-					)
-				end
-			)
-
-
-			showStatus(
-				typeof(message)
-					== "string"
-					and message
-					or "Lemonade stand removed.",
-				2
-			)
+			task.defer(function()
+				setBuildMenuVisible(
+					getStandCount()
+						< MAXIMUM_STANDS
+				)
+			end)
 
 
 			return
@@ -2606,13 +2742,14 @@ interactionResultRemote.OnClientEvent:Connect(
 		if action
 			== "RemoveFailed" then
 
-			showStatus(
-				typeof(message)
-					== "string"
-					and message
-					or "The stand could not be removed.",
-				2
-			)
+			if typeof(message)
+				== "string" then
+
+				showTemporaryNotice(
+					message,
+					2
+				)
+			end
 
 
 			return
@@ -2633,35 +2770,41 @@ interactionResultRemote.OnClientEvent:Connect(
 				getStandCount()
 					< MAXIMUM_STANDS
 			)
-
-
-			showStatus(
-				typeof(message)
-					== "string"
-					and message
-					or "Editing cancelled.",
-				2
-			)
 		end
 	end
 )
 
 
 --==================================================
--- INITIALIZATION
+-- INITIAL STATE
 --==================================================
 
 businessTemplate.Visible =
 	false
 
+
 addFrame.Visible =
 	false
 
 addFrame.Position =
-	originalAddFramePosition
+	addFrameOpenPosition
 
 addFrame.Size =
-	originalAddFrameSize
+	addFrameOpenSize
+
+
+addButtons.Visible =
+	false
+
+addButtons.Position =
+	addButtonsOpenPosition
+
+
+noticeWhilePlacing.Visible =
+	false
+
+noticeWhilePlacing.Position =
+	noticeOpenPosition
 
 
 populateBusinessList()
@@ -2683,33 +2826,33 @@ else
 end
 
 
--- Keep the button synchronized as the player's
--- plot/business state changes.
-task.spawn(
-	function()
-		while screenGui.Parent do
-			ownedPlot =
-				getOwnedPlot()
+--==================================================
+-- KEEP ADD BUTTON IN SYNC
+--==================================================
+
+task.spawn(function()
+	while screenGui.Parent do
+		ownedPlot =
+			getOwnedPlot()
 
 
-			if ownedPlot
-				and not isPlacementActive
-				and not isEditingExistingStand then
+		if ownedPlot
+			and not isPlacementActive
+			and not isEditingExistingStand then
 
-				setBuildMenuVisible(
-					getStandCount()
-						< MAXIMUM_STANDS
-				)
-			else
-				setBuildMenuVisible(
-					false
-				)
-			end
-
-
-			task.wait(
-				0.5
+			setBuildMenuVisible(
+				getStandCount()
+					< MAXIMUM_STANDS
+			)
+		else
+			setBuildMenuVisible(
+				false
 			)
 		end
+
+
+		task.wait(
+			0.5
+		)
 	end
-)
+end)
