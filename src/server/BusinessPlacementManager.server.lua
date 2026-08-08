@@ -420,13 +420,15 @@ local function setModelPlacedState(
 	end
 end
 
-local function setPromptState(
-	model: Model,
-	enabled: boolean
+local PROMPT_ENABLED_ATTRIBUTE =
+	"EnabledBeforeBusinessEdit"
+
+local function disablePrompts(
+	model: Model
 )
 	for _, descendant in
-		model:GetDescendants() do
-
+		model:GetDescendants()
+	do
 		if not descendant:IsA(
 			"ProximityPrompt"
 		) then
@@ -434,15 +436,43 @@ local function setPromptState(
 			continue
 		end
 
-		if descendant:GetAttribute(
-			"IsLemonadePurchasePrompt"
-		) == true then
+		-- Remember the prompt's original state.
+		descendant:SetAttribute(
+			PROMPT_ENABLED_ATTRIBUTE,
+			descendant.Enabled
+		)
 
-			descendant.Enabled = false
+		descendant.Enabled = false
+	end
+end
+
+local function restorePrompts(
+	model: Model
+)
+	for _, descendant in
+		model:GetDescendants()
+	do
+		if not descendant:IsA(
+			"ProximityPrompt"
+		) then
+
 			continue
 		end
 
-		descendant.Enabled = enabled
+		local previousState =
+			descendant:GetAttribute(
+				PROMPT_ENABLED_ATTRIBUTE
+			)
+
+		if typeof(previousState) == "boolean" then
+			descendant.Enabled =
+				previousState
+
+			descendant:SetAttribute(
+				PROMPT_ENABLED_ATTRIBUTE,
+				nil
+			)
+		end
 	end
 end
 
@@ -695,10 +725,9 @@ end
 				false
 			)
 
-			setPromptState(
-				stand,
-				true
-			)
+			disablePrompts(
+	stand
+)
 
 			editStates[player] = nil
 

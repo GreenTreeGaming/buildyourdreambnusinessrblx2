@@ -216,16 +216,57 @@ local function setModelPlacedState(model: Model)
 	end
 end
 
-local function setPromptsEnabled(
-	model: Model,
-	enabled: boolean
-)
-	for _, descendant in model:GetDescendants() do
-		if descendant:IsA("ProximityPrompt") then
-			descendant.MaxActivationDistance =
-				MANAGEMENT_DISTANCE
+local PROMPT_ENABLED_ATTRIBUTE =
+	"EnabledBeforeAppearanceUpgrade"
 
-			descendant.Enabled = enabled
+local function disablePrompts(
+	model: Model
+)
+	for _, descendant in
+		model:GetDescendants()
+	do
+		if not descendant:IsA(
+			"ProximityPrompt"
+		) then
+
+			continue
+		end
+
+		descendant:SetAttribute(
+			PROMPT_ENABLED_ATTRIBUTE,
+			descendant.Enabled
+		)
+
+		descendant.Enabled = false
+	end
+end
+
+local function restorePrompts(
+	model: Model
+)
+	for _, descendant in
+		model:GetDescendants()
+	do
+		if not descendant:IsA(
+			"ProximityPrompt"
+		) then
+
+			continue
+		end
+
+		local previousState =
+			descendant:GetAttribute(
+				PROMPT_ENABLED_ATTRIBUTE
+			)
+
+		if typeof(previousState) == "boolean" then
+			descendant.Enabled =
+				previousState
+
+			descendant:SetAttribute(
+				PROMPT_ENABLED_ATTRIBUTE,
+				nil
+			)
 		end
 	end
 end
@@ -778,7 +819,7 @@ end
 
 	-- Stop new customers from using the old stand during replacement.
 	stand:SetAttribute("StandUnavailable", true)
-	setPromptsEnabled(stand, false)
+	disablePrompts(stand)
 
 	local upgradedStand = template:Clone()
 
@@ -833,9 +874,8 @@ upgradedStand:SetAttribute(
 	true
 )
 
-setPromptsEnabled(
-	upgradedStand,
-	false
+disablePrompts(
+	upgradedStand
 )
 
 upgradedStand.Parent =
@@ -917,9 +957,8 @@ upgradedStand:SetAttribute(
 	false
 )
 
-setPromptsEnabled(
-	upgradedStand,
-	true
+restorePrompts(
+	upgradedStand
 )
 		end)
 
@@ -933,7 +972,7 @@ setPromptsEnabled(
 			false
 		)
 
-		setPromptsEnabled(stand, true)
+		restorePrompts(stand)
 
 		finish()
 
