@@ -87,6 +87,24 @@ local plotsFolder =
 local DEFAULT_BUSINESS_NAME =
 	"LemonadeStand"
 
+local placementGridFolder: Folder? =
+	nil
+
+local GRID_LINE_HEIGHT =
+	0.035
+
+local GRID_LINE_THICKNESS =
+	0.025
+
+local GRID_FREE_COLOR =
+	Color3.fromRGB(255, 255, 255)
+
+local GRID_OCCUPIED_COLOR =
+	Color3.fromRGB(255, 80, 80)
+
+local GRID_SELECTED_COLOR =
+	Color3.fromRGB(90, 255, 120)
+
 
 local lemonadeConfig =
 	BusinessConfig.LemonadeStand
@@ -1272,9 +1290,44 @@ local function createPlacementBox(
 end
 
 
+local function makePreviewPartNonCollidable(
+	part: BasePart
+)
+	part.Anchored =
+		true
+
+	part.CanCollide =
+		false
+
+	part.CanTouch =
+		false
+
+	part.CanQuery =
+		false
+
+	part.Massless =
+		true
+
+
+	part.AssemblyLinearVelocity =
+		Vector3.zero
+
+	part.AssemblyAngularVelocity =
+		Vector3.zero
+
+
+	part.Transparency =
+		math.max(
+			part.Transparency,
+			0.45
+		)
+end
+
+
 local function preparePreview(
 	model: Model
 )
+	-- Disable everything already inside the preview.
 	for _, descendant in
 		model:GetDescendants() do
 
@@ -1282,24 +1335,9 @@ local function preparePreview(
 			"BasePart"
 		) then
 
-			descendant.Anchored =
-				true
-
-			descendant.CanCollide =
-				false
-
-			descendant.CanTouch =
-				false
-
-			descendant.CanQuery =
-				false
-
-
-			descendant.Transparency =
-				math.max(
-					descendant.Transparency,
-					0.45
-				)
+			makePreviewPartNonCollidable(
+				descendant
+			)
 
 		elseif descendant:IsA(
 			"Script"
@@ -1326,6 +1364,39 @@ local function preparePreview(
 				false
 		end
 	end
+
+
+	-- Safety net:
+	-- if anything adds a new part to the preview while
+	-- placement is active, it must also be non-collidable.
+	model.DescendantAdded:Connect(
+		function(
+			descendant: Instance
+		)
+			if descendant:IsA(
+				"BasePart"
+			) then
+
+				makePreviewPartNonCollidable(
+					descendant
+				)
+
+			elseif descendant:IsA(
+				"ProximityPrompt"
+			) then
+
+				descendant.Enabled =
+					false
+
+			elseif descendant:IsA(
+				"BillboardGui"
+			) then
+
+				descendant.Enabled =
+					false
+			end
+		end
+	)
 
 
 	local highlight =
@@ -1774,6 +1845,573 @@ end
 -- PLACEMENT STATE
 --==================================================
 
+local function destroyPlacementGrid(
+	immediate: boolean?
+)
+	if not placementGridFolder then
+		return
+	end
+
+
+	local folder =
+		placementGridFolder
+
+	placementGridFolder =
+		nil
+
+
+	if immediate then
+		folder:Destroy()
+
+		return
+	end
+
+
+	local gridLines = {}
+	local occupiedParts = {}
+
+
+	for _, child in
+		folder:GetChildren() do
+
+		if not child:IsA("BasePart") then
+			continue
+		end
+
+
+		if child.Name == "Occupied" then
+			table.insert(
+				occupiedParts,
+				child
+			)
+		else
+			table.insert(
+				gridLines,
+				child
+			)
+		end
+	end
+
+
+	--==================================================
+	-- RETRACT GRID LINES
+	--==================================================
+
+	for _, part in
+		gridLines do
+
+		local targetSize
+
+
+		-- Long on X = horizontal grid line.
+		if part.Size.X > part.Size.Z then
+
+			targetSize =
+				Vector3.new(
+					0.05,
+					part.Size.Y,
+					part.Size.Z
+				)
+
+		-- Long on Z = vertical grid line.
+		else
+
+			targetSize =
+				Vector3.new(
+					part.Size.X,
+					part.Size.Y,
+					0.05
+				)
+		end
+
+
+		local tween =
+			TweenService:Create(
+				part,
+
+				TweenInfo.new(
+					0.28,
+					Enum.EasingStyle.Quart,
+					Enum.EasingDirection.In
+				),
+
+				{
+					Size =
+						targetSize,
+
+					Transparency =
+						1,
+				}
+			)
+
+
+		tween:Play()
+	end
+
+
+	--==================================================
+	-- SHRINK OCCUPIED AREAS
+	--==================================================
+
+	for _, part in
+		occupiedParts do
+
+		local tween =
+			TweenService:Create(
+				part,
+
+				TweenInfo.new(
+					0.22,
+					Enum.EasingStyle.Back,
+					Enum.EasingDirection.In
+				),
+
+				{
+					Size =
+						Vector3.new(
+							0.1,
+							part.Size.Y,
+							0.1
+						),
+
+					Transparency =
+						1,
+				}
+			)
+
+
+		tween:Play()
+	end
+
+
+	-- Give the animation enough time to actually finish
+	-- before destroying the local grid.
+	task.delay(
+		0.32,
+		function()
+			if folder.Parent then
+				folder:Destroy()
+			end
+		end
+	)
+end
+
+local function createGridPart(
+	parent: Instance,
+	size: Vector3,
+	cframe: CFrame,
+	color: Color3,
+	transparency: number
+): Part
+
+	local part =
+		Instance.new("Part")
+
+
+	part.Name =
+		"Grid"
+
+	part.Size =
+		size
+
+	part.CFrame =
+		cframe
+
+	part.Color =
+		color
+
+	part.Transparency =
+		transparency
+
+	part.Material =
+		Enum.Material.Neon
+
+	part.Anchored =
+		true
+
+	part.CanCollide =
+		false
+
+	part.CanTouch =
+		false
+
+	part.CanQuery =
+		false
+
+	part.CastShadow =
+		false
+
+	part.Parent =
+		parent
+
+
+	return part
+end
+
+
+local function createPlacementGrid()
+	destroyPlacementGrid(
+	true
+)
+
+
+	if not ownedPlot then
+		return
+	end
+
+
+	local ground =
+		ownedPlot:FindFirstChild(
+			"Ground"
+		)
+
+
+	if not ground
+		or not ground:IsA(
+			"BasePart"
+		) then
+
+		return
+	end
+
+
+	local folder =
+		Instance.new("Folder")
+
+	folder.Name =
+		"LocalPlacementGrid"
+
+	folder.Parent =
+		Workspace
+
+
+	placementGridFolder =
+		folder
+
+
+	local halfX =
+		ground.Size.X / 2
+
+	local halfZ =
+		ground.Size.Z / 2
+
+
+	local topY =
+		ground.Size.Y / 2
+		+ GRID_LINE_HEIGHT
+
+
+	local verticalLines = {}
+	local horizontalLines = {}
+
+
+	-- Vertical lines.
+	for x =
+		-halfX,
+		halfX,
+		GRID_SIZE do
+
+		local part =
+			createGridPart(
+				folder,
+
+				Vector3.new(
+					GRID_LINE_THICKNESS,
+					GRID_LINE_HEIGHT,
+					ground.Size.Z
+				),
+
+				ground.CFrame
+					* CFrame.new(
+						x,
+						topY,
+						0
+					),
+
+				GRID_FREE_COLOR,
+				1
+			)
+
+
+		table.insert(
+			verticalLines,
+			{
+				Part = part,
+				Coordinate = x,
+			}
+		)
+	end
+
+
+	-- Horizontal lines.
+	for z =
+		-halfZ,
+		halfZ,
+		GRID_SIZE do
+
+		local part =
+			createGridPart(
+				folder,
+
+				Vector3.new(
+					ground.Size.X,
+					GRID_LINE_HEIGHT,
+					GRID_LINE_THICKNESS
+				),
+
+				ground.CFrame
+					* CFrame.new(
+						0,
+						topY,
+						z
+					),
+
+				GRID_FREE_COLOR,
+				1
+			)
+
+
+		table.insert(
+			horizontalLines,
+			{
+				Part = part,
+				Coordinate = z,
+			}
+		)
+	end
+
+
+	-- Sort so the reveal travels cleanly
+	-- from one side of the plot to the other.
+	table.sort(
+		verticalLines,
+		function(a, b)
+			return a.Coordinate
+				< b.Coordinate
+		end
+	)
+
+
+	table.sort(
+		horizontalLines,
+		function(a, b)
+			return a.Coordinate
+				< b.Coordinate
+		end
+	)
+
+
+	local function animateLineGroup(
+		lines: { any },
+		stagger: number
+	)
+		for index, data in
+			lines do
+
+			task.delay(
+				(index - 1) * stagger,
+				function()
+					if not placementGridFolder
+						or data.Part.Parent
+							~= placementGridFolder then
+
+						return
+					end
+
+
+					data.Part.Transparency =
+						1
+
+
+					local tween =
+						TweenService:Create(
+							data.Part,
+
+							TweenInfo.new(
+								0.12,
+								Enum.EasingStyle.Quad,
+								Enum.EasingDirection.Out
+							),
+
+							{
+								Transparency =
+									0.68,
+							}
+						)
+
+
+					tween:Play()
+				end
+			)
+		end
+	end
+
+
+	-- First vertical sweep, then horizontal sweep.
+	animateLineGroup(
+		verticalLines,
+		0.008
+	)
+
+
+	task.delay(
+		0.08,
+		function()
+			if not placementGridFolder
+				or placementGridFolder
+					~= folder then
+
+				return
+			end
+
+
+			animateLineGroup(
+				horizontalLines,
+				0.008
+			)
+		end
+	)
+end
+
+local function addOccupiedGridAreas()
+	if not placementGridFolder
+		or not ownedPlot then
+
+		return
+	end
+
+
+	local ground =
+		ownedPlot:FindFirstChild(
+			"Ground"
+		)
+
+
+	local placedBusinesses =
+		ownedPlot:FindFirstChild(
+			"PlacedBusinesses"
+		)
+
+
+	if not ground
+		or not ground:IsA("BasePart")
+		or not placedBusinesses then
+
+		return
+	end
+
+
+	for _, business in
+		placedBusinesses:GetChildren() do
+
+		if not business:IsA("Model")
+			or business == originalStand then
+
+			continue
+		end
+
+
+		local bounds =
+			business:FindFirstChild(
+				"PlacementBounds",
+				true
+			)
+
+
+		if not bounds
+			or not bounds:IsA(
+				"BasePart"
+			) then
+
+			continue
+		end
+
+
+		local groundSpace =
+			ground.CFrame
+				:ToObjectSpace(
+					bounds.CFrame
+				)
+
+
+		local finalSize =
+	Vector3.new(
+		bounds.Size.X,
+		GRID_LINE_HEIGHT,
+		bounds.Size.Z
+	)
+
+
+local occupiedPart =
+	createGridPart(
+		placementGridFolder,
+
+		Vector3.new(
+			math.max(
+				0.1,
+				bounds.Size.X * 0.85
+			),
+
+			GRID_LINE_HEIGHT,
+
+			math.max(
+				0.1,
+				bounds.Size.Z * 0.85
+			)
+		),
+
+		ground.CFrame
+			* CFrame.new(
+				groundSpace.Position.X,
+
+				ground.Size.Y / 2
+					+ GRID_LINE_HEIGHT
+					+ 0.01,
+
+				groundSpace.Position.Z
+			)
+			* CFrame.Angles(
+				0,
+
+				select(
+					2,
+					groundSpace
+						:ToOrientation()
+				),
+
+				0
+			),
+
+		GRID_OCCUPIED_COLOR,
+		1
+	)
+
+
+occupiedPart.Name =
+	"Occupied"
+
+
+TweenService:Create(
+	occupiedPart,
+
+	TweenInfo.new(
+		0.22,
+		Enum.EasingStyle.Back,
+		Enum.EasingDirection.Out
+	),
+
+	{
+		Size =
+			finalSize,
+
+		Transparency =
+			0.72,
+	}
+):Play()
+	end
+end
+
+
 local function destroyPreview()
 	if previewModel then
 		previewModel:Destroy()
@@ -1800,6 +2438,10 @@ end
 local function finishPlacementMode()
 	destroyPreview()
 
+	destroyPlacementGrid(
+	false
+)
+
 
 	setOriginalStandVisible(
 		true
@@ -1815,7 +2457,6 @@ local function finishPlacementMode()
 
 	hidePlacementUI()
 end
-
 
 local function startPlacement(
 	editingExisting: boolean,
@@ -2025,6 +2666,18 @@ local function startPlacement(
 				)
 			)
 
+		for _, descendant in
+	previewModel:GetDescendants() do
+
+	if descendant:IsA(
+		"BasePart"
+	) and descendant.CanCollide then
+
+		descendant.CanCollide =
+			false
+	end
+end
+
 
 		previewModel:PivotTo(
 			existingStand:GetPivot()
@@ -2046,6 +2699,10 @@ local function startPlacement(
 
 	placementValid =
 		false
+
+	createPlacementGrid()
+
+addOccupiedGridAreas()
 
 
 	setBuildMenuVisible(
@@ -2501,15 +3158,37 @@ RunService.RenderStepped:Connect(
 
 
 		currentPlacementCFrame =
-			getPlacementCFrame(
-				result.Position,
-				ground
-			)
+	getPlacementCFrame(
+		result.Position,
+		ground
+	)
 
 
-		previewModel:PivotTo(
-			currentPlacementCFrame
-		)
+-- Safety check:
+-- the placement preview must never collide
+-- with the player or anything else.
+for _, descendant in
+	previewModel:GetDescendants() do
+
+	if descendant:IsA(
+		"BasePart"
+	) then
+
+		descendant.CanCollide =
+			false
+
+		descendant.CanTouch =
+			false
+
+		descendant.CanQuery =
+			false
+	end
+end
+
+
+previewModel:PivotTo(
+	currentPlacementCFrame
+)
 
 
 		local insideGround =
