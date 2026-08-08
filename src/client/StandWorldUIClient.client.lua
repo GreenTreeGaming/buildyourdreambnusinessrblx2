@@ -258,19 +258,10 @@ local function setProgress(
 			1
 		)
 
-	local fullSize =
-		state.ProgressFullSize
-
 	state.ProgressFill.Size =
-		UDim2.new(
-			fullSize.X.Scale
-				* remainingFraction,
-
-			fullSize.X.Offset
-				* remainingFraction,
-
-			fullSize.Y.Scale,
-			fullSize.Y.Offset
+		UDim2.fromScale(
+			remainingFraction,
+			1
 		)
 end
 
@@ -356,17 +347,6 @@ local function getServingTemplateObjects(
 		background,
 		bar
 end
-
-
-local function cancelProgressTween(
-	state: StandUIState
-)
-	if state.ProgressTween then
-		state.ProgressTween:Cancel()
-		state.ProgressTween = nil
-	end
-end
-
 
 local function cancelVisibilityTween(
 	state: StandUIState
@@ -511,8 +491,10 @@ end
 local function resetProgress(
 	state: StandUIState
 )
-	state.ProgressFill.Size =
-		state.ProgressFullSize
+	setProgress(
+		state,
+		1
+	)
 end
 
 local function removeStandUI(
@@ -524,11 +506,6 @@ local function removeStandUI(
 	if not state then
 		return
 	end
-
-
-	cancelProgressTween(
-		state
-	)
 
 	cancelVisibilityTween(
 		state
@@ -631,11 +608,39 @@ local function createStandUI(
 	end
 
 
-	background.ClipsDescendants =
-		true
+	-- Background is the red progress track.
+-- Bar is the green remaining-time fill.
+background.ClipsDescendants = true
+
+progressFill.Visible = true
+progressFill.BackgroundTransparency = 0
+
+-- Force the green bar to behave as a normal
+-- left-to-right progress fill regardless of how
+-- it was positioned/sized in the Studio template.
+progressFill.AnchorPoint =
+	Vector2.new(
+		0,
+		0.5
+	)
+
+progressFill.Position =
+	UDim2.fromScale(
+		0,
+		0.5
+	)
+
+progressFill.Size =
+	UDim2.fromScale(
+		1,
+		1
+	)
+
+progressFill.ZIndex =
+	background.ZIndex + 1
 
 
-	-- UIScale gives us the same clean pop behavior
+-- UIScale gives us the same clean pop behavior
 	-- as the management Billboard UI without changing
 	-- any of the Studio-designed positions/sizes.
 	local uiScale =
@@ -670,11 +675,6 @@ local function createStandUI(
 	uiScale.Scale =
 		1
 
-
-	local progressFullSize =
-		progressFill.Size
-
-
 	standStates[stand] = {
 		Stand = stand,
 
@@ -686,10 +686,13 @@ local function createStandUI(
 		StatusLabel = statusLabel,
 
 		ProgressFill =
-			progressFill,
+	progressFill,
 
-		ProgressFullSize =
-			progressFullSize,
+ProgressFullSize =
+	UDim2.fromScale(
+		1,
+		1
+	),
 
 		PositionPart =
 			positionPart,
@@ -1241,18 +1244,14 @@ RunService.RenderStepped:Connect(
 
 
 			if unavailable
-				or beingEdited then
+	or beingEdited then
 
-				resetProgress(
-					state
-				)
+	hideStandUI(
+		state
+	)
 
-				hideStandUI(
-					state
-				)
-
-				continue
-			end
+	continue
+end
 
 
 			local manualActive =
@@ -1267,18 +1266,14 @@ RunService.RenderStepped:Connect(
 
 
 			if not manualActive
-				and not customerActive then
+	and not customerActive then
 
-				resetProgress(
-					state
-				)
+	hideStandUI(
+		state
+	)
 
-				hideStandUI(
-					state
-				)
-
-				continue
-			end
+	continue
+end
 
 
 			local startedAt:
@@ -1320,21 +1315,17 @@ RunService.RenderStepped:Connect(
 
 
 			if typeof(startedAt)
-					~= "number"
-				or typeof(duration)
-					~= "number"
-				or duration <= 0 then
+		~= "number"
+	or typeof(duration)
+		~= "number"
+	or duration <= 0 then
 
-				resetProgress(
-					state
-				)
+	hideStandUI(
+		state
+	)
 
-				hideStandUI(
-					state
-				)
-
-				continue
-			end
+	continue
+end
 
 
 			local elapsed =
