@@ -91,11 +91,11 @@ PhysicsService:CollisionGroupSetCollidable(
 	false
 )
 
--- Players can walk through placed businesses.
+-- Players physically collide with placed businesses.
 PhysicsService:CollisionGroupSetCollidable(
 	BUSINESS_GROUP,
 	PLAYER_GROUP,
-	false
+	true
 )
 
 -- Customers must still collide with the ground

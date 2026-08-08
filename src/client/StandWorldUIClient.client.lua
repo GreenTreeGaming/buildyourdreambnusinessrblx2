@@ -1,15 +1,25 @@
-local Players = game:GetService("Players")
+local Players =
+	game:GetService("Players")
+
 local ReplicatedStorage =
 	game:GetService("ReplicatedStorage")
+
 local RunService =
 	game:GetService("RunService")
-local Workspace = game:GetService("Workspace")
 
-local Debris = game:GetService("Debris")
+local Workspace =
+	game:GetService("Workspace")
+
+local Debris =
+	game:GetService("Debris")
+
 local TweenService =
 	game:GetService("TweenService")
 
-local player = Players.LocalPlayer
+
+local player =
+	Players.LocalPlayer
+
 local playerGui =
 	player:WaitForChild("PlayerGui")
 
@@ -17,12 +27,30 @@ local plotsFolder =
 	Workspace:WaitForChild("Plots")
 
 local remotes =
-ReplicatedStorage:WaitForChild("Remotes")
+	ReplicatedStorage:WaitForChild("Remotes")
+
+local billboardsFolder =
+	ReplicatedStorage:WaitForChild("Billboards")
+
+local servingCustomerTemplate =
+	billboardsFolder:WaitForChild(
+		"ServingCustomer"
+	)
+
+if not servingCustomerTemplate:IsA(
+	"BillboardGui"
+) then
+	error(
+		"ReplicatedStorage.Billboards.ServingCustomer must be a BillboardGui."
+	)
+end
+
 
 local manualSaleResultRemote =
 	remotes:WaitForChild(
 		"ManualLemonadeSaleResult"
 	)
+
 
 local UITheme = require(
 	ReplicatedStorage
@@ -30,29 +58,38 @@ local UITheme = require(
 		:WaitForChild("UITheme")
 )
 
-local Colors = UITheme.Colors
-local Fonts = UITheme.Fonts
+local Colors =
+	UITheme.Colors
+
+local Fonts =
+	UITheme.Fonts
+
+
+local BUSINESS_NAME =
+	"LemonadeStand"
+
 
 type StandUIState = {
 	Stand: Model,
+
 	Billboard: BillboardGui,
 
-	TimerLabel: TextLabel, 
+	TimerLabel: TextLabel,
 	StatusLabel: TextLabel,
+
 	ProgressFill: Frame,
+	ProgressFullSize: UDim2,
 
 	PositionPart: BasePart,
 }
 
-local standStates: {
-	[Model]: StandUIState
-} = {}
 
-local watchedFolders: {
-	[Instance]: boolean
-} = {}
+local standStates:
+	{[Model]: StandUIState} = {}
 
-local BUSINESS_NAME = "LemonadeStand"
+local watchedFolders:
+	{[Instance]: boolean} = {}
+
 
 local function isLemonadeStand(
 	stand: Instance
@@ -62,42 +99,57 @@ local function isLemonadeStand(
 	end
 
 	local businessType =
-		stand:GetAttribute("BusinessType")
+		stand:GetAttribute(
+			"BusinessType"
+		)
 
 	if businessType == BUSINESS_NAME then
 		return true
 	end
 
-	return stand.Name == BUSINESS_NAME
-		or string.match(
-			stand.Name,
-			"^LemonadeStand_"
-		) ~= nil
+	if stand.Name == BUSINESS_NAME then
+		return true
+	end
+
+	return string.match(
+		stand.Name,
+		"^LemonadeStand_"
+	) ~= nil
 end
+
 
 local function disableLegacyWorldUI(
 	instance: Instance
 )
-	if not instance:IsA("BillboardGui") then
+	if not instance:IsA(
+		"BillboardGui"
+	) then
 		return
 	end
 
-	if instance.Name == "ResponsiveServiceTimer"
-		or instance.Name == "CashPopup" then
+	if instance.Name
+			== "ResponsiveServiceTimer"
+		or instance.Name
+			== "CashPopup" then
 
 		return
 	end
 
-	-- Prevent an older timer embedded in the place model
-	-- from appearing over the responsive timer.
+	-- Prevent old timers embedded directly in
+	-- stand models from appearing at the same
+	-- time as the new replicated template.
 	instance.Enabled = false
 end
+
 
 local function getTimerPosition(
 	stand: Model,
 	waitForReplication: boolean?
 ): BasePart?
-	local function findPosition(): BasePart?
+
+	local function findPosition():
+		BasePart?
+
 		local timerPosition =
 			stand:FindFirstChild(
 				"CooldownUIPosition",
@@ -105,10 +157,13 @@ local function getTimerPosition(
 			)
 
 		if timerPosition
-			and timerPosition:IsA("BasePart") then
+			and timerPosition:IsA(
+				"BasePart"
+			) then
 
 			return timerPosition
 		end
+
 
 		local salePosition =
 			stand:FindFirstChild(
@@ -117,10 +172,13 @@ local function getTimerPosition(
 			)
 
 		if salePosition
-			and salePosition:IsA("BasePart") then
+			and salePosition:IsA(
+				"BasePart"
+			) then
 
 			return salePosition
 		end
+
 
 		local managementPosition =
 			stand:FindFirstChild(
@@ -129,10 +187,13 @@ local function getTimerPosition(
 			)
 
 		if managementPosition
-			and managementPosition:IsA("BasePart") then
+			and managementPosition:IsA(
+				"BasePart"
+			) then
 
 			return managementPosition
 		end
+
 
 		if stand.PrimaryPart then
 			return stand.PrimaryPart
@@ -141,19 +202,27 @@ local function getTimerPosition(
 		return nil
 	end
 
-	local existing = findPosition()
 
-	if existing or waitForReplication ~= true then
+	local existing =
+		findPosition()
+
+	if existing
+		or waitForReplication ~= true then
+
 		return existing
 	end
 
-	-- The model may replicate before all of its parts.
-	local startedAt = time()
+
+	-- A newly placed/upgraded stand can replicate
+	-- before every helper part has arrived.
+	local startedAt =
+		time()
 
 	while stand.Parent
 		and time() - startedAt < 10 do
 
-		local position = findPosition()
+		local position =
+			findPosition()
 
 		if position then
 			return position
@@ -162,238 +231,305 @@ local function getTimerPosition(
 		task.wait(0.1)
 	end
 
+
 	return stand:FindFirstChildWhichIsA(
 		"BasePart",
 		true
 	)
 end
 
+
+local function getServingTemplateObjects(
+	billboard: BillboardGui
+): (
+	Frame?,
+	TextLabel?,
+	TextLabel?,
+	Frame?,
+	Frame?
+)
+	local frame =
+		billboard:FindFirstChild(
+			"Frame"
+		)
+
+	if not frame
+		or not frame:IsA("Frame") then
+
+		return nil,
+			nil,
+			nil,
+			nil,
+			nil
+	end
+
+
+	local title =
+		frame:FindFirstChild(
+			"Title"
+		)
+
+	if not title
+		or not title:IsA(
+			"TextLabel"
+		) then
+
+		return nil,
+			nil,
+			nil,
+			nil,
+			nil
+	end
+
+
+	local timer =
+		frame:FindFirstChild(
+			"Time"
+		)
+
+	if not timer
+		or not timer:IsA(
+			"TextLabel"
+		) then
+
+		return nil,
+			nil,
+			nil,
+			nil,
+			nil
+	end
+
+
+	local background =
+		frame:FindFirstChild(
+			"Background"
+		)
+
+	if not background
+		or not background:IsA(
+			"Frame"
+		) then
+
+		return nil,
+			nil,
+			nil,
+			nil,
+			nil
+	end
+
+
+	local bar =
+		background:FindFirstChild(
+			"Bar"
+		)
+
+	if not bar
+		or not bar:IsA("Frame") then
+
+		return nil,
+			nil,
+			nil,
+			nil,
+			nil
+	end
+
+
+	return frame,
+		title,
+		timer,
+		background,
+		bar
+end
+
+
 local function removeStandUI(
 	stand: Model
 )
-	local state = standStates[stand]
+	local state =
+		standStates[stand]
 
 	if not state then
 		return
 	end
 
-	state.Billboard:Destroy()
+	if state.Billboard.Parent then
+		state.Billboard:Destroy()
+	end
+
 	standStates[stand] = nil
 end
+
+
+local function setProgress(
+	state: StandUIState,
+	progress: number
+)
+	progress =
+		math.clamp(
+			progress,
+			0,
+			1
+		)
+
+	local fullSize =
+		state.ProgressFullSize
+
+	-- Preserve the exact Y sizing and the intended
+	-- maximum X sizing from the Studio template.
+	--
+	-- This means you can redesign ServingCustomer
+	-- without needing to change this script.
+	state.ProgressFill.Size =
+		UDim2.new(
+			fullSize.X.Scale
+				* progress,
+
+			math.round(
+				fullSize.X.Offset
+					* progress
+			),
+
+			fullSize.Y.Scale,
+			fullSize.Y.Offset
+		)
+end
+
 
 local function createStandUI(
 	stand: Model
 )
 	if standStates[stand]
-	or not isLemonadeStand(stand) then
-
-	return
-end
-
-	local positionPart =
-	getTimerPosition(
-		stand,
-		true
-	)
-
-	if not positionPart then
-		warn(
-	`{stand:GetFullName()} did not finish loading a UI position.`
-)
+		or not isLemonadeStand(
+			stand
+		) then
 
 		return
 	end
 
-	for _, child in
-		positionPart:GetChildren() do
 
-		disableLegacyWorldUI(child)
+	local positionPart =
+		getTimerPosition(
+			stand,
+			true
+		)
+
+	if not positionPart then
+		warn(
+			`{stand:GetFullName()} did not finish loading a UI position.`
+		)
+
+		return
 	end
+
+
+	for _, child in
+		positionPart:GetChildren()
+	do
+		disableLegacyWorldUI(
+			child
+		)
+	end
+
 
 	positionPart.ChildAdded:Connect(
 		disableLegacyWorldUI
 	)
 
+
+	-- Clone the UI designed in Studio instead of
+	-- constructing the service timer in Lua.
 	local billboard =
-		Instance.new("BillboardGui")
+		servingCustomerTemplate:Clone()
 
 	billboard.Name =
 		"ResponsiveServiceTimer"
 
-	billboard.Adornee = positionPart
+	billboard.Adornee =
+		positionPart
 
-	-- Scale values are world-space studs.
-	billboard.Size =
-		UDim2.fromScale(5.8, 1.8)
+	billboard.Enabled =
+		false
 
-	billboard.StudsOffsetWorldSpace =
-		Vector3.new(0, 2.5, 0)
+	billboard.ResetOnSpawn =
+		false
 
-	billboard.AlwaysOnTop = true
-	billboard.LightInfluence = 0
-	billboard.MaxDistance = 80
-	billboard.Enabled = false
-	billboard.ResetOnSpawn = false
-	billboard.Parent = playerGui
+	billboard.Parent =
+		playerGui
 
-	local shadow = Instance.new("Frame")
-	shadow.Name = "Shadow"
-	shadow.AnchorPoint =
-		Vector2.new(0.5, 0.5)
 
-	shadow.Position =
-		UDim2.fromScale(0.52, 0.56)
-
-	shadow.Size =
-		UDim2.fromScale(0.96, 0.9)
-
-	shadow.BackgroundColor3 =
-		Colors.Shadow
-
-	shadow.BackgroundTransparency = 0.28
-	shadow.BorderSizePixel = 0
-	shadow.Parent = billboard
-
-	UITheme.AddCorner(shadow, 0.14)
-
-	local container = Instance.new("Frame")
-	container.Name = "Container"
-	container.AnchorPoint =
-		Vector2.new(0.5, 0.5)
-
-	container.Position =
-		UDim2.fromScale(0.5, 0.5)
-
-	container.Size =
-		UDim2.fromScale(0.96, 0.9)
-
-	container.BackgroundColor3 =
-		Colors.Surface
-
-	container.BorderSizePixel = 0
-	container.Parent = billboard
-
-	UITheme.AddCorner(container, 0.14)
-
-	UITheme.AddStroke(
-		container,
-		Colors.Primary,
-		2,
-		0.2
-	)
-
-	UITheme.AddGradient(
-		container,
-		Colors.SurfaceRaised,
-		Colors.Background
-	)
-
-	local statusLabel =
-		Instance.new("TextLabel")
-
-	statusLabel.Name = "StatusLabel"
-	statusLabel.Position =
-	UDim2.fromScale(0.07, 0.12)
-
-statusLabel.Size =
-	UDim2.fromScale(0.62, 0.22)
-
-	statusLabel.BackgroundTransparency = 1
-	statusLabel.Text = "READY"
-	statusLabel.TextXAlignment =
-		Enum.TextXAlignment.Left
-
-	statusLabel.Parent = container
-
-	UITheme.StyleText(
+	local frame,
 		statusLabel,
-		9,
-		14,
-		Colors.TextMuted,
-		Fonts.Bold
-	)
-
-	local timerLabel =
-		Instance.new("TextLabel")
-
-	timerLabel.Name = "TimerLabel"
-	timerLabel.Position =
-		UDim2.fromScale(0.72, 0.1)
-
-	timerLabel.Size =
-		UDim2.fromScale(0.23, 0.32)
-
-	timerLabel.BackgroundTransparency = 1
-	timerLabel.Text = "OPEN"
-	timerLabel.TextXAlignment =
-		Enum.TextXAlignment.Right
-
-	timerLabel.Parent = container
-
-	UITheme.StyleText(
 		timerLabel,
-		13,
-		22,
-		Colors.Primary,
-		Fonts.Black
-	)
+		background,
+		progressFill =
+		getServingTemplateObjects(
+			billboard
+		)
 
-	local progressTrack =
-		Instance.new("Frame")
 
-	progressTrack.Name = "ProgressTrack"
-	progressTrack.Position =
-	UDim2.fromScale(0.07, 0.55)
+	if not frame
+		or not statusLabel
+		or not timerLabel
+		or not background
+		or not progressFill then
 
-progressTrack.Size =
-	UDim2.fromScale(0.88, 0.19)
+		billboard:Destroy()
 
-	progressTrack.BackgroundColor3 =
-		Colors.ProgressTrack
+		warn(
+			"ServingCustomer BillboardGui has an invalid hierarchy. "
+				.. "Expected Frame.Title, Frame.Time, "
+				.. "Frame.Background, and Frame.Background.Bar."
+		)
 
-	progressTrack.BorderSizePixel = 0
-	progressTrack.ClipsDescendants = true
-	progressTrack.Parent = container
+		return
+	end
 
-	UITheme.AddCorner(progressTrack, 0.5)
 
-	local progressFill =
-		Instance.new("Frame")
+	-- Stop the bar from drawing outside of its
+	-- progress-track background.
+	background.ClipsDescendants =
+		true
 
-	progressFill.Name = "ProgressFill"
-	progressFill.Size =
-		UDim2.fromScale(0, 1)
 
-	progressFill.BackgroundColor3 =
-		Colors.Primary
+	local progressFullSize =
+		progressFill.Size
 
-	progressFill.BorderSizePixel = 0
-	progressFill.Parent = progressTrack
-
-	UITheme.AddCorner(progressFill, 0.5)
-
-	UITheme.AddGradient(
-		progressFill,
-		Colors.Primary,
-		Colors.Success,
-		0
-	)
 
 	standStates[stand] = {
 		Stand = stand,
+
 		Billboard = billboard,
 
 		TimerLabel = timerLabel,
 		StatusLabel = statusLabel,
-		ProgressFill = progressFill,
 
-		PositionPart = positionPart,
+		ProgressFill = progressFill,
+		ProgressFullSize =
+			progressFullSize,
+
+		PositionPart =
+			positionPart,
 	}
 
-	stand.Destroying:Connect(function()
-		removeStandUI(stand)
-	end)
+
+	local state =
+		standStates[stand]
+
+	setProgress(
+		state,
+		0
+	)
+
+
+	stand.Destroying:Connect(
+		function()
+			removeStandUI(
+				stand
+			)
+		end
+	)
 end
+
 
 local function showSalePopup(
 	stand: Model,
@@ -417,6 +553,7 @@ local function showSalePopup(
 		return
 	end
 
+
 	local existing =
 		playerGui:FindFirstChild(
 			"ResponsiveSalePopup"
@@ -426,57 +563,101 @@ local function showSalePopup(
 		existing:Destroy()
 	end
 
+
 	local billboard =
-		Instance.new("BillboardGui")
+		Instance.new(
+			"BillboardGui"
+		)
 
 	billboard.Name =
 		"ResponsiveSalePopup"
 
-	billboard.Adornee = positionPart
+	billboard.Adornee =
+		positionPart
+
 	billboard.Size =
-		UDim2.fromScale(4.4, 1.25)
+		UDim2.fromScale(
+			4.4,
+			1.25
+		)
 
 	billboard.StudsOffsetWorldSpace =
-		Vector3.new(0, 2, 0)
+		Vector3.new(
+			0,
+			2,
+			0
+		)
 
-	billboard.AlwaysOnTop = true
-	billboard.LightInfluence = 0
-	billboard.MaxDistance = 80
-	billboard.ResetOnSpawn = false
-	billboard.Parent = playerGui
+	billboard.AlwaysOnTop =
+		true
 
-	local container = Instance.new("Frame")
-	container.Name = "Container"
+	billboard.LightInfluence =
+		0
+
+	billboard.MaxDistance =
+		80
+
+	billboard.ResetOnSpawn =
+		false
+
+	billboard.Parent =
+		playerGui
+
+
+	local container =
+		Instance.new("Frame")
+
+	container.Name =
+		"Container"
+
 	container.AnchorPoint =
-		Vector2.new(0.5, 0.5)
+		Vector2.new(
+			0.5,
+			0.5
+		)
 
 	container.Position =
-		UDim2.fromScale(0.5, 0.5)
+		UDim2.fromScale(
+			0.5,
+			0.5
+		)
 
 	container.Size =
-		UDim2.fromScale(0.96, 0.88)
+		UDim2.fromScale(
+			0.96,
+			0.88
+		)
 
 	container.BackgroundColor3 =
 		Colors.Success
 
-	container.BorderSizePixel = 0
-	container.Parent = billboard
+	container.BorderSizePixel =
+		0
+
+	container.Parent =
+		billboard
+
 
 	UITheme.AddCorner(
 		container,
 		0.23
 	)
 
-	local stroke = UITheme.AddStroke(
-		container,
-		Color3.fromRGB(
-			120,
-			255,
-			175
-		),
-		2,
-		0.1
-	)
+
+	local stroke =
+		UITheme.AddStroke(
+			container,
+
+			Color3.fromRGB(
+				120,
+				255,
+				175
+			),
+
+			2,
+			0.1
+		)
+
 
 	UITheme.AddGradient(
 		container,
@@ -484,17 +665,29 @@ local function showSalePopup(
 		Colors.SuccessDark
 	)
 
-	local amountLabel =
-		Instance.new("TextLabel")
 
-	amountLabel.Name = "Amount"
+	local amountLabel =
+		Instance.new(
+			"TextLabel"
+		)
+
+	amountLabel.Name =
+		"Amount"
+
 	amountLabel.Position =
-		UDim2.fromScale(0.05, 0.08)
+		UDim2.fromScale(
+			0.05,
+			0.08
+		)
 
 	amountLabel.Size =
-		UDim2.fromScale(0.9, 0.55)
+		UDim2.fromScale(
+			0.9,
+			0.55
+		)
 
-	amountLabel.BackgroundTransparency = 1
+	amountLabel.BackgroundTransparency =
+		1
 
 	amountLabel.Text =
 		string.format(
@@ -505,8 +698,12 @@ local function showSalePopup(
 	amountLabel.TextColor3 =
 		Colors.Text
 
-	amountLabel.TextTransparency = 0
-	amountLabel.Parent = container
+	amountLabel.TextTransparency =
+		0
+
+	amountLabel.Parent =
+		container
+
 
 	UITheme.StyleText(
 		amountLabel,
@@ -516,21 +713,42 @@ local function showSalePopup(
 		Fonts.Black
 	)
 
-	local caption =
-		Instance.new("TextLabel")
 
-	caption.Name = "Caption"
+	local caption =
+		Instance.new(
+			"TextLabel"
+		)
+
+	caption.Name =
+		"Caption"
+
 	caption.Position =
-		UDim2.fromScale(0.05, 0.62)
+		UDim2.fromScale(
+			0.05,
+			0.62
+		)
 
 	caption.Size =
-		UDim2.fromScale(0.9, 0.22)
+		UDim2.fromScale(
+			0.9,
+			0.22
+		)
 
-	caption.BackgroundTransparency = 1
-	caption.Text = "SALE COMPLETE"
-	caption.TextColor3 = Colors.Text
-	caption.TextTransparency = 0
-	caption.Parent = container
+	caption.BackgroundTransparency =
+		1
+
+	caption.Text =
+		"SALE COMPLETE"
+
+	caption.TextColor3 =
+		Colors.Text
+
+	caption.TextTransparency =
+		0
+
+	caption.Parent =
+		container
+
 
 	UITheme.StyleText(
 		caption,
@@ -540,14 +758,17 @@ local function showSalePopup(
 		Fonts.Bold
 	)
 
+
 	local moveTween =
 		TweenService:Create(
 			billboard,
+
 			TweenInfo.new(
 				1,
 				Enum.EasingStyle.Back,
 				Enum.EasingDirection.Out
 			),
+
 			{
 				StudsOffsetWorldSpace =
 					Vector3.new(
@@ -558,9 +779,11 @@ local function showSalePopup(
 			}
 		)
 
+
 	local amountFade =
 		TweenService:Create(
 			amountLabel,
+
 			TweenInfo.new(
 				0.25,
 				Enum.EasingStyle.Linear,
@@ -569,14 +792,17 @@ local function showSalePopup(
 				false,
 				0.7
 			),
+
 			{
 				TextTransparency = 1,
 			}
 		)
+
 
 	local captionFade =
 		TweenService:Create(
 			caption,
+
 			TweenInfo.new(
 				0.25,
 				Enum.EasingStyle.Linear,
@@ -585,14 +811,17 @@ local function showSalePopup(
 				false,
 				0.7
 			),
+
 			{
 				TextTransparency = 1,
 			}
 		)
 
+
 	local containerFade =
 		TweenService:Create(
 			container,
+
 			TweenInfo.new(
 				0.25,
 				Enum.EasingStyle.Linear,
@@ -601,14 +830,18 @@ local function showSalePopup(
 				false,
 				0.7
 			),
+
 			{
-				BackgroundTransparency = 1,
+				BackgroundTransparency =
+					1,
 			}
 		)
+
 
 	local strokeFade =
 		TweenService:Create(
 			stroke,
+
 			TweenInfo.new(
 				0.25,
 				Enum.EasingStyle.Linear,
@@ -617,10 +850,12 @@ local function showSalePopup(
 				false,
 				0.7
 			),
+
 			{
 				Transparency = 1,
 			}
 		)
+
 
 	moveTween:Play()
 	amountFade:Play()
@@ -628,11 +863,13 @@ local function showSalePopup(
 	containerFade:Play()
 	strokeFade:Play()
 
+
 	Debris:AddItem(
 		billboard,
 		1.15
 	)
 end
+
 
 local function watchPlacedBusinesses(
 	folder: Instance
@@ -641,32 +878,57 @@ local function watchPlacedBusinesses(
 		return
 	end
 
-	watchedFolders[folder] = true
+	watchedFolders[folder] =
+		true
 
-	for _, child in folder:GetChildren() do
+
+	for _, child in
+		folder:GetChildren()
+	do
 		if child:IsA("Model") then
-			createStandUI(child)
+			task.spawn(
+				createStandUI,
+				child
+			)
 		end
 	end
 
-	folder.ChildAdded:Connect(function(child)
-	if not child:IsA("Model") then
-		return
-	end
 
-	task.spawn(function()
-		createStandUI(child)
-	end)
-end)
+	folder.ChildAdded:Connect(
+		function(
+			child: Instance
+		)
+			if not child:IsA(
+				"Model"
+			) then
 
-	folder.Destroying:Connect(function()
-		watchedFolders[folder] = nil
-	end)
+				return
+			end
+
+			task.spawn(
+				createStandUI,
+				child
+			)
+		end
+	)
+
+
+	folder.Destroying:Connect(
+		function()
+			watchedFolders[folder] =
+				nil
+		end
+	)
 end
 
-local function watchPlot(plot: Model)
+
+local function watchPlot(
+	plot: Model
+)
 	local placedBusinesses =
-		plot:FindFirstChild("PlacedBusinesses")
+		plot:FindFirstChild(
+			"PlacedBusinesses"
+		)
 
 	if placedBusinesses then
 		watchPlacedBusinesses(
@@ -676,30 +938,48 @@ local function watchPlot(plot: Model)
 		return
 	end
 
-	task.spawn(function()
-		local folder =
-			plot:WaitForChild(
-				"PlacedBusinesses",
-				15
-			)
 
-		if folder then
-			watchPlacedBusinesses(folder)
+	task.spawn(
+		function()
+			local folder =
+				plot:WaitForChild(
+					"PlacedBusinesses",
+					15
+				)
+
+			if folder then
+				watchPlacedBusinesses(
+					folder
+				)
+			end
 		end
-	end)
+	)
 end
 
-for _, plot in plotsFolder:GetChildren() do
+
+for _, plot in
+	plotsFolder:GetChildren()
+do
 	if plot:IsA("Model") then
-		watchPlot(plot)
+		watchPlot(
+			plot
+		)
 	end
 end
 
-plotsFolder.ChildAdded:Connect(function(child)
-	if child:IsA("Model") then
-		watchPlot(child)
+
+plotsFolder.ChildAdded:Connect(
+	function(
+		child: Instance
+	)
+		if child:IsA("Model") then
+			watchPlot(
+				child
+			)
+		end
 	end
-end)
+)
+
 
 manualSaleResultRemote.OnClientEvent:Connect(
 	function(
@@ -707,153 +987,202 @@ manualSaleResultRemote.OnClientEvent:Connect(
 		amount: number
 	)
 		if typeof(stand) ~= "Instance"
-			or not stand:IsA("Model")
-			or stand.Name
-			~= "LemonadeStand" then
+			or not stand:IsA(
+				"Model"
+			)
+			or not isLemonadeStand(
+				stand
+			) then
 
 			return
 		end
 
-		if typeof(amount) ~= "number" then
+
+		if typeof(amount)
+			~= "number" then
+
 			return
 		end
+
 
 		showSalePopup(
 			stand,
+
 			math.max(
 				0,
-				math.floor(amount)
+				math.floor(
+					amount
+				)
 			)
 		)
 	end
 )
 
-RunService.RenderStepped:Connect(function()
-	local serverTime =
-		Workspace:GetServerTimeNow()
 
-	for stand, state in standStates do
-		if not stand.Parent
-			or not state.PositionPart.Parent then
+RunService.RenderStepped:Connect(
+	function()
+		local serverTime =
+			Workspace:GetServerTimeNow()
 
-			removeStandUI(stand)
-			continue
-		end
 
-		local unavailable =
-			stand:GetAttribute(
-				"StandUnavailable"
-			) == true
+		for stand, state in
+			standStates
+		do
+			if not stand.Parent
+				or not state.PositionPart.Parent then
 
-		local beingEdited =
-			stand:GetAttribute(
-				"IsBeingEdited"
-			) == true
-
-		if unavailable or beingEdited then
-			state.Billboard.Enabled = false
-			continue
-		end
-
-		local manualActive =
-			stand:GetAttribute(
-				"ManualPurchaseActive"
-			) == true
-
-		local customerActive =
-			stand:GetAttribute(
-				"IsServingCustomer"
-			) == true
-
-		if not manualActive
-			and not customerActive then
-
-			state.Billboard.Enabled = false
-			continue
-		end
-
-		local startedAt
-		local duration
-		local statusText
-
-		if manualActive then
-			startedAt =
-				stand:GetAttribute(
-					"ManualPurchaseStartedAt"
+				removeStandUI(
+					stand
 				)
 
-			duration =
+				continue
+			end
+
+
+			local unavailable =
 				stand:GetAttribute(
-					"ManualPurchaseDuration"
+					"StandUnavailable"
+				) == true
+
+			local beingEdited =
+				stand:GetAttribute(
+					"IsBeingEdited"
+				) == true
+
+
+			if unavailable
+				or beingEdited then
+
+				state.Billboard.Enabled =
+					false
+
+				continue
+			end
+
+
+			local manualActive =
+				stand:GetAttribute(
+					"ManualPurchaseActive"
+				) == true
+
+			local customerActive =
+				stand:GetAttribute(
+					"IsServingCustomer"
+				) == true
+
+
+			if not manualActive
+				and not customerActive then
+
+				state.Billboard.Enabled =
+					false
+
+				continue
+			end
+
+
+			local startedAt:
+				number?
+
+			local duration:
+				number?
+
+			local statusText:
+				string
+
+
+			if manualActive then
+				startedAt =
+					stand:GetAttribute(
+						"ManualPurchaseStartedAt"
+					)
+
+				duration =
+					stand:GetAttribute(
+						"ManualPurchaseDuration"
+					)
+
+				statusText =
+					"Preparing Lemonade"
+			else
+				startedAt =
+					stand:GetAttribute(
+						"ServiceStartedAt"
+					)
+
+				duration =
+					stand:GetAttribute(
+						"ServiceDuration"
+					)
+
+				statusText =
+					"Serving Customer"
+			end
+
+
+			if typeof(startedAt)
+					~= "number"
+				or typeof(duration)
+					~= "number"
+				or duration <= 0 then
+
+				state.Billboard.Enabled =
+					false
+
+				continue
+			end
+
+
+			local elapsed =
+				math.max(
+					0,
+					serverTime
+						- startedAt
 				)
 
-			statusText =
-				"PREPARING LEMONADE"
-		else
-			startedAt =
-				stand:GetAttribute(
-					"ServiceStartedAt"
+
+			local progress =
+				math.clamp(
+					elapsed
+						/ duration,
+
+					0,
+					1
 				)
 
-			duration =
-				stand:GetAttribute(
-					"ServiceDuration"
+
+			local remaining =
+				math.max(
+					0,
+					duration
+						- elapsed
 				)
 
-			statusText =
-				"SERVING CUSTOMER"
+
+			setProgress(
+				state,
+				progress
+			)
+
+
+			state.TimerLabel.Text =
+				string.format(
+					"%.1fs",
+					remaining
+				)
+
+
+			if progress >= 1 then
+				state.StatusLabel.Text =
+					"Finishing Sale"
+			else
+				state.StatusLabel.Text =
+					statusText
+			end
+
+
+			state.Billboard.Enabled =
+				true
 		end
-
-		if typeof(startedAt) ~= "number"
-			or typeof(duration) ~= "number"
-			or duration <= 0 then
-
-			state.Billboard.Enabled = false
-			continue
-		end
-
-		local elapsed =
-			math.max(
-				0,
-				serverTime - startedAt
-			)
-
-		local progress =
-			math.clamp(
-				elapsed / duration,
-				0,
-				1
-			)
-
-		local remaining =
-			math.max(
-				0,
-				duration - elapsed
-			)
-
-		state.ProgressFill.Size =
-			UDim2.fromScale(
-				progress,
-				1
-			)
-
-		state.TimerLabel.Text =
-			string.format(
-				"%.1fs",
-				remaining
-			)
-
-		state.TimerLabel.TextColor3 =
-			Colors.Primary
-
-		state.StatusLabel.Text =
-			progress >= 1
-			and "FINISHING SALE"
-			or statusText
-
-		state.StatusLabel.TextColor3 =
-			Colors.Text
-
-		state.Billboard.Enabled = true
 	end
-end)
+)
