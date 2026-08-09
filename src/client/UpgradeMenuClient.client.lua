@@ -4,14 +4,14 @@ local Players =
 local ReplicatedStorage =
 	game:GetService("ReplicatedStorage")
 
-local Workspace =
-	game:GetService("Workspace")
-
 local TweenService =
 	game:GetService("TweenService")
 
 local UserInputService =
 	game:GetService("UserInputService")
+
+local Workspace =
+	game:GetService("Workspace")
 
 
 local player =
@@ -28,62 +28,64 @@ local remotes =
 
 
 local purchaseUpgradeRemote =
-	remotes:WaitForChild(
-		"PurchaseUpgrade"
-	)
+	remotes:WaitForChild("PurchaseUpgrade")
 
 local upgradeResultRemote =
-	remotes:WaitForChild(
-		"UpgradeResult"
-	)
+	remotes:WaitForChild("UpgradeResult")
 
 local getUpgradeStateRemote =
-	remotes:WaitForChild(
-		"GetUpgradeState"
-	)
+	remotes:WaitForChild("GetUpgradeState")
 
 local requestAppearanceUpgradeRemote =
-	remotes:WaitForChild(
-		"RequestBusinessUpgrade"
-	)
+	remotes:WaitForChild("RequestBusinessUpgrade")
 
 local appearanceUpgradeResultRemote =
-	remotes:WaitForChild(
-		"BusinessUpgradeResult"
+	remotes:WaitForChild("BusinessUpgradeResult")
+
+
+local FormatNumber =
+	require(
+		ReplicatedStorage
+			:WaitForChild("Shared")
+			:WaitForChild("FormatNumber")
 	)
 
-
-local FormatNumber = require(
-	ReplicatedStorage
-		:WaitForChild("Shared")
-		:WaitForChild("FormatNumber")
-)
-
-local BusinessConfig = require(
-	ReplicatedStorage
-		:WaitForChild("Shared")
-		:WaitForChild("BusinessConfig")
-)
-
-local UITheme = require(
-	ReplicatedStorage
-		:WaitForChild("Shared")
-		:WaitForChild("UITheme")
-)
-
-
-local Colors = UITheme.Colors
-local Fonts = UITheme.Fonts
+local BusinessConfig =
+	require(
+		ReplicatedStorage
+			:WaitForChild("Shared")
+			:WaitForChild("BusinessConfig")
+	)
 
 
 local BUSINESS_NAME =
 	"LemonadeStand"
 
+
 local GAMEPLAY_UPGRADE_ORDER = {
+	"QueueCapacity",
 	"SaleValue",
 	"ServingSpeed",
-	"QueueCapacity",
 }
+
+
+local OPEN_START_SCALE =
+	0.88
+
+local OPEN_START_OFFSET =
+	16
+
+local OPEN_TIME =
+	0.28
+
+local CLOSE_SCALE =
+	0.92
+
+local CLOSE_OFFSET =
+	12
+
+local CLOSE_TIME =
+	0.17
 
 
 type GameplayUpgradeState = {
@@ -92,6 +94,7 @@ type GameplayUpgradeState = {
 
 	BusinessId: string?,
 	BusinessName: string?,
+
 	UpgradeName: string?,
 	DisplayName: string?,
 
@@ -107,62 +110,362 @@ type GameplayUpgradeState = {
 
 type UpgradeCard = {
 	Root: Frame,
-	LevelLabel: TextLabel,
-	ValueCaption: TextLabel,
-	ValueLabel: TextLabel,
-	ProgressFill: Frame,
-	PurchaseButton: TextButton,
+
+	Title: TextLabel,
+	Subtitle: TextLabel,
+
+	CurrentTitle: TextLabel,
+	CurrentAmount: TextLabel,
+
+	AfterTitle: TextLabel,
+	AfterAmount: TextLabel,
+
+	ProgressBar: Frame,
+
+	BuyButton: TextButton,
+	BuyText: TextLabel,
 }
 
 
-type Interface = {
-	ScreenGui: ScreenGui,
+--==================================================
+-- STARTERGUI UI
+--==================================================
 
-	Overlay: Frame,
-	Panel: Frame,
-	PanelScale: UIScale,
+local manageGui =
+	playerGui:WaitForChild(
+		"ManageStand"
+	) :: ScreenGui
 
-	Header: Frame,
-	Content: Frame,
+local main =
+	manageGui:WaitForChild(
+		"Main"
+	) :: Frame
 
-	TitleLabel: TextLabel,
-	SubtitleLabel: TextLabel,
+local closeButton =
+	main:WaitForChild(
+		"Close"
+	) :: TextButton
 
-	CashContainer: Frame,
-	CashLabel: TextLabel,
+local mainTitle =
+	main:WaitForChild(
+		"Title"
+	) :: TextLabel
 
-	CloseButton: TextButton,
+local mainSubtitle =
+	main:WaitForChild(
+		"Subtitle"
+	) :: TextLabel
 
-	StatisticsPanel: ScrollingFrame,
-	UpgradeList: ScrollingFrame,
+local contentFrame =
+	main:WaitForChild(
+		"Frame"
+	) :: Frame
 
-	StatusLabel: TextLabel,
-}
+local currentStats =
+	contentFrame:WaitForChild(
+		"CurrentStats"
+	) :: Frame
 
+local scrollingFrame =
+	contentFrame:WaitForChild(
+		"ScrollingFrame"
+	) :: ScrollingFrame
 
-local interface: Interface
-
-local menuOpen = false
-
-local selectedBusinessId: string? = nil
-local selectedStand: Model? = nil
-
-local requestPending: string? = nil
-
-local statusVersion = 0
-
-
-local cards:
-	{[string]: UpgradeCard} = {}
-
-local statisticLabels:
-	{[string]: TextLabel} = {}
-
-local appearanceCard:
-	UpgradeCard? = nil
+local template =
+	scrollingFrame:WaitForChild(
+		"Template"
+	) :: Frame
 
 
-local function getOpenUpgradeMenuEvent(): BindableEvent
+--==================================================
+-- CURRENT STATS REFERENCES
+--==================================================
+
+local cashSaleFrame =
+	currentStats:WaitForChild(
+		"CashSale"
+	) :: Frame
+
+local waitingFrame =
+	currentStats:WaitForChild(
+		"Waiting"
+	) :: Frame
+
+local lifetimeCashFrame =
+	currentStats:WaitForChild(
+		"LifetimeCash"
+	) :: Frame
+
+local serviceTimeFrame =
+	currentStats:WaitForChild(
+		"ServiceTime"
+	) :: Frame
+
+local totalSalesFrame =
+	currentStats:WaitForChild(
+		"TotalSales"
+	) :: Frame
+
+
+local cashSaleAmount =
+	cashSaleFrame:WaitForChild(
+		"Amount"
+	) :: TextLabel
+
+local waitingAmount =
+	waitingFrame:WaitForChild(
+		"Amount"
+	) :: TextLabel
+
+local lifetimeCashAmount =
+	lifetimeCashFrame:WaitForChild(
+		"Amount"
+	) :: TextLabel
+
+local serviceTimeAmount =
+	serviceTimeFrame:WaitForChild(
+		"Amount"
+	) :: TextLabel
+
+local totalSalesAmount =
+	totalSalesFrame:WaitForChild(
+		"Amount"
+	) :: TextLabel
+
+
+--==================================================
+-- IMPORTANT UI STATE
+--==================================================
+
+--
+-- Your ScreenGui should remain enabled.
+-- Only Main is shown/hidden.
+--
+manageGui.Enabled =
+	true
+
+main.Visible =
+	false
+
+template.Visible =
+	false
+
+
+--==================================================
+-- PRESERVE STUDIO SCROLLING LAYOUT
+--==================================================
+
+--
+-- Do NOT change CellSize, CellPadding, Template.Size,
+-- AutomaticCanvasSize, or the layout type here.
+--
+-- The ManageStand interface is already designed in
+-- Studio. The script only needs to clone Template.
+--
+
+local scrollingLayout =
+	scrollingFrame:FindFirstChildWhichIsA(
+		"UIGridLayout"
+	)
+	or scrollingFrame:FindFirstChildWhichIsA(
+		"UIListLayout"
+	)
+
+if not scrollingLayout then
+	warn(
+		"ManageStand.ScrollingFrame is missing its UIGridLayout/UIListLayout."
+	)
+end
+
+
+local function updateScrollingCanvas()
+	if not scrollingLayout then
+		return
+	end
+
+	local contentHeight =
+		scrollingLayout.AbsoluteContentSize.Y
+
+	local padding =
+		scrollingFrame:FindFirstChildWhichIsA(
+			"UIPadding"
+		)
+
+	if padding then
+		contentHeight +=
+			padding.PaddingTop.Offset
+			+ padding.PaddingBottom.Offset
+	end
+
+	scrollingFrame.CanvasSize =
+		UDim2.new(
+			0,
+			0,
+			0,
+			contentHeight + 8
+		)
+end
+
+
+if scrollingLayout then
+	scrollingLayout
+		:GetPropertyChangedSignal(
+			"AbsoluteContentSize"
+		)
+		:Connect(
+			updateScrollingCanvas
+		)
+end
+
+--==================================================
+-- REMOVE OLD GENERATED UI IF IT EXISTS
+--==================================================
+
+local oldUpgradeGui =
+	playerGui:FindFirstChild(
+		"UpgradeMenu"
+	)
+
+if oldUpgradeGui then
+	oldUpgradeGui:Destroy()
+end
+
+
+--==================================================
+-- MENU ANIMATION
+--==================================================
+
+local originalMainPosition =
+	main.Position
+
+
+local menuScale =
+	main:FindFirstChild(
+		"MenuScale"
+	)
+
+if menuScale
+	and not menuScale:IsA(
+		"UIScale"
+	) then
+
+	menuScale:Destroy()
+
+	menuScale =
+		nil
+end
+
+
+if not menuScale then
+	menuScale =
+		Instance.new(
+			"UIScale"
+		)
+
+	menuScale.Name =
+		"MenuScale"
+
+	menuScale.Parent =
+		main
+end
+
+menuScale =
+	menuScale :: UIScale
+
+
+local scaleTween:
+	Tween? =
+	nil
+
+local positionTween:
+	Tween? =
+	nil
+
+local animationVersion =
+	0
+
+
+local function offsetPosition(
+	position: UDim2,
+	yOffset: number
+): UDim2
+
+	return UDim2.new(
+		position.X.Scale,
+		position.X.Offset,
+
+		position.Y.Scale,
+		position.Y.Offset + yOffset
+	)
+end
+
+
+local function stopMenuTweens()
+	if scaleTween then
+		scaleTween:Cancel()
+
+		scaleTween =
+			nil
+	end
+
+	if positionTween then
+		positionTween:Cancel()
+
+		positionTween =
+			nil
+	end
+end
+
+
+local function setHiddenPose()
+	menuScale.Scale =
+		OPEN_START_SCALE
+
+	main.Position =
+		offsetPosition(
+			originalMainPosition,
+			OPEN_START_OFFSET
+		)
+end
+
+
+setHiddenPose()
+
+
+--==================================================
+-- STATE
+--==================================================
+
+local menuOpen =
+	false
+
+local selectedBusinessId:
+	string? =
+	nil
+
+local selectedStand:
+	Model? =
+	nil
+
+local requestPending:
+	string? =
+	nil
+
+local cards: {
+	[string]: UpgradeCard
+} = {}
+
+local statusVersion =
+	0
+
+
+--==================================================
+-- OPEN UPGRADE MENU EVENT
+--==================================================
+
+local function getOpenUpgradeMenuEvent():
+	BindableEvent
+
 	local existing =
 		playerGui:FindFirstChild(
 			"OpenUpgradeMenu"
@@ -172,11 +475,13 @@ local function getOpenUpgradeMenuEvent(): BindableEvent
 		if existing:IsA(
 			"BindableEvent"
 		) then
+
 			return existing
 		end
 
 		existing:Destroy()
 	end
+
 
 	local event =
 		Instance.new(
@@ -197,84 +502,49 @@ local openUpgradeMenuEvent =
 	getOpenUpgradeMenuEvent()
 
 
-local function createTextLabel(
-	parent: Instance,
-	name: string,
-	text: string,
-	position: UDim2,
-	size: UDim2,
-	minimumTextSize: number,
-	maximumTextSize: number,
-	font: Enum.Font?,
-	color: Color3?
-): TextLabel
-	local label =
-		Instance.new("TextLabel")
+--==================================================
+-- PLOT HELPERS
+--==================================================
 
-	label.Name = name
-	label.Position = position
-	label.Size = size
+local function getOwnedPlot():
+	Model?
 
-	label.BackgroundTransparency =
-		1
-
-	label.BorderSizePixel =
-		0
-
-	label.Text =
-		text
-
-	label.TextXAlignment =
-		Enum.TextXAlignment.Left
-
-	label.TextYAlignment =
-		Enum.TextYAlignment.Center
-
-	label.Parent =
-		parent
-
-	UITheme.StyleText(
-		label,
-		minimumTextSize,
-		maximumTextSize,
-		color or Colors.Text,
-		font or Fonts.Semibold
-	)
-
-	return label
-end
-
-
-local function getOwnedPlot(): Model?
 	local plotName =
 		player:GetAttribute(
 			"PlotName"
 		)
 
 	if typeof(plotName)
-			== "string" then
+		== "string" then
 
-		local namedPlot =
+		local plot =
 			plotsFolder:FindFirstChild(
 				plotName
 			)
 
-		if namedPlot
-			and namedPlot:IsA("Model")
-			and namedPlot:GetAttribute(
+		if plot
+			and plot:IsA(
+				"Model"
+			)
+			and plot:GetAttribute(
 				"OwnerUserId"
 			) == player.UserId then
 
-			return namedPlot
+			return plot
 		end
 	end
+
 
 	for _, plot in
 		plotsFolder:GetChildren()
 	do
-		if not plot:IsA("Model") then
+		if not plot:IsA(
+			"Model"
+		) then
+
 			continue
 		end
+
 
 		if plot:GetAttribute(
 			"OwnerUserId"
@@ -284,6 +554,7 @@ local function getOwnedPlot(): Model?
 		end
 	end
 
+
 	return nil
 end
 
@@ -291,9 +562,14 @@ end
 local function isLemonadeStand(
 	instance: Instance
 ): boolean
-	if not instance:IsA("Model") then
+
+	if not instance:IsA(
+		"Model"
+	) then
+
 		return false
 	end
+
 
 	if instance:GetAttribute(
 		"BusinessType"
@@ -302,27 +578,37 @@ local function isLemonadeStand(
 		return true
 	end
 
-	return instance.Name == BUSINESS_NAME
-		or string.match(
-			instance.Name,
-			"^LemonadeStand_"
-		) ~= nil
+
+	if instance.Name
+		== BUSINESS_NAME then
+
+		return true
+	end
+
+
+	return string.match(
+		instance.Name,
+		"^LemonadeStand_"
+	) ~= nil
 end
 
 
 local function getStandBusinessId(
 	stand: Model
 ): string
+
 	local businessId =
 		stand:GetAttribute(
 			"BusinessId"
 		)
 
-	if typeof(businessId) == "string"
+	if typeof(businessId)
+			== "string"
 		and businessId ~= "" then
 
 		return businessId
 	end
+
 
 	return stand.Name
 end
@@ -331,9 +617,6 @@ end
 local function findOwnedStandByBusinessId(
 	businessId: string
 ): Model?
-	if businessId == "" then
-		return nil
-	end
 
 	local plot =
 		getOwnedPlot()
@@ -341,6 +624,7 @@ local function findOwnedStandByBusinessId(
 	if not plot then
 		return nil
 	end
+
 
 	local placedBusinesses =
 		plot:FindFirstChild(
@@ -351,16 +635,25 @@ local function findOwnedStandByBusinessId(
 		return nil
 	end
 
+
 	for _, child in
 		placedBusinesses:GetChildren()
 	do
-		if not child:IsA("Model")
-			or not isLemonadeStand(
-				child
-			) then
+		if not child:IsA(
+			"Model"
+		) then
 
 			continue
 		end
+
+
+		if not isLemonadeStand(
+			child
+		) then
+
+			continue
+		end
+
 
 		if child:GetAttribute(
 			"OwnerUserId"
@@ -369,10 +662,12 @@ local function findOwnedStandByBusinessId(
 			continue
 		end
 
+
 		local childBusinessId =
 			getStandBusinessId(
 				child
 			)
+
 
 		if childBusinessId
 				== businessId
@@ -383,6 +678,7 @@ local function findOwnedStandByBusinessId(
 		end
 	end
 
+
 	return nil
 end
 
@@ -390,17 +686,22 @@ end
 local function selectStandByBusinessId(
 	businessId: string
 ): boolean
+
 	local stand =
 		findOwnedStandByBusinessId(
 			businessId
 		)
 
 	if not stand then
-		selectedStand = nil
-		selectedBusinessId = nil
+		selectedStand =
+			nil
+
+		selectedBusinessId =
+			nil
 
 		return false
 	end
+
 
 	selectedStand =
 		stand
@@ -410,6 +711,33 @@ local function selectStandByBusinessId(
 			stand
 		)
 
+
+	return true
+end
+
+
+local function reconnectSelectedStand():
+	boolean
+
+	if not selectedBusinessId then
+		return false
+	end
+
+
+	local stand =
+		findOwnedStandByBusinessId(
+			selectedBusinessId
+		)
+
+	if not stand then
+		return false
+	end
+
+
+	selectedStand =
+		stand
+
+
 	return true
 end
 
@@ -417,6 +745,7 @@ end
 local function getStandNumber(
 	businessId: string
 ): string
+
 	return string.match(
 		businessId,
 		"_(%d+)$"
@@ -429,14 +758,20 @@ local function getNumericAttribute(
 	attributeName: string,
 	defaultValue: number?
 ): number
+
 	local value =
 		instance:GetAttribute(
 			attributeName
 		)
 
-	if typeof(value) ~= "number" then
-		return defaultValue or 0
+
+	if typeof(value)
+		~= "number" then
+
+		return defaultValue
+			or 0
 	end
+
 
 	return math.max(
 		0,
@@ -445,1832 +780,41 @@ local function getNumericAttribute(
 end
 
 
-local function getStandAppearanceLevel(
-	stand: Model
-): number
-	local level =
-		getNumericAttribute(
-			stand,
-			"Level",
-			1
-		)
+--==================================================
+-- NUMBER FORMATTING
+--==================================================
 
-	return math.max(
-		1,
-		math.floor(level)
+local function formatNumber(
+	value: number
+): string
+
+	return FormatNumber.Compact(
+		math.floor(value)
 	)
 end
 
 
-local function getAppearanceConfig(
-	level: number
-): {[string]: any}?
-	local lemonadeConfig =
-		BusinessConfig.LemonadeStand
-
-	if typeof(lemonadeConfig)
-			~= "table" then
-
-		return nil
-	end
-
-	local standLevels =
-		lemonadeConfig.StandLevels
-
-	if typeof(standLevels)
-			~= "table" then
-
-		return nil
-	end
-
-	local config =
-		standLevels[level]
-
-	if typeof(config)
-			~= "table" then
-
-		return nil
-	end
-
-	return config
-end
-
-
-local function getMaximumAppearanceLevel(): number
-	local lemonadeConfig =
-		BusinessConfig.LemonadeStand
-
-	if typeof(lemonadeConfig)
-			~= "table"
-		or typeof(
-			lemonadeConfig.StandLevels
-		) ~= "table" then
-
-		return 1
-	end
-
-	local maximumLevel = 1
-
-	for level, config in
-		lemonadeConfig.StandLevels
-	do
-		if typeof(level) == "number"
-			and typeof(config) == "table"
-			and level > maximumLevel then
-
-			maximumLevel =
-				level
-		end
-	end
-
-	return maximumLevel
-end
-
-
-local function createStatisticBox(
-	parent: Instance,
-	name: string,
-	captionText: string
-): TextLabel
-	local box =
-		Instance.new("Frame")
-
-	box.Name =
-		name .. "Box"
-
-	box.Size =
-		UDim2.fromOffset(
-			142,
-			60
-		)
-
-	box.BackgroundColor3 =
-		Colors.SurfaceRaised
-
-	box.BorderSizePixel = 0
-	box.Parent = parent
-
-	UITheme.AddCorner(
-		box,
-		0.12
-	)
-
-	UITheme.AddStroke(
-		box,
-		Colors.Stroke,
-		1,
-		0.48
-	)
-
-
-	local caption =
-		createTextLabel(
-			box,
-			"Caption",
-			captionText,
-			UDim2.new(
-				0,
-				8,
-				0,
-				5
-			),
-			UDim2.new(
-				1,
-				-16,
-				0,
-				18
-			),
-			8,
-			10,
-			Fonts.Bold,
-			Colors.TextMuted
-		)
-
-	caption.TextXAlignment =
-		Enum.TextXAlignment.Center
-
-
-	local value =
-		createTextLabel(
-			box,
-			"Value",
-			"--",
-			UDim2.new(
-				0,
-				8,
-				0,
-				23
-			),
-			UDim2.new(
-				1,
-				-16,
-				0,
-				29
-			),
-			11,
-			17,
-			Fonts.Black,
-			Colors.Text
-		)
-
-	value.TextXAlignment =
-		Enum.TextXAlignment.Center
-
-	return value
-end
-
-
-local function createUpgradeCard(
-	parent: Instance,
-	name: string,
-	titleText: string,
-	descriptionText: string,
-	valueCaptionText: string,
-	buttonColor: Color3,
-	buttonDarkColor: Color3
-): UpgradeCard
-	local card =
-		Instance.new("Frame")
-
-	card.Name =
-		name .. "Card"
-
-	card.Size =
-		UDim2.new(
-			1,
-			-4,
-			0,
-			174
-		)
-
-	card.BackgroundColor3 =
-		Colors.SurfaceRaised
-
-	card.BorderSizePixel = 0
-	card.Parent = parent
-
-	UITheme.AddCorner(
-		card,
-		0.045
-	)
-
-	UITheme.AddStroke(
-		card,
-		Colors.Stroke,
-		1.5,
-		0.35
-	)
-
-
-	local accent =
-		Instance.new("Frame")
-
-	accent.Name = "Accent"
-
-	accent.Size =
-		UDim2.new(
-			0,
-			5,
-			1,
-			0
-		)
-
-	accent.BackgroundColor3 =
-		buttonColor
-
-	accent.BorderSizePixel = 0
-	accent.Parent = card
-
-	UITheme.AddCorner(
-		accent,
-		0.5
-	)
-
-
-	createTextLabel(
-		card,
-		"Title",
-		titleText,
-		UDim2.new(
-			0,
-			18,
-			0,
-			9
-		),
-		UDim2.new(
-			1,
-			-34,
-			0,
-			22
-		),
-		11,
-		18,
-		Fonts.Black,
-		Colors.Text
-	)
-
-
-	local description =
-		createTextLabel(
-			card,
-			"Description",
-			descriptionText,
-			UDim2.new(
-				0,
-				18,
-				0,
-				31
-			),
-			UDim2.new(
-				1,
-				-34,
-				0,
-				27
-			),
-			8,
-			12,
-			Fonts.Medium,
-			Colors.TextMuted
-		)
-
-	description.TextWrapped = true
-	description.TextYAlignment =
-		Enum.TextYAlignment.Top
-
-
-	local statRow =
-		Instance.new("Frame")
-
-	statRow.Name = "Stats"
-
-	statRow.Position =
-		UDim2.new(
-			0,
-			18,
-			0,
-			62
-		)
-
-	statRow.Size =
-		UDim2.new(
-			1,
-			-36,
-			0,
-			43
-		)
-
-	statRow.BackgroundTransparency = 1
-	statRow.Parent = card
-
-
-	local statLayout =
-		Instance.new("UIListLayout")
-
-	statLayout.FillDirection =
-		Enum.FillDirection.Horizontal
-
-	statLayout.HorizontalAlignment =
-		Enum.HorizontalAlignment.Center
-
-	statLayout.VerticalAlignment =
-		Enum.VerticalAlignment.Center
-
-	statLayout.Padding =
-		UDim.new(
-			0,
-			8
-		)
-
-	statLayout.Parent =
-		statRow
-
-
-	local function createStatBox(
-		statName: string,
-		captionText: string
-	): (Frame, TextLabel)
-		local box =
-			Instance.new("Frame")
-
-		box.Name =
-			statName
-
-		box.Size =
-			UDim2.new(
-				0.5,
-				-4,
-				1,
-				0
-			)
-
-		box.BackgroundColor3 =
-			Colors.Background
-
-		box.BackgroundTransparency =
-			0.26
-
-		box.BorderSizePixel = 0
-		box.Parent = statRow
-
-		UITheme.AddCorner(
-			box,
-			0.12
-		)
-
-		UITheme.AddStroke(
-			box,
-			Colors.Stroke,
-			1,
-			0.55
-		)
-
-
-		local caption =
-			createTextLabel(
-				box,
-				"Caption",
-				captionText,
-				UDim2.new(
-					0,
-					6,
-					0,
-					3
-				),
-				UDim2.new(
-					1,
-					-12,
-					0,
-					15
-				),
-				7,
-				10,
-				Fonts.Bold,
-				Colors.TextMuted
-			)
-
-		caption.TextXAlignment =
-			Enum.TextXAlignment.Center
-
-
-		local value =
-			createTextLabel(
-				box,
-				"Value",
-				"--",
-				UDim2.new(
-					0,
-					6,
-					0,
-					18
-				),
-				UDim2.new(
-					1,
-					-12,
-					0,
-					21
-				),
-				10,
-				16,
-				Fonts.Black,
-				Colors.Text
-			)
-
-		value.TextXAlignment =
-			Enum.TextXAlignment.Center
-
-		return box, value
-	end
-
-
-	local _, levelLabel =
-		createStatBox(
-			"LevelStat",
-			"CURRENT LEVEL"
-		)
-
-	local valueBox, valueLabel =
-		createStatBox(
-			"ValueStat",
-			valueCaptionText
-		)
-
-	local valueCaption =
-		valueBox:FindFirstChild(
-			"Caption"
-		) :: TextLabel
-
-	valueLabel.TextColor3 =
-		buttonColor
-
-
-	local progressTrack =
-		Instance.new("Frame")
-
-	progressTrack.Name =
-		"ProgressTrack"
-
-	progressTrack.Position =
-		UDim2.new(
-			0,
-			18,
-			0,
-			113
-		)
-
-	progressTrack.Size =
-		UDim2.new(
-			1,
-			-36,
-			0,
-			8
-		)
-
-	progressTrack.BackgroundColor3 =
-		Colors.ProgressTrack
-
-	progressTrack.BorderSizePixel = 0
-	progressTrack.ClipsDescendants = true
-	progressTrack.Parent = card
-
-	UITheme.AddCorner(
-		progressTrack,
-		0.5
-	)
-
-
-	local progressFill =
-		Instance.new("Frame")
-
-	progressFill.Name =
-		"ProgressFill"
-
-	progressFill.Size =
-		UDim2.fromScale(
-			0,
-			1
-		)
-
-	progressFill.BackgroundColor3 =
-		buttonColor
-
-	progressFill.BorderSizePixel = 0
-	progressFill.Parent = progressTrack
-
-	UITheme.AddCorner(
-		progressFill,
-		0.5
-	)
-
-
-	local purchaseButton =
-		Instance.new("TextButton")
-
-	purchaseButton.Name =
-		"PurchaseButton"
-
-	purchaseButton.Position =
-		UDim2.new(
-			0,
-			18,
-			0,
-			130
-		)
-
-	purchaseButton.Size =
-		UDim2.new(
-			1,
-			-36,
-			0,
-			35
-		)
-
-	purchaseButton.Text =
-		"LOADING..."
-
-	purchaseButton.Parent =
-		card
-
-	UITheme.StyleText(
-		purchaseButton,
-		9,
-		14,
-		Colors.Text,
-		Fonts.Black
-	)
-
-	UITheme.StyleButton(
-		purchaseButton,
-		buttonColor,
-		buttonDarkColor,
-		Colors.Text
-	)
-
-	return {
-		Root = card,
-		LevelLabel = levelLabel,
-		ValueCaption = valueCaption,
-		ValueLabel = valueLabel,
-		ProgressFill = progressFill,
-		PurchaseButton = purchaseButton,
-	}
-end
-
-
-local function createInterface(): Interface
-	local existing =
-		playerGui:FindFirstChild(
-			"UpgradeMenu"
-		)
-
-	if existing then
-		existing:Destroy()
-	end
-
-
-	local screenGui =
-		Instance.new("ScreenGui")
-
-	screenGui.Name =
-		"UpgradeMenu"
-
-	screenGui.ResetOnSpawn =
-		false
-
-	-- Important:
-	-- Do NOT draw underneath Roblox's top bar.
-	screenGui.IgnoreGuiInset =
-		false
-
-	screenGui.ScreenInsets =
-		Enum.ScreenInsets.DeviceSafeInsets
-
-	screenGui.DisplayOrder =
-		30
-
-	screenGui.ZIndexBehavior =
-		Enum.ZIndexBehavior.Sibling
-
-	screenGui.Parent =
-		playerGui
-
-
-	local overlay =
-		Instance.new("Frame")
-
-	overlay.Name =
-		"Overlay"
-
-	overlay.Size =
-		UDim2.fromScale(
-			1,
-			1
-		)
-
-	overlay.BackgroundColor3 =
-		Colors.Shadow
-
-	overlay.BackgroundTransparency =
-		1
-
-	overlay.BorderSizePixel =
-		0
-
-	overlay.Visible =
-		false
-
-	overlay.Active =
-		true
-
-	overlay.Parent =
-		screenGui
-
-
-	local panel =
-		Instance.new("Frame")
-
-	panel.Name =
-		"Panel"
-
-	panel.AnchorPoint =
-		Vector2.new(
-			0.5,
-			0.5
-		)
-
-	panel.Position =
-		UDim2.fromScale(
-			0.5,
-			0.5
-		)
-
-	panel.Size =
-		UDim2.fromOffset(
-			900,
-			620
-		)
-
-	panel.BackgroundColor3 =
-		Colors.Surface
-
-	panel.BorderSizePixel =
-		0
-
-	panel.ClipsDescendants =
-		true
-
-	panel.Parent =
-		overlay
-
-	UITheme.AddCorner(
-		panel,
-		0.025
-	)
-
-	UITheme.AddStroke(
-		panel,
-		Colors.Stroke,
-		2,
-		0.1
-	)
-
-
-	local panelScale =
-		Instance.new("UIScale")
-
-	panelScale.Scale =
-		0.92
-
-	panelScale.Parent =
-		panel
-
-
-	local header =
-		Instance.new("Frame")
-
-	header.Name =
-		"Header"
-
-	header.Size =
-		UDim2.new(
-			1,
-			0,
-			0,
-			86
-		)
-
-	header.BackgroundColor3 =
-		Colors.Background
-
-	header.BorderSizePixel =
-		0
-
-	header.ClipsDescendants =
-		true
-
-	header.Parent =
-		panel
-
-
-	local headerBottomCover =
-		Instance.new("Frame")
-
-	headerBottomCover.Name =
-		"BottomCover"
-
-	headerBottomCover.AnchorPoint =
-		Vector2.new(
-			0,
-			1
-		)
-
-	headerBottomCover.Position =
-		UDim2.fromScale(
-			0,
-			1
-		)
-
-	headerBottomCover.Size =
-		UDim2.new(
-			1,
-			0,
-			0,
-			18
-		)
-
-	headerBottomCover.BackgroundColor3 =
-		Colors.Background
-
-	headerBottomCover.BorderSizePixel =
-		0
-
-	headerBottomCover.Parent =
-		header
-
-
-	local title =
-		createTextLabel(
-			header,
-			"Title",
-			"LEMONADE STAND",
-			UDim2.fromOffset(
-				26,
-				14
-			),
-			UDim2.new(
-				1,
-				-310,
-				0,
-				30
-			),
-			14,
-			24,
-			Fonts.Black,
-			Colors.Text
-		)
-
-	title.ZIndex = 2
-
-
-	local subtitle =
-		createTextLabel(
-			header,
-			"Subtitle",
-			"Appearance and upgrades apply only to this stand.",
-			UDim2.fromOffset(
-				26,
-				44
-			),
-			UDim2.new(
-				1,
-				-310,
-				0,
-				22
-			),
-			8,
-			13,
-			Fonts.Medium,
-			Colors.TextMuted
-		)
-
-	subtitle.ZIndex = 2
-
-
-	local cashContainer =
-		Instance.new("Frame")
-
-	cashContainer.Name =
-		"CashContainer"
-
-	cashContainer.AnchorPoint =
-		Vector2.new(
-			1,
-			0.5
-		)
-
-	cashContainer.Position =
-		UDim2.new(
-			1,
-			-82,
-			0.5,
-			0
-		)
-
-	cashContainer.Size =
-		UDim2.fromOffset(
-			170,
-			44
-		)
-
-	cashContainer.BackgroundColor3 =
-		Colors.SurfaceRaised
-
-	cashContainer.BorderSizePixel =
-		0
-
-	cashContainer.ZIndex = 2
-	cashContainer.Parent = header
-
-	UITheme.AddCorner(
-		cashContainer,
-		0.2
-	)
-
-	UITheme.AddStroke(
-		cashContainer,
-		Colors.Primary,
-		1.5,
-		0.28
-	)
-
-
-	local cashIcon =
-		Instance.new("Frame")
-
-	cashIcon.Name =
-		"CashIcon"
-
-	cashIcon.AnchorPoint =
-		Vector2.new(
-			0,
-			0.5
-		)
-
-	cashIcon.Position =
-		UDim2.new(
-			0,
-			8,
-			0.5,
-			0
-		)
-
-	cashIcon.Size =
-		UDim2.fromOffset(
-			28,
-			28
-		)
-
-	cashIcon.BackgroundColor3 =
-		Colors.Primary
-
-	cashIcon.BorderSizePixel =
-		0
-
-	cashIcon.ZIndex = 3
-	cashIcon.Parent = cashContainer
-
-	UITheme.AddCorner(
-		cashIcon,
-		0.5
-	)
-
-
-	local dollarLabel =
-		createTextLabel(
-			cashIcon,
-			"Dollar",
-			"$",
-			UDim2.fromScale(
-				0,
-				0
-			),
-			UDim2.fromScale(
-				1,
-				1
-			),
-			12,
-			18,
-			Fonts.Black,
-			Colors.TextDark
-		)
-
-	dollarLabel.TextXAlignment =
-		Enum.TextXAlignment.Center
-
-	dollarLabel.ZIndex = 4
-
-
-	local cashCaption =
-		createTextLabel(
-			cashContainer,
-			"Caption",
-			"CASH",
-			UDim2.new(
-				0,
-				43,
-				0,
-				5
-			),
-			UDim2.new(
-				1,
-				-50,
-				0,
-				14
-			),
-			7,
-			10,
-			Fonts.Bold,
-			Colors.TextMuted
-		)
-
-	cashCaption.ZIndex = 3
-
-
-	local cashLabel =
-		createTextLabel(
-			cashContainer,
-			"CashLabel",
-			"$0",
-			UDim2.new(
-				0,
-				43,
-				0,
-				18
-			),
-			UDim2.new(
-				1,
-				-50,
-				0,
-				21
-			),
-			10,
-			17,
-			Fonts.Black,
-			Colors.Primary
-		)
-
-	cashLabel.ZIndex = 3
-
-
-	local closeButton =
-		Instance.new("TextButton")
-
-	closeButton.Name =
-		"CloseButton"
-
-	closeButton.AnchorPoint =
-		Vector2.new(
-			1,
-			0.5
-		)
-
-	closeButton.Position =
-		UDim2.new(
-			1,
-			-16,
-			0.5,
-			0
-		)
-
-	closeButton.Size =
-		UDim2.fromOffset(
-			48,
-			48
-		)
-
-	closeButton.Text =
-		"×"
-
-	closeButton.ZIndex = 4
-	closeButton.Parent = header
-
-	UITheme.StyleText(
-		closeButton,
-		16,
-		24,
-		Colors.Text,
-		Fonts.Black
-	)
-
-	UITheme.StyleButton(
-		closeButton,
-		Colors.Danger,
-		Colors.DangerDark,
-		Colors.Text
-	)
-
-
-	local content =
-		Instance.new("Frame")
-
-	content.Name =
-		"Content"
-
-	content.Position =
-		UDim2.fromOffset(
-			0,
-			86
-		)
-
-	content.Size =
-		UDim2.new(
-			1,
-			0,
-			1,
-			-86
-		)
-
-	content.BackgroundTransparency =
-		1
-
-	content.Parent =
-		panel
-
-
-	local contentPadding =
-		Instance.new("UIPadding")
-
-	contentPadding.PaddingLeft =
-		UDim.new(
-			0,
-			18
-		)
-
-	contentPadding.PaddingRight =
-		UDim.new(
-			0,
-			18
-		)
-
-	contentPadding.PaddingTop =
-		UDim.new(
-			0,
-			12
-		)
-
-	contentPadding.PaddingBottom =
-		UDim.new(
-			0,
-			10
-		)
-
-	contentPadding.Parent =
-		content
-
-
-	local statisticsPanel =
-		Instance.new("ScrollingFrame")
-
-	statisticsPanel.Name =
-		"StatisticsPanel"
-
-	statisticsPanel.Position =
-		UDim2.fromOffset(
-			0,
-			0
-		)
-
-	statisticsPanel.Size =
-		UDim2.new(
-			1,
-			0,
-			0,
-			64
-		)
-
-	statisticsPanel.BackgroundTransparency =
-		1
-
-	statisticsPanel.BorderSizePixel =
-		0
-
-	statisticsPanel.CanvasSize =
-		UDim2.fromOffset(
-			0,
-			0
-		)
-
-	statisticsPanel.AutomaticCanvasSize =
-		Enum.AutomaticSize.X
-
-	statisticsPanel.ScrollingDirection =
-		Enum.ScrollingDirection.X
-
-	statisticsPanel.ScrollBarThickness =
-		2
-
-	statisticsPanel.ScrollBarImageColor3 =
-		Colors.Primary
-
-	statisticsPanel.ElasticBehavior =
-		Enum.ElasticBehavior.WhenScrollable
-
-	statisticsPanel.Parent =
-		content
-
-
-	local statisticsLayout =
-		Instance.new("UIListLayout")
-
-	statisticsLayout.FillDirection =
-		Enum.FillDirection.Horizontal
-
-	statisticsLayout.VerticalAlignment =
-		Enum.VerticalAlignment.Top
-
-	statisticsLayout.SortOrder =
-		Enum.SortOrder.LayoutOrder
-
-	statisticsLayout.Padding =
-		UDim.new(
-			0,
-			8
-		)
-
-	statisticsLayout.Parent =
-		statisticsPanel
-
-
-	statisticLabels.CashPerSale =
-		createStatisticBox(
-			statisticsPanel,
-			"CashPerSale",
-			"CASH / SALE"
-		)
-
-	statisticLabels.CustomersWaiting =
-		createStatisticBox(
-			statisticsPanel,
-			"CustomersWaiting",
-			"WAITING"
-		)
-
-	statisticLabels.LifetimeEarnings =
-		createStatisticBox(
-			statisticsPanel,
-			"LifetimeEarnings",
-			"LIFETIME CASH"
-		)
-
-	statisticLabels.ServiceTime =
-		createStatisticBox(
-			statisticsPanel,
-			"ServiceTime",
-			"SERVICE TIME"
-		)
-
-	statisticLabels.TotalSales =
-		createStatisticBox(
-			statisticsPanel,
-			"TotalSales",
-			"TOTAL SALES"
-		)
-
-
-	local upgradeList =
-		Instance.new("ScrollingFrame")
-
-	upgradeList.Name =
-		"UpgradeList"
-
-	upgradeList.Position =
-		UDim2.fromOffset(
-			0,
-			72
-		)
-
-	upgradeList.Size =
-		UDim2.new(
-			1,
-			0,
-			1,
-			-102
-		)
-
-	upgradeList.BackgroundTransparency =
-		1
-
-	upgradeList.BorderSizePixel =
-		0
-
-	upgradeList.CanvasSize =
-		UDim2.fromOffset(
-			0,
-			0
-		)
-
-	upgradeList.AutomaticCanvasSize =
-		Enum.AutomaticSize.Y
-
-	upgradeList.ScrollBarThickness =
-		3
-
-	upgradeList.ScrollBarImageColor3 =
-		Colors.Primary
-
-	upgradeList.ScrollingDirection =
-		Enum.ScrollingDirection.Y
-
-	upgradeList.ElasticBehavior =
-		Enum.ElasticBehavior.WhenScrollable
-
-	upgradeList.Parent =
-		content
-
-
-	local listPadding =
-		Instance.new("UIPadding")
-
-	listPadding.PaddingLeft =
-		UDim.new(
-			0,
-			2
-		)
-
-	listPadding.PaddingRight =
-		UDim.new(
-			0,
-			8
-		)
-
-	listPadding.PaddingTop =
-		UDim.new(
-			0,
-			2
-		)
-
-	listPadding.PaddingBottom =
-		UDim.new(
-			0,
-			12
-		)
-
-	listPadding.Parent =
-		upgradeList
-
-
-	local listLayout =
-		Instance.new("UIListLayout")
-
-	listLayout.FillDirection =
-		Enum.FillDirection.Vertical
-
-	listLayout.HorizontalAlignment =
-		Enum.HorizontalAlignment.Center
-
-	listLayout.VerticalAlignment =
-		Enum.VerticalAlignment.Top
-
-	listLayout.SortOrder =
-		Enum.SortOrder.LayoutOrder
-
-	listLayout.Padding =
-		UDim.new(
-			0,
-			10
-		)
-
-	listLayout.Parent =
-		upgradeList
-
-
-	appearanceCard =
-		createUpgradeCard(
-			upgradeList,
-			"StandAppearance",
-			"STAND APPEARANCE",
-			"Improve the physical stand with a larger and more professional design.",
-			"NEXT DESIGN",
-			Colors.Primary,
-			Colors.PrimaryDark
-		)
-
-
-	cards.QueueCapacity =
-		createUpgradeCard(
-			upgradeList,
-			"QueueCapacity",
-			"LONGER QUEUE",
-			"Allow more customers to wait at this stand.",
-			"QUEUE SIZE",
-			Colors.Info,
-			Colors.InfoDark
-		)
-
-
-	cards.SaleValue =
-		createUpgradeCard(
-			upgradeList,
-			"SaleValue",
-			"BETTER LEMONADE",
-			"Improve the recipe and earn more from every sale.",
-			"CASH PER SALE",
-			Colors.Success,
-			Colors.SuccessDark
-		)
-
-
-	cards.ServingSpeed =
-		createUpgradeCard(
-			upgradeList,
-			"ServingSpeed",
-			"FASTER SERVICE",
-			"Reduce how long each customer waits at the counter.",
-			"SERVICE TIME",
-			Colors.Success,
-			Colors.SuccessDark
-		)
-
-
-	local statusLabel =
-		createTextLabel(
-			content,
-			"StatusLabel",
-			"",
-			UDim2.new(
-				0,
-				0,
-				1,
-				-25
-			),
-			UDim2.new(
-				1,
-				0,
-				0,
-				22
-			),
-			8,
-			12,
-			Fonts.Semibold,
-			Colors.TextMuted
-		)
-
-	statusLabel.TextXAlignment =
-		Enum.TextXAlignment.Center
-
-
-	return {
-		ScreenGui = screenGui,
-
-		Overlay = overlay,
-		Panel = panel,
-		PanelScale = panelScale,
-
-		Header = header,
-		Content = content,
-
-		TitleLabel = title,
-		SubtitleLabel = subtitle,
-
-		CashContainer = cashContainer,
-		CashLabel = cashLabel,
-
-		CloseButton = closeButton,
-
-		StatisticsPanel = statisticsPanel,
-		UpgradeList = upgradeList,
-
-		StatusLabel = statusLabel,
-	}
-end
-
-
-local function updateResponsiveLayout()
-	local camera =
-		Workspace.CurrentCamera
-
-	if not camera then
-		return
-	end
-
-	local viewport =
-		camera.ViewportSize
-
-	local touchDevice =
-		UserInputService.TouchEnabled
-
-	local narrow =
-		viewport.X < 520
-
-	local shortLandscape =
-		touchDevice
-		and viewport.X > viewport.Y
-		and viewport.Y < 560
-
-
-	local horizontalMargin =
-		shortLandscape
-		and 30
-		or narrow
-			and 24
-			or 70
-
-	local verticalReserve =
-		shortLandscape
-		and 82
-		or touchDevice
-			and 64
-			or 70
-
-
-	local panelWidth =
-		math.min(
-			shortLandscape
-				and 720
-				or 960,
-			math.max(
-				300,
-				viewport.X
-					- horizontalMargin
-			)
-		)
-
-	local panelHeight =
-		math.min(
-			touchDevice
-				and 650
-				or 700,
-			math.max(
-				260,
-				viewport.Y
-					- verticalReserve
-			)
-		)
-
-	interface.Panel.Size =
-		UDim2.fromOffset(
-			panelWidth,
-			panelHeight
-		)
-
-
-	local headerHeight: number
-
-	if shortLandscape then
-		headerHeight = 56
-	elseif narrow then
-		headerHeight = 108
-	else
-		headerHeight = 86
-	end
-
-
-	interface.Header.Size =
-		UDim2.new(
-			1,
-			0,
-			0,
-			headerHeight
-		)
-
-	interface.Content.Position =
-		UDim2.fromOffset(
-			0,
-			headerHeight
-		)
-
-	interface.Content.Size =
-		UDim2.new(
-			1,
-			0,
-			1,
-			-headerHeight
-		)
-
-
-	if shortLandscape then
-		interface.TitleLabel.Position =
-			UDim2.fromOffset(
-				18,
-				13
-			)
-
-		interface.TitleLabel.Size =
-			UDim2.new(
-				1,
-				-250,
-				0,
-				28
-			)
-
-		interface.SubtitleLabel.Visible =
-			false
-
-		interface.CashContainer.Position =
-			UDim2.new(
-				1,
-				-69,
-				0.5,
-				0
-			)
-
-		interface.CashContainer.Size =
-			UDim2.fromOffset(
-				142,
-				38
-			)
-
-		interface.CloseButton.Position =
-			UDim2.new(
-				1,
-				-12,
-				0.5,
-				0
-			)
-
-		interface.CloseButton.Size =
-			UDim2.fromOffset(
-				42,
-				42
-			)
-
-	elseif narrow then
-		interface.TitleLabel.Position =
-			UDim2.fromOffset(
-				16,
-				10
-			)
-
-		interface.TitleLabel.Size =
-			UDim2.new(
-				1,
-				-78,
-				0,
-				25
-			)
-
-		interface.SubtitleLabel.Visible =
-			true
-
-		interface.SubtitleLabel.Position =
-			UDim2.fromOffset(
-				16,
-				35
-			)
-
-		interface.SubtitleLabel.Size =
-			UDim2.new(
-				1,
-				-32,
-				0,
-				22
-			)
-
-		interface.CashContainer.AnchorPoint =
-			Vector2.new(
-				0,
-				0
-			)
-
-		interface.CashContainer.Position =
-			UDim2.fromOffset(
-				16,
-				64
-			)
-
-		interface.CashContainer.Size =
-			UDim2.fromOffset(
-				144,
-				36
-			)
-
-		interface.CloseButton.Position =
-			UDim2.new(
-				1,
-				-12,
-				0,
-				12
-			)
-
-		interface.CloseButton.Size =
-			UDim2.fromOffset(
-				42,
-				42
-			)
-
-	else
-		interface.TitleLabel.Position =
-			UDim2.fromOffset(
-				26,
-				14
-			)
-
-		interface.TitleLabel.Size =
-			UDim2.new(
-				1,
-				-310,
-				0,
-				30
-			)
-
-		interface.SubtitleLabel.Visible =
-			true
-
-		interface.SubtitleLabel.Position =
-			UDim2.fromOffset(
-				26,
-				44
-			)
-
-		interface.SubtitleLabel.Size =
-			UDim2.new(
-				1,
-				-310,
-				0,
-				22
-			)
-
-		interface.CashContainer.AnchorPoint =
-			Vector2.new(
-				1,
-				0.5
-			)
-
-		interface.CashContainer.Position =
-			UDim2.new(
-				1,
-				-82,
-				0.5,
-				0
-			)
-
-		interface.CashContainer.Size =
-			UDim2.fromOffset(
-				170,
-				44
-			)
-
-		interface.CloseButton.Position =
-			UDim2.new(
-				1,
-				-16,
-				0.5,
-				0
-			)
-
-		interface.CloseButton.Size =
-			UDim2.fromOffset(
-				48,
-				48
-			)
-	end
-
-
-	local statsHeight =
-		shortLandscape
-		and 62
-		or 64
-
-	local statusHeight =
-		shortLandscape
-		and 20
-		or 24
-
-	interface.StatisticsPanel.Size =
-		UDim2.new(
-			1,
-			0,
-			0,
-			statsHeight
-		)
-
-	interface.UpgradeList.Position =
-		UDim2.fromOffset(
-			0,
-			statsHeight + 7
-		)
-
-	interface.UpgradeList.Size =
-		UDim2.new(
-			1,
-			0,
-			1,
-			-(
-				statsHeight
-				+ statusHeight
-				+ 16
-			)
-		)
-
-	interface.StatusLabel.Position =
-		UDim2.new(
-			0,
-			0,
-			1,
-			-statusHeight
-		)
-
-	interface.StatusLabel.Size =
-		UDim2.new(
-			1,
-			0,
-			0,
-			statusHeight
-		)
-end
-
-
-interface =
-	createInterface()
-
-updateResponsiveLayout()
-
-
-local function connectCamera(
-	camera: Camera
-)
-	camera:GetPropertyChangedSignal(
-		"ViewportSize"
-	):Connect(
-		updateResponsiveLayout
+local function formatCurrency(
+	value: number
+): string
+
+	return FormatNumber.Currency(
+		math.floor(value)
 	)
 end
 
 
-if Workspace.CurrentCamera then
-	connectCamera(
-		Workspace.CurrentCamera
-	)
-end
+--==================================================
+-- STATUS
+--==================================================
+
+local DEFAULT_SUBTITLE =
+	"Manage your stand and its appearance here!"
 
 
-Workspace:GetPropertyChangedSignal(
-	"CurrentCamera"
-):Connect(function()
-	local camera =
-		Workspace.CurrentCamera
-
-	if not camera then
-		return
-	end
-
-	updateResponsiveLayout()
-	connectCamera(camera)
-end)
-
-
-local function closeUpgradeMenu()
-	if not menuOpen then
-		return
-	end
-
-	menuOpen = false
-	requestPending = nil
-
-
-	local overlayTween =
-		TweenService:Create(
-			interface.Overlay,
-			TweenInfo.new(
-				0.15,
-				Enum.EasingStyle.Quad,
-				Enum.EasingDirection.In
-			),
-			{
-				BackgroundTransparency = 1,
-			}
-		)
-
-
-	local panelTween =
-		TweenService:Create(
-			interface.PanelScale,
-			TweenInfo.new(
-				0.14,
-				Enum.EasingStyle.Quad,
-				Enum.EasingDirection.In
-			),
-			{
-				Scale = 0.94,
-			}
-		)
-
-	overlayTween:Play()
-	panelTween:Play()
-
-
-	panelTween.Completed:Once(
-		function()
-			if menuOpen then
-				return
-			end
-
-			interface.Overlay.Visible =
-				false
-
-			selectedStand = nil
-			selectedBusinessId = nil
-		end
-	)
+local function resetSubtitle()
+	mainSubtitle.Text =
+		DEFAULT_SUBTITLE
 end
 
 
@@ -2278,30 +822,439 @@ local function showStatus(
 	message: string,
 	isError: boolean?
 )
-	statusVersion += 1
+	statusVersion +=
+		1
 
-	local currentVersion =
+	local version =
 		statusVersion
 
-	interface.StatusLabel.Text =
-		message
 
-	interface.StatusLabel.TextColor3 =
-		isError
-		and Colors.Danger
-		or Colors.Success
+	if message == "" then
+		resetSubtitle()
+
+		return
+	end
+
+
+	if isError then
+		mainSubtitle.Text =
+			"⚠ " .. message
+	else
+		mainSubtitle.Text =
+			message
+	end
+
 
 	task.delay(
-		4,
+		2.5,
 		function()
 			if statusVersion
-					== currentVersion then
+				~= version then
 
-				interface.StatusLabel.Text =
-					""
+				return
+			end
+
+			if menuOpen then
+				resetSubtitle()
 			end
 		end
 	)
+end
+
+
+--==================================================
+-- CARD REFERENCES
+--==================================================
+
+local function getCard(
+	root: Frame
+): UpgradeCard
+
+	local currentBox =
+		root:WaitForChild(
+			"CurrentBox"
+		) :: Frame
+
+	local afterBox =
+		root:WaitForChild(
+			"AfterUpgradeBox"
+		) :: Frame
+
+	local background =
+		root:WaitForChild(
+			"Background"
+		) :: Frame
+
+	local buy =
+		root:WaitForChild(
+			"Buy"
+		) :: TextButton
+
+
+	local card: UpgradeCard = {
+		Root =
+			root,
+
+		Title =
+			root:WaitForChild(
+				"Title"
+			) :: TextLabel,
+
+		Subtitle =
+			root:WaitForChild(
+				"Subtitle"
+			) :: TextLabel,
+
+		CurrentTitle =
+			currentBox:WaitForChild(
+				"Title"
+			) :: TextLabel,
+
+		CurrentAmount =
+			currentBox:WaitForChild(
+				"Amount"
+			) :: TextLabel,
+
+		AfterTitle =
+			afterBox:WaitForChild(
+				"Title"
+			) :: TextLabel,
+
+		AfterAmount =
+			afterBox:WaitForChild(
+				"Amount"
+			) :: TextLabel,
+
+		ProgressBar =
+			background:WaitForChild(
+				"Bar"
+			) :: Frame,
+
+		BuyButton =
+			buy,
+
+		BuyText =
+			buy:WaitForChild(
+				"InText"
+			) :: TextLabel,
+	}
+
+
+	card.BuyButton.Text =
+		""
+
+	card.BuyText.Active =
+		false
+
+	card.BuyText.Selectable =
+		false
+
+
+	return card
+end
+
+
+local function createCard(
+	name: string,
+	layoutOrder: number
+): UpgradeCard
+
+	local clone =
+		template:Clone()
+
+	clone.Name =
+		name
+
+	clone.LayoutOrder =
+		layoutOrder
+
+	--
+	-- Preserve everything designed in Studio.
+	-- In particular, do not touch Size or Position.
+	--
+	clone.Visible =
+		true
+
+	clone.Parent =
+		scrollingFrame
+
+
+	local card =
+		getCard(
+			clone
+		)
+
+
+	return card
+end
+
+-- Remove any clones left behind from a previous
+-- script run in Studio.
+for _, child in
+	scrollingFrame:GetChildren()
+do
+	if child:IsA("Frame")
+		and child ~= template then
+
+		child:Destroy()
+	end
+end
+
+
+cards.StandAppearance =
+	createCard(
+		"StandAppearance",
+		1
+	)
+
+cards.QueueCapacity =
+	createCard(
+		"QueueCapacity",
+		2
+	)
+
+cards.SaleValue =
+	createCard(
+		"SaleValue",
+		3
+	)
+
+cards.ServingSpeed =
+	createCard(
+		"ServingSpeed",
+		4
+	)
+
+
+--==================================================
+-- BUTTON HELPERS
+--==================================================
+
+local function setButton(
+	card: UpgradeCard,
+	text: string,
+	enabled: boolean
+)
+	card.BuyText.Text =
+		text
+
+	card.BuyButton.Active =
+		enabled
+
+	card.BuyButton.Selectable =
+		enabled
+
+	card.BuyButton.AutoButtonColor =
+		enabled
+
+
+	card.BuyText.TextTransparency =
+		enabled
+			and 0
+			or 0.18
+end
+
+
+local function disableAllButtons()
+	for _, card in cards do
+		card.BuyButton.Active =
+			false
+
+		card.BuyButton.Selectable =
+			false
+
+		card.BuyButton.AutoButtonColor =
+			false
+	end
+end
+
+
+local function setProgress(
+	card: UpgradeCard,
+	currentLevel: number,
+	maximumLevel: number
+)
+	local progress =
+		0
+
+	if maximumLevel > 0 then
+		progress =
+			math.clamp(
+				currentLevel
+					/ maximumLevel,
+				0,
+				1
+			)
+	end
+
+
+	TweenService:Create(
+		card.ProgressBar,
+
+		TweenInfo.new(
+			0.2,
+			Enum.EasingStyle.Quad,
+			Enum.EasingDirection.Out
+		),
+
+		{
+			Size =
+				UDim2.fromScale(
+					progress,
+					1
+				),
+		}
+	):Play()
+end
+
+
+--==================================================
+-- CONFIG
+--==================================================
+
+local function getLemonadeConfig()
+	return BusinessConfig.LemonadeStand
+end
+
+
+local function getGameplayConfig(
+	upgradeName: string
+)
+	local businessConfig =
+		getLemonadeConfig()
+
+
+	if typeof(businessConfig)
+			~= "table"
+		or typeof(
+			businessConfig.Upgrades
+		) ~= "table" then
+
+		return nil
+	end
+
+
+	return businessConfig.Upgrades[
+		upgradeName
+	]
+end
+
+
+local function getDefinition(
+	upgradeName: string,
+	level: number
+)
+	local config =
+		getGameplayConfig(
+			upgradeName
+		)
+
+
+	if not config
+		or typeof(config.Levels)
+			~= "table" then
+
+		return nil
+	end
+
+
+	for _, definition in
+		config.Levels
+	do
+		if definition.Level
+			== level then
+
+			return definition
+		end
+	end
+
+
+	return nil
+end
+
+
+local function getMaximumAppearanceLevel():
+	number
+
+	local config =
+		getLemonadeConfig()
+
+
+	if typeof(config)
+			~= "table"
+		or typeof(config.StandLevels)
+			~= "table" then
+
+		return 1
+	end
+
+
+	local maximum =
+		1
+
+
+	for level, definition in
+		config.StandLevels
+	do
+		if typeof(level)
+				== "number"
+			and typeof(definition)
+				== "table" then
+
+			maximum =
+				math.max(
+					maximum,
+					level
+				)
+		end
+	end
+
+
+	return maximum
+end
+
+
+local function getAppearanceConfig(
+	level: number
+)
+	local config =
+		getLemonadeConfig()
+
+
+	if typeof(config)
+			~= "table"
+		or typeof(config.StandLevels)
+			~= "table" then
+
+		return nil
+	end
+
+
+	return config.StandLevels[
+		level
+	]
+end
+
+
+--==================================================
+-- STATISTICS
+--==================================================
+
+local function clearStatistics()
+	cashSaleAmount.Text =
+		"--"
+
+	waitingAmount.Text =
+		"--"
+
+	lifetimeCashAmount.Text =
+		"--"
+
+	serviceTimeAmount.Text =
+		"--"
+
+	totalSalesAmount.Text =
+		"--"
 end
 
 
@@ -2309,144 +1262,117 @@ local function updateStatistics()
 	if not selectedStand
 		or not selectedStand.Parent then
 
-		for _, label in
-			statisticLabels
-		do
-			label.Text =
-				"--"
-		end
+		clearStatistics()
 
 		return
 	end
 
 
-	local totalSales =
+	local saleValue =
 		getNumericAttribute(
 			selectedStand,
-			"TotalSales"
+			"SaleValue",
+			2
 		)
 
-	local lifetimeEarnings =
+	local waiting =
 		getNumericAttribute(
 			selectedStand,
-			"LifetimeEarnings"
+			"CustomersWaiting",
+			0
 		)
 
-	local customersWaiting =
+	local lifetimeCash =
 		getNumericAttribute(
 			selectedStand,
-			"CustomersWaiting"
+			"LifetimeEarnings",
+			0
 		)
 
 	local serviceTime =
 		getNumericAttribute(
 			selectedStand,
-			"PurchaseCooldown"
+			"PurchaseCooldown",
+			5
 		)
 
-	local cashPerSale =
+	local totalSales =
 		getNumericAttribute(
 			selectedStand,
-			"SaleValue"
+			"TotalSales",
+			0
 		)
 
 
-	statisticLabels.TotalSales.Text =
-		string.format(
-			"%d",
-			math.floor(totalSales)
+	cashSaleAmount.Text =
+		formatCurrency(
+			saleValue
 		)
 
-	statisticLabels.LifetimeEarnings.Text =
-		string.format(
-			"$%d",
-			math.floor(
-				lifetimeEarnings
-			)
+	waitingAmount.Text =
+		formatNumber(
+			waiting
 		)
 
-	statisticLabels.CustomersWaiting.Text =
-		string.format(
-			"%d",
-			math.floor(
-				customersWaiting
-			)
+	lifetimeCashAmount.Text =
+		formatCurrency(
+			lifetimeCash
 		)
 
-	statisticLabels.ServiceTime.Text =
+	serviceTimeAmount.Text =
 		string.format(
 			"%.2fs",
 			serviceTime
 		)
 
-	statisticLabels.CashPerSale.Text =
-		string.format(
-			"$%d",
-			math.floor(
-				cashPerSale
-			)
+	totalSalesAmount.Text =
+		formatNumber(
+			totalSales
 		)
 end
 
 
-local function setCardButtonState(
-	card: UpgradeCard,
-	text: string,
-	enabled: boolean,
-	topColor: Color3,
-	bottomColor: Color3
-)
-	card.PurchaseButton.Text =
-		text
-
-	UITheme.SetButtonEnabled(
-		card.PurchaseButton,
-		enabled,
-		topColor,
-		bottomColor
-	)
-
-	card.PurchaseButton.TextColor3 =
-		Color3.fromRGB(
-			255,
-			255,
-			255
-		)
-
-	card.PurchaseButton.TextTransparency =
-		0
-end
-
+--==================================================
+-- APPEARANCE CARD
+--==================================================
 
 local function updateAppearanceCard()
 	local card =
-		appearanceCard
+		cards.StandAppearance
 
-	if not card then
-		return
-	end
+
+	card.Title.Text =
+		"Stand Appearance"
+
+	card.Subtitle.Text =
+		"Upgrade your stand with a bigger and better design."
+
+	card.CurrentTitle.Text =
+		"Current Level"
+
+	card.AfterTitle.Text =
+		"After Upgrade"
+
 
 	if not selectedStand
 		or not selectedStand.Parent then
 
-		card.LevelLabel.Text =
-			"-- / --"
-
-		card.ValueLabel.Text =
+		card.CurrentAmount.Text =
 			"--"
 
-		card.ProgressFill.Size =
-			UDim2.fromScale(
-				0,
-				1
-			)
+		card.AfterAmount.Text =
+			"--"
 
-		setCardButtonState(
+		setProgress(
 			card,
-			"UNAVAILABLE",
-			false,
-			Colors.Primary,
-			Colors.PrimaryDark
+			0,
+			1
+		)
+
+		setButton(
+			card,
+			"Unavailable",
+			false
 		)
 
 		return
@@ -2454,8 +1380,15 @@ local function updateAppearanceCard()
 
 
 	local currentLevel =
-		getStandAppearanceLevel(
-			selectedStand
+		math.max(
+			1,
+			math.floor(
+				getNumericAttribute(
+					selectedStand,
+					"Level",
+					1
+				)
+			)
 		)
 
 	local maximumLevel =
@@ -2472,86 +1405,197 @@ local function updateAppearanceCard()
 		)
 
 
-	card.LevelLabel.Text =
+	card.CurrentAmount.Text =
 		`{currentLevel} / {maximumLevel}`
 
-	card.ValueCaption.Text =
-		"NEXT DESIGN"
 
-
-	if nextConfig
-		and typeof(
-			nextConfig.TemplateName
-		) == "string" then
-
-		card.ValueLabel.Text =
-			`LEVEL {currentLevel + 1}`
-	else
-		card.ValueLabel.Text =
-			"COMPLETE"
-	end
-
-
-	local progress =
-		math.clamp(
-			currentLevel
-				/ math.max(
-					maximumLevel,
-					1
-				),
-			0,
-			1
-		)
-
-	card.ProgressFill.Size =
-		UDim2.fromScale(
-			progress,
-			1
-		)
+	setProgress(
+		card,
+		currentLevel,
+		maximumLevel
+	)
 
 
 	if currentLevel >= maximumLevel
 		or not nextConfig then
 
-		setCardButtonState(
+		card.AfterTitle.Text =
+			"Status"
+
+		card.AfterAmount.Text =
+			"Max Level"
+
+		setButton(
 			card,
-			"MAXIMUM LEVEL",
-			false,
-			Colors.Primary,
-			Colors.PrimaryDark
+			"Maximum Level",
+			false
 		)
 
 		return
 	end
 
 
-	local upgradeCost =
+	card.AfterTitle.Text =
+		"Next Design"
+
+	card.AfterAmount.Text =
+		`Level {currentLevel + 1}`
+
+
+	local cost =
 		currentConfig
 		and currentConfig.UpgradeCost
 
 
-	if typeof(upgradeCost) ~= "number"
-		or upgradeCost < 0 then
+	if typeof(cost)
+		~= "number" then
 
-		setCardButtonState(
+		setButton(
 			card,
-			"UNAVAILABLE",
-			false,
-			Colors.Primary,
-			Colors.PrimaryDark
+			"Unavailable",
+			false
 		)
 
 		return
 	end
 
 
-	setCardButtonState(
+	setButton(
 		card,
-		`UPGRADE STAND  •  ${math.floor(upgradeCost)}`,
-		requestPending == nil,
-		Colors.Primary,
-		Colors.PrimaryDark
+		`Upgrade - {formatCurrency(cost)}`,
+		requestPending == nil
 	)
+end
+
+
+--==================================================
+-- GAMEPLAY CARD VALUES
+--==================================================
+
+local function getNextValueText(
+	upgradeName: string,
+	currentLevel: number
+): string
+
+	local nextDefinition =
+		getDefinition(
+			upgradeName,
+			currentLevel + 1
+		)
+
+
+	if not nextDefinition then
+		return "Max Level"
+	end
+
+
+	if upgradeName
+		== "QueueCapacity" then
+
+		local capacity =
+			nextDefinition.Capacity
+
+
+		if typeof(capacity)
+			~= "number" then
+
+			return "--"
+		end
+
+
+		local rounded =
+			math.floor(
+				capacity
+			)
+
+
+		if rounded == 1 then
+			return "1 Customer"
+		end
+
+
+		return `{rounded} Customers`
+	end
+
+
+	if upgradeName
+		== "SaleValue" then
+
+		if typeof(
+			nextDefinition.SaleValue
+		) ~= "number" then
+
+			return "--"
+		end
+
+
+		return formatCurrency(
+			nextDefinition.SaleValue
+		)
+	end
+
+
+	if upgradeName
+		== "ServingSpeed" then
+
+		if typeof(
+			nextDefinition.Cooldown
+		) ~= "number" then
+
+			return "--"
+		end
+
+
+		return string.format(
+			"%.2fs",
+			nextDefinition.Cooldown
+		)
+	end
+
+
+	return "--"
+end
+
+
+local function configureCardText(
+	upgradeName: string,
+	card: UpgradeCard
+)
+	local config =
+		getGameplayConfig(
+			upgradeName
+		)
+
+
+	if config
+		and typeof(config.DisplayName)
+			== "string" then
+
+		card.Title.Text =
+			config.DisplayName
+	else
+		card.Title.Text =
+			upgradeName
+	end
+
+
+	if config
+		and typeof(config.Description)
+			== "string" then
+
+		card.Subtitle.Text =
+			config.Description
+	else
+		card.Subtitle.Text =
+			""
+	end
+
+
+	card.CurrentTitle.Text =
+		"Current Level"
+
+	card.AfterTitle.Text =
+		"After Upgrade"
 end
 
 
@@ -2561,40 +1605,48 @@ local function updateGameplayCard(
 	local upgradeName =
 		state.UpgradeName
 
+
 	if not upgradeName then
 		return
 	end
 
 
 	local card =
-		cards[upgradeName]
+		cards[
+			upgradeName
+		]
+
 
 	if not card then
 		return
 	end
 
 
+	configureCardText(
+		upgradeName,
+		card
+	)
+
+
 	if not state.Success
 		and state.CurrentLevel == nil then
 
-		card.LevelLabel.Text =
-			"-- / --"
-
-		card.ValueLabel.Text =
+		card.CurrentAmount.Text =
 			"--"
 
-		card.ProgressFill.Size =
-			UDim2.fromScale(
-				0,
-				1
-			)
+		card.AfterAmount.Text =
+			"--"
 
-		setCardButtonState(
+		setProgress(
 			card,
-			"UNAVAILABLE",
-			false,
-			Colors.Success,
-			Colors.SuccessDark
+			0,
+			1
+		)
+
+		setButton(
+			card,
+			"Unavailable",
+			false
 		)
 
 		return
@@ -2602,136 +1654,87 @@ local function updateGameplayCard(
 
 
 	local currentLevel =
-		state.CurrentLevel or 0
+		state.CurrentLevel
+		or 0
 
 	local maximumLevel =
-		state.MaximumLevel or 0
+		state.MaximumLevel
+		or 0
 
 
-	card.LevelLabel.Text =
+	card.CurrentAmount.Text =
 		`{currentLevel} / {maximumLevel}`
 
 
-	if upgradeName
-			== "ServingSpeed" then
-
-		card.ValueCaption.Text =
-			"SERVICE TIME"
-
-		card.ValueLabel.Text =
-			state.CurrentCooldown
-			and string.format(
-				"%.2fs",
-				state.CurrentCooldown
-			)
-			or "--"
-
-	elseif upgradeName
-			== "SaleValue" then
-
-		card.ValueCaption.Text =
-			"CASH PER SALE"
-
-		card.ValueLabel.Text =
-			state.CurrentSaleValue
-			and string.format(
-				"$%d",
-				state.CurrentSaleValue
-			)
-			or "--"
-
-	elseif upgradeName
-			== "QueueCapacity" then
-
-		card.ValueCaption.Text =
-			"QUEUE SIZE"
-
-		local capacity =
-			state.CurrentQueueCapacity
-
-		if typeof(capacity)
-				== "number" then
-
-			local roundedCapacity =
-				math.max(
-					1,
-					math.floor(
-						capacity
-					)
-				)
-
-			if roundedCapacity == 1 then
-				card.ValueLabel.Text =
-					"1 CUSTOMER"
-			else
-				card.ValueLabel.Text =
-					`{roundedCapacity} CUSTOMERS`
-			end
-		else
-			card.ValueLabel.Text =
-				"--"
-		end
-	end
-
-
-	local progress = 0
-
-	if maximumLevel > 0 then
-		progress =
-			math.clamp(
-				currentLevel
-					/ maximumLevel,
-				0,
-				1
-			)
-	end
-
-
-	card.ProgressFill.Size =
-		UDim2.fromScale(
-			progress,
-			1
-		)
+	setProgress(
+		card,
+		currentLevel,
+		maximumLevel
+	)
 
 
 	if currentLevel
-			>= maximumLevel then
+		>= maximumLevel then
 
-		setCardButtonState(
+		card.AfterTitle.Text =
+			"Status"
+
+		card.AfterAmount.Text =
+			"Max Level"
+
+		setButton(
 			card,
-			"MAXIMUM LEVEL",
-			false,
-			Colors.Success,
-			Colors.SuccessDark
+			"Maximum Level",
+			false
 		)
 
 		return
 	end
 
 
-	setCardButtonState(
+	card.AfterTitle.Text =
+		"After Upgrade"
+
+	card.AfterAmount.Text =
+		getNextValueText(
+			upgradeName,
+			currentLevel
+		)
+
+
+	if typeof(state.NextCost)
+		~= "number" then
+
+		setButton(
+			card,
+			"Unavailable",
+			false
+		)
+
+		return
+	end
+
+
+	setButton(
 		card,
-		`UPGRADE  •  ${state.NextCost or 0}`,
-		requestPending == nil,
-		Colors.Success,
-		Colors.SuccessDark
+
+		`Upgrade - {formatCurrency(
+			state.NextCost
+		)}`,
+
+		requestPending == nil
 	)
 end
 
 
-local function requestGameplayUpgradeState(
+--==================================================
+-- REQUEST GAMEPLAY STATES
+--==================================================
+
+local function requestGameplayState(
 	upgradeName: string
 )
 	if not selectedBusinessId then
-		updateGameplayCard({
-			Success = false,
-			Message =
-				"No lemonade stand is selected.",
-
-			UpgradeName =
-				upgradeName,
-		})
-
 		return
 	end
 
@@ -2741,22 +1744,34 @@ local function requestGameplayUpgradeState(
 
 
 	local success, result =
-		pcall(function()
-			return getUpgradeStateRemote
-				:InvokeServer(
-					requestedBusinessId,
-					upgradeName
-				)
-		end)
+		pcall(
+			function()
+				return getUpgradeStateRemote
+					:InvokeServer(
+						requestedBusinessId,
+						upgradeName
+					)
+			end
+		)
+
+
+	if selectedBusinessId
+		~= requestedBusinessId then
+
+		return
+	end
 
 
 	if not success
-		or type(result) ~= "table" then
+		or type(result)
+			~= "table" then
 
 		updateGameplayCard({
-			Success = false,
+			Success =
+				false,
+
 			Message =
-				"The upgrade server could not be reached.",
+				"Unable to load upgrade.",
 
 			UpgradeName =
 				upgradeName,
@@ -2768,9 +1783,15 @@ local function requestGameplayUpgradeState(
 
 	if result.BusinessId
 		and result.BusinessId
-			~= selectedBusinessId then
+			~= requestedBusinessId then
 
 		return
+	end
+
+
+	if not result.UpgradeName then
+		result.UpgradeName =
+			upgradeName
 	end
 
 
@@ -2784,7 +1805,7 @@ local function refreshGameplayCards()
 	for _, upgradeName in
 		GAMEPLAY_UPGRADE_ORDER
 	do
-		requestGameplayUpgradeState(
+		requestGameplayState(
 			upgradeName
 		)
 	end
@@ -2793,118 +1814,308 @@ end
 
 local function refreshAllCards()
 	updateAppearanceCard()
+
 	refreshGameplayCards()
 end
 
 
-local function reconnectSelectedStand(): boolean
-	if not selectedBusinessId then
-		return false
-	end
+--==================================================
+-- BUTTON ANIMATIONS
+--==================================================
 
-	local replacement =
-		findOwnedStandByBusinessId(
-			selectedBusinessId
-		)
-
-	if not replacement then
-		return false
-	end
-
-	selectedStand =
-		replacement
-
-	return true
-end
-
-
-if appearanceCard then
-	appearanceCard
-		.PurchaseButton
-		.Activated:Connect(
-			function()
-				if requestPending
-					or not selectedStand
-					or not selectedStand.Parent
-					or not appearanceCard
-						.PurchaseButton.Active then
-
-					return
-				end
-
-
-				requestPending =
-					"StandAppearance"
-
-				setCardButtonState(
-					appearanceCard,
-					"UPGRADING STAND...",
-					false,
-					Colors.Primary,
-					Colors.PrimaryDark
-				)
-
-				requestAppearanceUpgradeRemote
-					:FireServer(
-						selectedStand
-					)
-			end
-		)
-end
-
-
-for upgradeName, card in
-	cards
-do
-	card.PurchaseButton
-		.Activated:Connect(
-			function()
-				if requestPending
-					or not card
-						.PurchaseButton.Active
-					or not selectedBusinessId then
-
-					return
-				end
-
-
-				requestPending =
-					upgradeName
-
-				setCardButtonState(
-					card,
-					"PURCHASING...",
-					false,
-					Colors.Success,
-					Colors.SuccessDark
-				)
-
-				purchaseUpgradeRemote
-					:FireServer(
-						selectedBusinessId,
-						upgradeName
-					)
-			end
-		)
-end
-
-
-local function openUpgradeMenuForStand(
-	businessId: string
+local function prepareButton(
+	button: TextButton
 )
-	if menuOpen then
+	button.Active =
+		true
+
+	button.Selectable =
+		true
+
+	button.AutoButtonColor =
+		false
+
+
+	for _, child in
+		button:GetDescendants()
+	do
+		if child:IsA("GuiObject") then
+			child.Active =
+				false
+
+			child.Selectable =
+				false
+		end
+	end
+
+
+	local scale =
+		button:FindFirstChild(
+			"ButtonScale"
+		)
+
+
+	if scale
+		and not scale:IsA(
+			"UIScale"
+		) then
+
+		scale:Destroy()
+
+		scale =
+			nil
+	end
+
+
+	if not scale then
+		scale =
+			Instance.new(
+				"UIScale"
+			)
+
+		scale.Name =
+			"ButtonScale"
+
+		scale.Parent =
+			button
+	end
+
+
+	scale =
+		scale :: UIScale
+
+
+	local tween:
+		Tween? =
+		nil
+
+
+	local function tweenTo(
+		value: number,
+		duration: number
+	)
+		if tween then
+			tween:Cancel()
+		end
+
+
+		tween =
+			TweenService:Create(
+				scale,
+
+				TweenInfo.new(
+					duration,
+					Enum.EasingStyle.Quad,
+					Enum.EasingDirection.Out
+				),
+
+				{
+					Scale =
+						value,
+				}
+			)
+
+
+		tween:Play()
+	end
+
+
+	button.MouseEnter:Connect(
+		function()
+			if not button.Active then
+				return
+			end
+
+
+			tweenTo(
+				1.04,
+				0.1
+			)
+		end
+	)
+
+
+	button.MouseLeave:Connect(
+		function()
+			tweenTo(
+				1,
+				0.1
+			)
+		end
+	)
+
+
+	button.MouseButton1Down:Connect(
+		function()
+			if not button.Active then
+				return
+			end
+
+
+			tweenTo(
+				0.95,
+				0.06
+			)
+		end
+	)
+
+
+	button.MouseButton1Up:Connect(
+		function()
+			if not button.Active then
+				return
+			end
+
+
+			tweenTo(
+				1.04,
+				0.07
+			)
+		end
+	)
+end
+
+
+prepareButton(
+	closeButton
+)
+
+
+for _, card in cards do
+	prepareButton(
+		card.BuyButton
+	)
+end
+
+
+--==================================================
+-- OPEN / CLOSE
+--==================================================
+
+local function closeMenu()
+	if not menuOpen then
 		return
 	end
 
-	if not selectStandByBusinessId(
-		businessId
-	) or not selectedBusinessId then
 
-		showStatus(
-			"The selected lemonade stand could not be found.",
-			true
+	menuOpen =
+		false
+
+	requestPending =
+		nil
+
+	animationVersion +=
+		1
+
+
+	local version =
+		animationVersion
+
+
+	stopMenuTweens()
+
+
+	scaleTween =
+		TweenService:Create(
+			menuScale,
+
+			TweenInfo.new(
+				CLOSE_TIME,
+				Enum.EasingStyle.Quart,
+				Enum.EasingDirection.In
+			),
+
+			{
+				Scale =
+					CLOSE_SCALE,
+			}
 		)
 
+
+	positionTween =
+		TweenService:Create(
+			main,
+
+			TweenInfo.new(
+				CLOSE_TIME,
+				Enum.EasingStyle.Quad,
+				Enum.EasingDirection.In
+			),
+
+			{
+				Position =
+					offsetPosition(
+						originalMainPosition,
+						CLOSE_OFFSET
+					),
+			}
+		)
+
+
+	scaleTween:Play()
+	positionTween:Play()
+
+
+	scaleTween.Completed:Once(
+		function()
+			if version
+					~= animationVersion
+				or menuOpen then
+
+				return
+			end
+
+
+			--
+			-- IMPORTANT:
+			-- ScreenGui stays enabled.
+			-- Only the Main frame disappears.
+			--
+			main.Visible =
+				false
+
+
+			selectedStand =
+				nil
+
+			selectedBusinessId =
+				nil
+
+
+			setHiddenPose()
+		end
+	)
+end
+
+
+local function openMenuForStand(
+	businessId: string
+)
+	if type(businessId)
+			~= "string"
+		or businessId == "" then
+
+		warn(
+			"ManageStand was opened without a valid BusinessId."
+		)
+
+		return
+	end
+
+
+	if not selectStandByBusinessId(
+		businessId
+	) then
+
+		warn(
+			`Could not find lemonade stand "{businessId}".`
+		)
+
+		return
+	end
+
+
+	if not selectedBusinessId then
 		return
 	end
 
@@ -2914,110 +2125,218 @@ local function openUpgradeMenuForStand(
 			selectedBusinessId
 		)
 
-	interface.TitleLabel.Text =
-		`LEMONADE STAND #{standNumber}`
 
-	interface.SubtitleLabel.Text =
-		"Appearance and upgrades apply only to this stand."
+	mainTitle.Text =
+		`Manage Lemonade Stand #{standNumber}`
+
+	resetSubtitle()
 
 
 	requestPending =
 		nil
 
+
+	updateStatistics()
+
+	refreshAllCards()
+
+
+	animationVersion +=
+		1
+
+
+	local version =
+		animationVersion
+
+
+	stopMenuTweens()
+
+
 	menuOpen =
 		true
 
-	updateResponsiveLayout()
 
-	interface.Overlay.Visible =
+	--
+	-- CRITICAL FIX:
+	--
+	-- ManageStand is already enabled.
+	-- Main itself was invisible in Studio, therefore
+	-- Main must explicitly become visible here.
+	--
+	manageGui.Enabled =
 		true
 
-	interface.Overlay.BackgroundTransparency =
-		1
-
-	interface.PanelScale.Scale =
-		0.92
+	main.Visible =
+		true
 
 
-	TweenService:Create(
-		interface.Overlay,
-		TweenInfo.new(
-			0.18,
-			Enum.EasingStyle.Quad,
-			Enum.EasingDirection.Out
-		),
-		{
-			BackgroundTransparency =
-				0.28,
-		}
-	):Play()
+	menuScale.Scale =
+		OPEN_START_SCALE
+
+	main.Position =
+		offsetPosition(
+			originalMainPosition,
+			OPEN_START_OFFSET
+		)
 
 
-	TweenService:Create(
-		interface.PanelScale,
-		TweenInfo.new(
-			0.22,
-			Enum.EasingStyle.Back,
-			Enum.EasingDirection.Out
-		),
-		{
-			Scale = 1,
-		}
-	):Play()
+	task.defer(
+		function()
+			if version
+					~= animationVersion
+				or not menuOpen
+				or not main.Visible then
+
+				return
+			end
 
 
-	updateStatistics()
-	refreshAllCards()
+			scaleTween =
+				TweenService:Create(
+					menuScale,
+
+					TweenInfo.new(
+						OPEN_TIME,
+						Enum.EasingStyle.Back,
+						Enum.EasingDirection.Out
+					),
+
+					{
+						Scale =
+							1,
+					}
+				)
+
+
+			positionTween =
+				TweenService:Create(
+					main,
+
+					TweenInfo.new(
+						OPEN_TIME - 0.03,
+						Enum.EasingStyle.Quart,
+						Enum.EasingDirection.Out
+					),
+
+					{
+						Position =
+							originalMainPosition,
+					}
+				)
+
+
+			scaleTween:Play()
+			positionTween:Play()
+		end
+	)
 end
 
 
-openUpgradeMenuEvent.Event:Connect(
-	function(businessId: string)
-		if typeof(businessId)
-				~= "string" then
+--==================================================
+-- APPEARANCE PURCHASE
+--==================================================
 
-			return
-		end
-
-		openUpgradeMenuForStand(
-			businessId
-		)
-	end
-)
-
-
-interface.CloseButton
+cards.StandAppearance
+	.BuyButton
 	.Activated:Connect(
-		closeUpgradeMenu
+		function()
+			local card =
+				cards.StandAppearance
+
+
+			if requestPending
+				or not card.BuyButton.Active
+				or not selectedStand
+				or not selectedStand.Parent then
+
+				return
+			end
+
+
+			requestPending =
+				"StandAppearance"
+
+
+			disableAllButtons()
+
+
+			setButton(
+				card,
+				"Upgrading...",
+				false
+			)
+
+
+			requestAppearanceUpgradeRemote
+				:FireServer(
+					selectedStand
+				)
+		end
 	)
 
 
-UserInputService.InputBegan:Connect(
-	function(
-		input,
-		gameProcessed
+--==================================================
+-- GAMEPLAY PURCHASES
+--==================================================
+
+for _, upgradeName in
+	GAMEPLAY_UPGRADE_ORDER
+do
+	local card =
+		cards[
+			upgradeName
+		]
+
+
+	card.BuyButton.Activated:Connect(
+		function()
+			if requestPending
+				or not card.BuyButton.Active
+				or not selectedBusinessId then
+
+				return
+			end
+
+
+			requestPending =
+				upgradeName
+
+
+			disableAllButtons()
+
+
+			setButton(
+				card,
+				"Purchasing...",
+				false
+			)
+
+
+			purchaseUpgradeRemote
+				:FireServer(
+					selectedBusinessId,
+					upgradeName
+				)
+		end
 	)
-		if gameProcessed
-			or not menuOpen then
+end
 
-			return
-		end
 
-		if input.KeyCode
-				== Enum.KeyCode.Escape
-			or input.KeyCode
-				== Enum.KeyCode.ButtonB then
-
-			closeUpgradeMenu()
-		end
-	end
-)
-
+--==================================================
+-- GAMEPLAY RESULT
+--==================================================
 
 upgradeResultRemote.OnClientEvent:Connect(
 	function(
 		result: GameplayUpgradeState
 	)
+		if type(result)
+			~= "table" then
+
+			return
+		end
+
+
 		if result.BusinessId
 			and selectedBusinessId
 			and result.BusinessId
@@ -3030,79 +2349,159 @@ upgradeResultRemote.OnClientEvent:Connect(
 		requestPending =
 			nil
 
+
 		showStatus(
-			result.Message,
+			result.Message
+				or (
+					result.Success
+					and "Upgrade purchased!"
+					or "Upgrade failed."
+				),
+
 			not result.Success
 		)
 
+
 		updateStatistics()
+
 		refreshAllCards()
 	end
 )
 
 
-appearanceUpgradeResultRemote.OnClientEvent:Connect(
-	function(
-		success: boolean,
-		message: string,
-		_level: number?
-	)
-		if requestPending
+--==================================================
+-- APPEARANCE RESULT
+--==================================================
+
+appearanceUpgradeResultRemote
+	.OnClientEvent:Connect(
+		function(
+			success: boolean,
+			message: string,
+			_level: number?
+		)
+			if requestPending
 				~= "StandAppearance" then
+
+				return
+			end
+
+
+			requestPending =
+				nil
+
+
+			showStatus(
+				message,
+				not success
+			)
+
+
+			if not success then
+				refreshAllCards()
+
+				return
+			end
+
+
+			--
+			-- Appearance upgrades replace the stand
+			-- model. Reconnect using its BusinessId.
+			--
+			task.spawn(
+				function()
+					local startedAt =
+						time()
+
+
+					while menuOpen
+						and time()
+							- startedAt < 4 do
+
+						if reconnectSelectedStand() then
+							updateStatistics()
+
+							refreshAllCards()
+
+							return
+						end
+
+
+						task.wait(
+							0.05
+						)
+					end
+
+
+					if menuOpen then
+						showStatus(
+							"The upgraded stand could not be found.",
+							true
+						)
+
+						closeMenu()
+					end
+				end
+			)
+		end
+	)
+
+
+--==================================================
+-- CLOSE BUTTON
+--==================================================
+
+closeButton.MouseButton1Click:Connect(
+	function()
+		closeMenu()
+	end
+)
+
+--==================================================
+-- MANAGEMENT BUTTON EVENT
+--==================================================
+
+openUpgradeMenuEvent.Event:Connect(
+	function(
+		businessId: string
+	)
+		openMenuForStand(
+			businessId
+		)
+	end
+)
+
+
+--==================================================
+-- ESCAPE / CONTROLLER B
+--==================================================
+
+UserInputService.InputBegan:Connect(
+	function(
+		input: InputObject,
+		gameProcessed: boolean
+	)
+		if gameProcessed
+			or not menuOpen then
 
 			return
 		end
 
 
-		requestPending =
-			nil
+		if input.KeyCode
+				== Enum.KeyCode.Escape
+			or input.KeyCode
+				== Enum.KeyCode.ButtonB then
 
-
-		if success then
-			task.defer(function()
-				local startedAt =
-					time()
-
-				while time()
-						- startedAt < 3 do
-
-					if reconnectSelectedStand() then
-						updateStatistics()
-						refreshAllCards()
-						return
-					end
-
-					task.wait(
-						0.05
-					)
-				end
-
-
-				closeUpgradeMenu()
-
-				selectedStand =
-					nil
-
-				selectedBusinessId =
-					nil
-
-				showStatus(
-					"The upgraded stand could not be found.",
-					true
-				)
-			end)
-		else
-			refreshAllCards()
+			closeMenu()
 		end
-
-
-		showStatus(
-			message,
-			not success
-		)
 	end
 )
 
+
+--==================================================
+-- CASH CHANGES
+--==================================================
 
 local leaderstats =
 	player:WaitForChild(
@@ -3115,58 +2514,50 @@ local cash =
 	)
 
 
-local function updateCashLabel()
-	interface.CashLabel.Text =
-		FormatNumber.Currency(
-			cash.Value
-		)
-end
-
-
-updateCashLabel()
-
-
 cash:GetPropertyChangedSignal(
 	"Value"
-):Connect(function()
-	updateCashLabel()
+):Connect(
+	function()
+		if not menuOpen
+			or requestPending then
 
-	if interface.Overlay.Visible
-		and not requestPending then
+			return
+		end
+
 
 		refreshAllCards()
 	end
-end)
+)
 
 
-task.spawn(function()
-	while true do
-		if interface.Overlay.Visible then
-			if selectedStand
-				and selectedStand.Parent then
+--==================================================
+-- LIVE STATISTICS
+--==================================================
 
-				updateStatistics()
+task.spawn(
+	function()
+		while true do
+			if menuOpen
+				and main.Visible then
 
-			elseif requestPending
-					~= "StandAppearance" then
+				if selectedStand
+					and selectedStand.Parent then
 
-				if not reconnectSelectedStand() then
-					closeUpgradeMenu()
+					updateStatistics()
 
-					requestPending =
-						nil
+				elseif requestPending
+						~= "StandAppearance" then
 
-					selectedStand =
-						nil
-
-					selectedBusinessId =
-						nil
+					if not reconnectSelectedStand() then
+						closeMenu()
+					end
 				end
 			end
-		end
 
-		task.wait(
-			0.25
-		)
+
+			task.wait(
+				0.25
+			)
+		end
 	end
-end)
+)
