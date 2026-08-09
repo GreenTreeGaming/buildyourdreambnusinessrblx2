@@ -250,73 +250,6 @@ main.Visible =
 template.Visible =
 	false
 
-
---==================================================
--- PRESERVE STUDIO SCROLLING LAYOUT
---==================================================
-
---
--- Do NOT change CellSize, CellPadding, Template.Size,
--- AutomaticCanvasSize, or the layout type here.
---
--- The ManageStand interface is already designed in
--- Studio. The script only needs to clone Template.
---
-
-local scrollingLayout =
-	scrollingFrame:FindFirstChildWhichIsA(
-		"UIGridLayout"
-	)
-	or scrollingFrame:FindFirstChildWhichIsA(
-		"UIListLayout"
-	)
-
-if not scrollingLayout then
-	warn(
-		"ManageStand.ScrollingFrame is missing its UIGridLayout/UIListLayout."
-	)
-end
-
-
-local function updateScrollingCanvas()
-	if not scrollingLayout then
-		return
-	end
-
-	local contentHeight =
-		scrollingLayout.AbsoluteContentSize.Y
-
-	local padding =
-		scrollingFrame:FindFirstChildWhichIsA(
-			"UIPadding"
-		)
-
-	if padding then
-		contentHeight +=
-			padding.PaddingTop.Offset
-			+ padding.PaddingBottom.Offset
-	end
-
-	scrollingFrame.CanvasSize =
-		UDim2.new(
-			0,
-			0,
-			0,
-			contentHeight + 8
-		)
-end
-
-
-if scrollingLayout then
-	scrollingLayout
-		:GetPropertyChangedSignal(
-			"AbsoluteContentSize"
-		)
-		:Connect(
-			updateScrollingCanvas
-		)
-end
-
 --==================================================
 -- REMOVE OLD GENERATED UI IF IT EXISTS
 --==================================================
@@ -968,10 +901,6 @@ local function createCard(
 	clone.LayoutOrder =
 		layoutOrder
 
-	--
-	-- Preserve everything designed in Studio.
-	-- In particular, do not touch Size or Position.
-	--
 	clone.Visible =
 		true
 
@@ -979,13 +908,9 @@ local function createCard(
 		scrollingFrame
 
 
-	local card =
-		getCard(
-			clone
-		)
-
-
-	return card
+	return getCard(
+		clone
+	)
 end
 
 -- Remove any clones left behind from a previous
