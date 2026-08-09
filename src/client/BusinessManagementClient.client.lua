@@ -22,18 +22,15 @@ local playerGui =
 		"PlayerGui"
 	)
 
-
 local plotsFolder =
 	Workspace:WaitForChild(
 		"Plots"
 	)
 
-
 local remotes =
 	ReplicatedStorage:WaitForChild(
 		"Remotes"
 	)
-
 
 local billboardsFolder =
 	ReplicatedStorage:WaitForChild(
@@ -47,17 +44,41 @@ local businessManagerTemplate =
 	) :: BillboardGui
 
 
+local removeGui =
+	playerGui:WaitForChild(
+		"RemoveUI"
+	) :: ScreenGui
+
+local removeFrame =
+	removeGui:WaitForChild(
+		"Frame"
+	) :: Frame
+
+local removeOptions =
+	removeFrame:WaitForChild(
+		"Options"
+	) :: Frame
+
+local cancelRemoveButton =
+	removeOptions:WaitForChild(
+		"Cancel"
+	) :: TextButton
+
+local confirmRemoveButton =
+	removeOptions:WaitForChild(
+		"Remove"
+	) :: TextButton
+
+
 local requestEditRemote =
 	remotes:WaitForChild(
 		"RequestEditBusiness"
 	)
 
-
 local requestRemoveRemote =
 	remotes:WaitForChild(
 		"RequestRemoveBusiness"
 	)
-
 
 local interactionResultRemote =
 	remotes:WaitForChild(
@@ -72,24 +93,141 @@ local UITheme =
 			:WaitForChild("UITheme")
 	)
 
-
 local Colors =
 	UITheme.Colors
-
-local Fonts =
-	UITheme.Fonts
 
 
 local BUSINESS_NAME =
 	"LemonadeStand"
 
-
 local MANAGEMENT_DISTANCE =
 	22
 
-
 local UPDATE_INTERVAL =
 	0.1
+
+
+--==================================================
+-- REMOVE UI ANIMATION
+--==================================================
+
+local REMOVE_OPEN_SCALE =
+	0.86
+
+local REMOVE_CLOSE_SCALE =
+	0.9
+
+local REMOVE_OPEN_TIME =
+	0.26
+
+local REMOVE_CLOSE_TIME =
+	0.16
+
+local REMOVE_START_OFFSET =
+	18
+
+
+local removeOriginalPosition =
+	removeFrame.Position
+
+local removeScale =
+	removeFrame:FindFirstChild(
+		"PopupScale"
+	)
+
+if removeScale
+	and not removeScale:IsA(
+		"UIScale"
+	) then
+
+	removeScale:Destroy()
+	removeScale = nil
+end
+
+if not removeScale then
+	removeScale =
+		Instance.new(
+			"UIScale"
+		)
+
+	removeScale.Name =
+		"PopupScale"
+
+	removeScale.Parent =
+		removeFrame
+end
+
+removeScale =
+	removeScale :: UIScale
+
+
+local removeOpen =
+	false
+
+local removeAnimating =
+	false
+
+local removeAnimationVersion =
+	0
+
+local removeScaleTween:
+	Tween? =
+	nil
+
+local removePositionTween:
+	Tween? =
+	nil
+
+
+local function getOffsetPosition(
+	position: UDim2,
+	yOffset: number
+): UDim2
+	return UDim2.new(
+		position.X.Scale,
+		position.X.Offset,
+
+		position.Y.Scale,
+		position.Y.Offset
+			+ yOffset
+	)
+end
+
+
+local function stopRemoveTweens()
+	if removeScaleTween then
+		removeScaleTween:Cancel()
+
+		removeScaleTween =
+			nil
+	end
+
+	if removePositionTween then
+		removePositionTween:Cancel()
+
+		removePositionTween =
+			nil
+	end
+end
+
+
+local function applyRemoveHiddenPose()
+	removeScale.Scale =
+		REMOVE_OPEN_SCALE
+
+	removeFrame.Position =
+		getOffsetPosition(
+			removeOriginalPosition,
+			REMOVE_START_OFFSET
+		)
+end
+
+
+-- Start completely hidden.
+removeGui.Enabled =
+	false
+
+applyRemoveHiddenPose()
 
 
 --==================================================
@@ -104,7 +242,6 @@ local function getOpenUpgradeMenuEvent():
 			"OpenUpgradeMenu"
 		)
 
-
 	if existing then
 		if existing:IsA(
 			"BindableEvent"
@@ -112,7 +249,6 @@ local function getOpenUpgradeMenuEvent():
 
 			return existing
 		end
-
 
 		existing:Destroy()
 	end
@@ -123,13 +259,11 @@ local function getOpenUpgradeMenuEvent():
 			"BindableEvent"
 		)
 
-
 	event.Name =
 		"OpenUpgradeMenu"
 
 	event.Parent =
 		playerGui
-
 
 	return event
 end
@@ -140,27 +274,23 @@ local openUpgradeMenuEvent =
 
 
 --==================================================
--- CURRENT MANAGEMENT BILLBOARD
+-- MANAGEMENT STATE
 --==================================================
 
 local managementGui:
 	BillboardGui? =
 	nil
 
-
 local managementStand:
 	Model? =
 	nil
-
 
 local managementRoot:
 	Frame? =
 	nil
 
-
 local managementRootPosition =
 	UDim2.new()
-
 
 local managementRootSize =
 	UDim2.new()
@@ -181,10 +311,8 @@ local managementActivePositionTween:
 local managementVisible =
 	false
 
-
 local managementVisibilityVersion =
 	0
-
 
 local managementCreationPending =
 	false
@@ -193,56 +321,176 @@ local managementCreationPending =
 local removeRequestPending =
 	false
 
-
 local pendingRemoveBusinessId:
 	string? =
 	nil
 
 
 --==================================================
--- REMOVE CONFIRMATION
+-- TOAST
 --==================================================
 
-local confirmationScreen:
+local toastGui:
 	ScreenGui? =
 	nil
-
-
-local confirmationOverlay:
-	Frame? =
-	nil
-
-
-local confirmationWindow:
-	Frame? =
-	nil
-
-
-local confirmationScale:
-	UIScale? =
-	nil
-
-
-local confirmationOpen =
-	false
-
-
-local confirmationAnimating =
-	false
-
-
-local confirmRemoveButton:
-	TextButton? =
-	nil
-
 
 local toastLabel:
 	TextLabel? =
 	nil
 
-
 local toastVersion =
 	0
+
+
+local function createToast()
+	local existing =
+		playerGui:FindFirstChild(
+			"BusinessManagementToast"
+		)
+
+	if existing then
+		existing:Destroy()
+	end
+
+
+	local gui =
+		Instance.new(
+			"ScreenGui"
+		)
+
+	gui.Name =
+		"BusinessManagementToast"
+
+	gui.ResetOnSpawn =
+		false
+
+	gui.IgnoreGuiInset =
+		true
+
+	gui.DisplayOrder =
+		150
+
+	gui.Parent =
+		playerGui
+
+
+	local label =
+		Instance.new(
+			"TextLabel"
+		)
+
+	label.Name =
+		"Toast"
+
+	label.AnchorPoint =
+		Vector2.new(
+			0.5,
+			0
+		)
+
+	label.Position =
+		UDim2.new(
+			0.5,
+			0,
+			0,
+			18
+		)
+
+	label.Size =
+		UDim2.fromOffset(
+			560,
+			50
+		)
+
+	label.BackgroundColor3 =
+		Colors.Surface
+
+	label.BackgroundTransparency =
+		0.04
+
+	label.BorderSizePixel =
+		0
+
+	label.TextScaled =
+		true
+
+	label.TextWrapped =
+		true
+
+	label.Visible =
+		false
+
+	label.Parent =
+		gui
+
+
+	UITheme.AddCorner(
+		label,
+		0.15
+	)
+
+	UITheme.AddStroke(
+		label,
+		Colors.Stroke,
+		1.5,
+		0.2
+	)
+
+
+	toastGui =
+		gui
+
+	toastLabel =
+		label
+end
+
+
+local function showToast(
+	message: string,
+	isError: boolean?
+)
+	if not toastLabel then
+		return
+	end
+
+
+	toastVersion += 1
+
+	local version =
+		toastVersion
+
+
+	toastLabel.Text =
+		message
+
+	toastLabel.TextColor3 =
+		isError
+		and Colors.Danger
+		or Colors.Success
+
+	toastLabel.Visible =
+		true
+
+
+	task.delay(
+		3,
+		function()
+			if version
+				~= toastVersion then
+
+				return
+			end
+
+			if toastLabel then
+				toastLabel.Visible =
+					false
+			end
+		end
+	)
+end
+
+
+createToast()
 
 
 --==================================================
@@ -266,7 +514,6 @@ local function getOwnedPlot():
 				plotName
 			)
 
-
 		if plot
 			and plot:IsA("Model")
 			and plot:GetAttribute(
@@ -279,8 +526,8 @@ local function getOwnedPlot():
 
 
 	for _, plot in
-		plotsFolder:GetChildren() do
-
+		plotsFolder:GetChildren()
+	do
 		if plot:IsA("Model")
 			and plot:GetAttribute(
 				"OwnerUserId"
@@ -301,7 +548,6 @@ local function getCharacterRoot():
 	local character =
 		player.Character
 
-
 	if not character then
 		return nil
 	end
@@ -311,7 +557,6 @@ local function getCharacterRoot():
 		character:FindFirstChild(
 			"HumanoidRootPart"
 		)
-
 
 	if root
 		and root:IsA(
@@ -329,7 +574,6 @@ end
 local function isLemonadeStand(
 	instance: Instance
 ): boolean
-
 	if not instance:IsA(
 		"Model"
 	) then
@@ -342,7 +586,6 @@ local function isLemonadeStand(
 		instance:GetAttribute(
 			"BusinessType"
 		)
-
 
 	if businessType
 		== BUSINESS_NAME then
@@ -371,7 +614,6 @@ local function getClosestOwnedStand():
 	local plot =
 		getOwnedPlot()
 
-
 	if not plot then
 		return nil
 	end
@@ -382,7 +624,6 @@ local function getClosestOwnedStand():
 			"PlacedBusinesses"
 		)
 
-
 	if not placedBusinesses then
 		return nil
 	end
@@ -390,7 +631,6 @@ local function getClosestOwnedStand():
 
 	local root =
 		getCharacterRoot()
-
 
 	if not root then
 		return nil
@@ -401,14 +641,13 @@ local function getClosestOwnedStand():
 		Model? =
 		nil
 
-
 	local closestDistance =
 		math.huge
 
 
 	for _, child in
-		placedBusinesses:GetChildren() do
-
+		placedBusinesses:GetChildren()
+	do
 		if not child:IsA(
 			"Model"
 		) then
@@ -439,7 +678,6 @@ local function getClosestOwnedStand():
 				true
 			)
 
-
 		local positionPart:
 			BasePart? =
 			nil
@@ -454,7 +692,6 @@ local function getClosestOwnedStand():
 				position
 
 		elseif child.PrimaryPart then
-
 			positionPart =
 				child.PrimaryPart
 		end
@@ -468,7 +705,7 @@ local function getClosestOwnedStand():
 		local distance =
 			(
 				root.Position
-				- positionPart.Position
+					- positionPart.Position
 			).Magnitude
 
 
@@ -502,7 +739,6 @@ local function getUIAdornee(
 				true
 			)
 
-
 		if managementPosition
 			and managementPosition:IsA(
 				"BasePart"
@@ -518,7 +754,6 @@ local function getUIAdornee(
 				true
 			)
 
-
 		if cooldownPosition
 			and cooldownPosition:IsA(
 				"BasePart"
@@ -533,7 +768,6 @@ local function getUIAdornee(
 				"SaleEffectPosition",
 				true
 			)
-
 
 		if salePosition
 			and salePosition:IsA(
@@ -556,7 +790,6 @@ local function getUIAdornee(
 	local existing =
 		findAdornee()
 
-
 	if existing
 		or waitForReplication
 			~= true then
@@ -576,11 +809,9 @@ local function getUIAdornee(
 		local adornee =
 			findAdornee()
 
-
 		if adornee then
 			return adornee
 		end
-
 
 		task.wait(
 			0.1
@@ -619,60 +850,7 @@ end
 
 
 --==================================================
--- TOAST
---==================================================
-
-local function showToast(
-	message: string,
-	isError: boolean?
-)
-	if not toastLabel then
-		return
-	end
-
-
-	toastVersion += 1
-
-
-	local version =
-		toastVersion
-
-
-	toastLabel.Text =
-		message
-
-
-	toastLabel.TextColor3 =
-		isError
-		and Colors.Danger
-		or Colors.Success
-
-
-	toastLabel.Visible =
-		true
-
-
-	task.delay(
-		3,
-		function()
-			if toastVersion
-				~= version then
-
-				return
-			end
-
-
-			if toastLabel then
-				toastLabel.Visible =
-					false
-			end
-		end
-	)
-end
-
-
---==================================================
--- BUTTON HELPERS
+-- BUTTON ANIMATION
 --==================================================
 
 local function prepareButton(
@@ -688,11 +866,12 @@ local function prepareButton(
 		false
 
 
+	-- The visible text is in the X label
+	-- on your Studio-created buttons.
 	local label =
 		button:FindFirstChild(
 			"X"
 		)
-
 
 	if label
 		and label:IsA(
@@ -707,23 +886,19 @@ local function prepareButton(
 	end
 
 
-	for _, descendant in
-		button:GetDescendants() do
+	local scale =
+		button:FindFirstChild(
+			"ButtonScale"
+		)
 
-		if descendant:IsA(
-			"GuiObject"
+	if scale
+		and not scale:IsA(
+			"UIScale"
 		) then
 
-			descendant.Active =
-				false
-		end
+		scale:Destroy()
+		scale = nil
 	end
-
-
-	local scale =
-		button:FindFirstChildOfClass(
-			"UIScale"
-		)
 
 
 	if not scale then
@@ -732,12 +907,19 @@ local function prepareButton(
 				"UIScale"
 			)
 
-		scale.Scale =
-			1
+		scale.Name =
+			"ButtonScale"
 
 		scale.Parent =
 			button
 	end
+
+
+	scale =
+		scale :: UIScale
+
+	scale.Scale =
+		1
 
 
 	local activeTween:
@@ -770,81 +952,381 @@ local function prepareButton(
 				}
 			)
 
-
 		activeTween:Play()
 	end
 
 
-	button.MouseEnter:Connect(function()
-		if button.Active then
+	button.MouseEnter:Connect(
+		function()
+			if not button.Active then
+				return
+			end
+
 			tweenTo(
 				1.045,
 				0.1
 			)
 		end
-	end)
+	)
 
 
-	button.MouseLeave:Connect(function()
-		tweenTo(
-			1,
-			0.1
-		)
-	end)
+	button.MouseLeave:Connect(
+		function()
+			tweenTo(
+				1,
+				0.1
+			)
+		end
+	)
 
 
-	button.MouseButton1Down:Connect(function()
-		if button.Active then
+	button.MouseButton1Down:Connect(
+		function()
+			if not button.Active then
+				return
+			end
+
 			tweenTo(
 				0.94,
 				0.06
 			)
 		end
-	end)
+	)
 
 
-	button.MouseButton1Up:Connect(function()
-		if button.Active then
+	button.MouseButton1Up:Connect(
+		function()
+			if not button.Active then
+				return
+			end
+
 			tweenTo(
 				1.045,
 				0.08
 			)
 		end
-	end)
+	)
 end
+
+
+-- Apply hover/click animation to the new
+-- StarterGui remove-confirmation buttons too.
+prepareButton(
+	cancelRemoveButton
+)
+
+prepareButton(
+	confirmRemoveButton
+)
+
+
+--==================================================
+-- REMOVE CONFIRMATION
+--==================================================
+
+local function hideRemoveConfirmation(
+	clearPendingId: boolean?
+)
+	if not removeOpen then
+		if clearPendingId
+			~= false then
+
+			removeRequestPending =
+				false
+
+			pendingRemoveBusinessId =
+				nil
+		end
+
+		return
+	end
+
+
+	removeOpen =
+		false
+
+	removeAnimationVersion +=
+		1
+
+	local version =
+		removeAnimationVersion
+
+
+	stopRemoveTweens()
+
+	removeAnimating =
+		true
+
+
+	removeScaleTween =
+		TweenService:Create(
+			removeScale,
+
+			TweenInfo.new(
+				REMOVE_CLOSE_TIME,
+				Enum.EasingStyle.Quart,
+				Enum.EasingDirection.In
+			),
+
+			{
+				Scale =
+					REMOVE_CLOSE_SCALE,
+			}
+		)
+
+
+	removePositionTween =
+		TweenService:Create(
+			removeFrame,
+
+			TweenInfo.new(
+				REMOVE_CLOSE_TIME,
+				Enum.EasingStyle.Quad,
+				Enum.EasingDirection.In
+			),
+
+			{
+				Position =
+					getOffsetPosition(
+						removeOriginalPosition,
+						12
+					),
+			}
+		)
+
+
+	removeScaleTween:Play()
+	removePositionTween:Play()
+
+
+	removeScaleTween.Completed:Once(
+		function()
+			if version
+				~= removeAnimationVersion then
+
+				return
+			end
+
+
+			removeAnimating =
+				false
+
+			if removeOpen then
+				return
+			end
+
+
+			removeGui.Enabled =
+				false
+
+			applyRemoveHiddenPose()
+
+
+			if clearPendingId
+				~= false then
+
+				removeRequestPending =
+					false
+
+				pendingRemoveBusinessId =
+					nil
+			end
+		end
+	)
+end
+
+
+local function showRemoveConfirmation()
+	if removeOpen then
+		return
+	end
+
+
+	removeAnimationVersion +=
+		1
+
+	local version =
+		removeAnimationVersion
+
+
+	stopRemoveTweens()
+
+
+	removeOpen =
+		true
+
+	removeAnimating =
+		true
+
+
+	-- Important: place the UI in its hidden pose
+	-- BEFORE enabling the ScreenGui. This prevents
+	-- a one-frame flash at full size.
+	removeGui.Enabled =
+		false
+
+	applyRemoveHiddenPose()
+
+	removeGui.Enabled =
+		true
+
+
+	task.defer(
+		function()
+			if version
+				~= removeAnimationVersion
+				or not removeOpen then
+
+				return
+			end
+
+
+			removeScaleTween =
+				TweenService:Create(
+					removeScale,
+
+					TweenInfo.new(
+						REMOVE_OPEN_TIME,
+						Enum.EasingStyle.Back,
+						Enum.EasingDirection.Out
+					),
+
+					{
+						Scale =
+							1,
+					}
+				)
+
+
+			removePositionTween =
+				TweenService:Create(
+					removeFrame,
+
+					TweenInfo.new(
+						0.22,
+						Enum.EasingStyle.Quart,
+						Enum.EasingDirection.Out
+					),
+
+					{
+						Position =
+							removeOriginalPosition,
+					}
+				)
+
+
+			removeScaleTween:Play()
+			removePositionTween:Play()
+
+
+			removeScaleTween.Completed:Once(
+				function()
+					if version
+						~= removeAnimationVersion then
+
+						return
+					end
+
+					removeAnimating =
+						false
+				end
+			)
+		end
+	)
+end
+
+
+cancelRemoveButton.Activated:Connect(
+	function()
+		if removeAnimating then
+			-- Closing during the entrance is safe;
+			-- stop the entrance tween first.
+			removeAnimating =
+				false
+		end
+
+		hideRemoveConfirmation()
+	end
+)
+
+
+confirmRemoveButton.Activated:Connect(
+	function()
+		if removeRequestPending then
+			return
+		end
+
+
+		local businessId =
+			pendingRemoveBusinessId
+
+		if not businessId then
+			hideRemoveConfirmation()
+
+			return
+		end
+
+
+		removeRequestPending =
+			true
+
+
+		confirmRemoveButton.Active =
+			false
+
+		confirmRemoveButton.Selectable =
+			false
+
+
+		-- Keep the ID until the server answers.
+		hideRemoveConfirmation(
+			false
+		)
+
+
+		requestRemoveRemote:FireServer(
+			true,
+			businessId
+		)
+
+
+		task.delay(
+			2,
+			function()
+				removeRequestPending =
+					false
+
+				confirmRemoveButton.Active =
+					true
+
+				confirmRemoveButton.Selectable =
+					true
+			end
+		)
+	end
+)
 
 
 --==================================================
 -- MANAGEMENT VISIBILITY
 --==================================================
 
-local function stopManagementTweens()
-	if managementActiveRootTween then
-		managementActiveRootTween:Cancel()
-
-		managementActiveRootTween =
-			nil
-	end
-
-
-	if managementActivePositionTween then
-		managementActivePositionTween:Cancel()
-
-		managementActivePositionTween =
-			nil
-	end
-end
-
 local function scaleUDim2(
 	value: UDim2,
 	scale: number
 ): UDim2
-
 	return UDim2.new(
-		value.X.Scale * scale,
-		value.X.Offset * scale,
-		value.Y.Scale * scale,
-		value.Y.Offset * scale
+		value.X.Scale
+			* scale,
+
+		value.X.Offset
+			* scale,
+
+		value.Y.Scale
+			* scale,
+
+		value.Y.Offset
+			* scale
 	)
 end
 
@@ -870,7 +1352,6 @@ local function getCenteredScaledPosition(
 	local differenceXOffset =
 		size.X.Offset
 		- scaledSize.X.Offset
-
 
 	local differenceYScale =
 		size.Y.Scale
@@ -912,8 +1393,27 @@ local function getCenteredScaledPosition(
 	)
 end
 
+
 local MANAGEMENT_OPEN_SCALE =
 	0.88
+
+
+local function stopManagementTweens()
+	if managementActiveRootTween then
+		managementActiveRootTween:Cancel()
+
+		managementActiveRootTween =
+			nil
+	end
+
+
+	if managementActivePositionTween then
+		managementActivePositionTween:Cancel()
+
+		managementActivePositionTween =
+			nil
+	end
+end
 
 
 local function applyManagementHiddenPose()
@@ -949,6 +1449,7 @@ local function applyManagementHiddenPose()
 		)
 end
 
+
 local function setManagementVisible(
 	visible: boolean
 )
@@ -956,6 +1457,14 @@ local function setManagementVisible(
 		or not managementRoot then
 
 		return
+	end
+
+
+	-- Do not show the management billboard behind
+	-- the remove confirmation.
+	if removeOpen then
+		visible =
+			false
 	end
 
 
@@ -969,8 +1478,8 @@ local function setManagementVisible(
 	managementVisible =
 		visible
 
-
-	managementVisibilityVersion += 1
+	managementVisibilityVersion +=
+		1
 
 
 	local version =
@@ -981,123 +1490,89 @@ local function setManagementVisible(
 
 
 	if visible then
-		-- IMPORTANT:
-		-- Put the GUI into its hidden pose BEFORE
-		-- Roblox is allowed to render it.
 		managementGui.Enabled =
 			false
 
-
 		applyManagementHiddenPose()
 
-
-		-- Now enable it. The first visible frame will
-		-- already be in the small/lowered position.
 		managementGui.Enabled =
 			true
 
 
-		-- Starting the tween on the next task gives
-		-- Roblox a chance to render the initial pose.
-		task.defer(function()
-			if version
-				~= managementVisibilityVersion
-				or not managementVisible
-				or not managementGui
-				or not managementRoot then
+		task.defer(
+			function()
+				if version
+					~= managementVisibilityVersion
+					or not managementVisible
+					or not managementGui
+					or not managementRoot then
 
-				return
+					return
+				end
+
+
+				local rootTween =
+					TweenService:Create(
+						managementRoot,
+
+						TweenInfo.new(
+							0.38,
+							Enum.EasingStyle.Back,
+							Enum.EasingDirection.Out
+						),
+
+						{
+							Size =
+								managementRootSize,
+
+							Position =
+								managementRootPosition,
+						}
+					)
+
+
+				local positionTween =
+					TweenService:Create(
+						managementGui,
+
+						TweenInfo.new(
+							0.32,
+							Enum.EasingStyle.Quart,
+							Enum.EasingDirection.Out
+						),
+
+						{
+							StudsOffsetWorldSpace =
+								managementRestingOffset,
+						}
+					)
+
+
+				managementActiveRootTween =
+					rootTween
+
+				managementActivePositionTween =
+					positionTween
+
+
+				rootTween:Play()
+				positionTween:Play()
 			end
-
-
-			local rootTween =
-				TweenService:Create(
-					managementRoot,
-
-					TweenInfo.new(
-						0.38,
-						Enum.EasingStyle.Back,
-						Enum.EasingDirection.Out
-					),
-
-					{
-						Size =
-							managementRootSize,
-
-						Position =
-							managementRootPosition,
-					}
-				)
-
-
-			local positionTween =
-				TweenService:Create(
-					managementGui,
-
-					TweenInfo.new(
-						0.32,
-						Enum.EasingStyle.Quart,
-						Enum.EasingDirection.Out
-					),
-
-					{
-						StudsOffsetWorldSpace =
-							managementRestingOffset,
-					}
-				)
-
-
-			managementActiveRootTween =
-				rootTween
-
-
-			managementActivePositionTween =
-				positionTween
-
-
-			rootTween.Completed:Once(function()
-				if managementActiveRootTween
-					== rootTween then
-
-					managementActiveRootTween =
-						nil
-				end
-			end)
-
-
-			positionTween.Completed:Once(function()
-				if managementActivePositionTween
-					== positionTween then
-
-					managementActivePositionTween =
-						nil
-				end
-			end)
-
-
-			rootTween:Play()
-			positionTween:Play()
-		end)
-
+		)
 
 		return
 	end
 
 
-	--==================================================
 	-- CLOSE
-	--==================================================
-
 	local closingScale =
 		0.9
-
 
 	local closingSize =
 		scaleUDim2(
 			managementRootSize,
 			closingScale
 		)
-
 
 	local closingPosition =
 		getCenteredScaledPosition(
@@ -1153,7 +1628,6 @@ local function setManagementVisible(
 	managementActiveRootTween =
 		rootTween
 
-
 	managementActivePositionTween =
 		positionTween
 
@@ -1162,48 +1636,49 @@ local function setManagementVisible(
 	positionTween:Play()
 
 
-	rootTween.Completed:Once(function()
-		if managementActiveRootTween
-			~= rootTween then
+	rootTween.Completed:Once(
+		function()
+			if managementActiveRootTween
+				~= rootTween then
 
-			return
+				return
+			end
+
+
+			managementActiveRootTween =
+				nil
+
+
+			if version
+				~= managementVisibilityVersion
+				or managementVisible then
+
+				return
+			end
+
+
+			if managementGui then
+				managementGui.Enabled =
+					false
+			end
+
+
+			if managementRoot
+				and managementGui then
+
+				applyManagementHiddenPose()
+			end
 		end
-
-
-		managementActiveRootTween =
-			nil
-
-
-		if version
-			~= managementVisibilityVersion
-			or managementVisible then
-
-			return
-		end
-
-
-		if managementGui then
-			managementGui.Enabled =
-				false
-		end
-
-
-		-- Keep it in the hidden pose while invisible.
-		-- That way the next approach ALWAYS starts
-		-- correctly.
-		if managementRoot
-			and managementGui then
-
-			applyManagementHiddenPose()
-		end
-	end)
+	)
 end
+
 
 local function destroyManagementUI()
 	stopManagementTweens()
 
 
-	managementVisibilityVersion += 1
+	managementVisibilityVersion +=
+		1
 
 	managementVisible =
 		false
@@ -1218,15 +1693,15 @@ local function destroyManagementUI()
 
 
 	managementRoot =
-	nil
-
+		nil
 
 	managementStand =
 		nil
 end
 
+
 --==================================================
--- CREATE MANAGEMENT UI FROM REPLICATEDSTORAGE
+-- CREATE MANAGEMENT UI
 --==================================================
 
 local function createManagementUI(
@@ -1241,7 +1716,6 @@ local function createManagementUI(
 			true
 		)
 
-
 	if not adornee then
 		warn(
 			`{stand:GetFullName()} did not finish loading a management UI position.`
@@ -1251,52 +1725,40 @@ local function createManagementUI(
 	end
 
 
-	-- Clone YOUR Studio-built billboard.
 	local billboard =
 		businessManagerTemplate:Clone()
 
+
 	managementRestingOffset =
-	billboard.StudsOffsetWorldSpace
+		billboard.StudsOffsetWorldSpace
 
 
 	billboard.Name =
 		"BusinessManagementUI"
 
-
 	billboard.Adornee =
 		adornee
-
 
 	billboard.Enabled =
 		false
 
-
 	billboard.Active =
 		true
-
 
 	billboard.ResetOnSpawn =
 		false
 
-
 	billboard.AlwaysOnTop =
 		true
-
 
 	billboard.LightInfluence =
 		0
 
-
 	billboard.MaxDistance =
 		MANAGEMENT_DISTANCE + 5
 
-
 	billboard.Parent =
 		playerGui
-
-
-	-- Keep all of the Size / StudsOffset / styling
-	-- exactly how you designed it in Studio.
 
 
 	local root =
@@ -1304,16 +1766,21 @@ local function createManagementUI(
 			"Frame"
 		) :: Frame
 
+
+	managementGui =
+		billboard
+
 	managementRoot =
-	root
+		root
 
+	managementStand =
+		stand
 
-managementRootPosition =
-	root.Position
+	managementRootPosition =
+		root.Position
 
-
-managementRootSize =
-	root.Size
+	managementRootSize =
+		root.Size
 
 
 	local businessNameLabel =
@@ -1321,30 +1788,25 @@ managementRootSize =
 			"BusinessName"
 		) :: TextLabel
 
-
 	local subtitleLabel =
 		root:WaitForChild(
 			"Subtitle"
 		) :: TextLabel
-
 
 	local buttons =
 		root:WaitForChild(
 			"Buttons"
 		) :: Frame
 
-
 	local manageButton =
 		buttons:WaitForChild(
 			"Manage"
 		) :: TextButton
 
-
 	local moveButton =
 		buttons:WaitForChild(
 			"Move"
 		) :: TextButton
-
 
 	local removeButton =
 		buttons:WaitForChild(
@@ -1356,8 +1818,6 @@ managementRootSize =
 		"Lemonade Stand"
 
 
-	-- You can change this text in Studio if you want.
-	-- We only provide a fallback when it is blank.
 	if subtitleLabel.Text == "" then
 		subtitleLabel.Text =
 			"Manage this location"
@@ -1368,1002 +1828,199 @@ managementRootSize =
 		manageButton
 	)
 
-
 	prepareButton(
 		moveButton
 	)
 
-
 	prepareButton(
 		removeButton
 	)
 
-	--==================================================
+
 	-- MOVE
-	--==================================================
+	moveButton.Activated:Connect(
+		function()
+			if stand
+				~= getClosestOwnedStand() then
 
-	moveButton.Activated:Connect(function()
-		if stand
-			~= getClosestOwnedStand() then
+				showToast(
+					"Your lemonade stand could not be found.",
+					true
+				)
 
-			showToast(
-				"Your lemonade stand could not be found.",
-				true
+				return
+			end
+
+
+			if stand:GetAttribute(
+				"IsBeingEdited"
+			) == true then
+
+				return
+			end
+
+
+			local businessId =
+				getBusinessId(
+					stand
+				)
+
+
+			setManagementVisible(
+				false
 			)
 
-			return
-		end
 
-
-		if stand:GetAttribute(
-			"IsBeingEdited"
-		) == true then
-
-			return
-		end
-
-
-		local businessId =
-			getBusinessId(
-				stand
+			requestEditRemote:FireServer(
+				businessId
 			)
+		end
+	)
 
 
-		setManagementVisible(
-			false
-		)
-
-
-		requestEditRemote:FireServer(
-			businessId
-		)
-	end)
-
-
-	--==================================================
 	-- MANAGE
-	--==================================================
+	manageButton.Activated:Connect(
+		function()
+			if stand
+				~= getClosestOwnedStand() then
 
-	manageButton.Activated:Connect(function()
-		if stand
-			~= getClosestOwnedStand() then
+				showToast(
+					"Your lemonade stand could not be found.",
+					true
+				)
 
-			showToast(
-				"Your lemonade stand could not be found.",
-				true
+				return
+			end
+
+
+			if stand:GetAttribute(
+				"IsBeingEdited"
+			) == true then
+
+				showToast(
+					"Finish moving this stand first.",
+					true
+				)
+
+				return
+			end
+
+
+			if stand:GetAttribute(
+				"StandUnavailable"
+			) == true then
+
+				showToast(
+					"This stand is currently unavailable.",
+					true
+				)
+
+				return
+			end
+
+
+			local businessId =
+				getBusinessId(
+					stand
+				)
+
+
+			setManagementVisible(
+				false
 			)
 
-			return
+
+			openUpgradeMenuEvent:Fire(
+				businessId
+			)
 		end
+	)
 
 
-		if stand:GetAttribute(
-			"IsBeingEdited"
-		) == true then
-
-			showToast(
-				"Finish moving this stand first.",
-				true
-			)
-
-			return
-		end
-
-
-		if stand:GetAttribute(
-			"StandUnavailable"
-		) == true then
-
-			showToast(
-				"This stand is currently unavailable.",
-				true
-			)
-
-			return
-		end
-
-
-		local businessId =
-			getBusinessId(
-				stand
-			)
-
-
-		setManagementVisible(
-			false
-		)
-
-
-		openUpgradeMenuEvent:Fire(
-			businessId
-		)
-	end)
-
-
-	--==================================================
 	-- REMOVE
-	--==================================================
+	removeButton.Activated:Connect(
+		function()
+			if removeRequestPending then
+				return
+			end
 
-	removeButton.Activated:Connect(function()
-		if removeRequestPending then
-			return
-		end
+
+			if stand
+				~= getClosestOwnedStand() then
+
+				showToast(
+					"Your lemonade stand could not be found.",
+					true
+				)
+
+				return
+			end
 
 
-		if stand
-			~= getClosestOwnedStand() then
+			pendingRemoveBusinessId =
+				getBusinessId(
+					stand
+				)
 
-			showToast(
-				"Your lemonade stand could not be found.",
+
+			removeRequestPending =
 				true
+
+
+			-- Ask the server whether removal is
+			-- currently allowed. The server responds
+			-- with ShowRemoveConfirmation.
+			requestRemoveRemote:FireServer(
+				false,
+				pendingRemoveBusinessId
 			)
 
-			return
-		end
 
-
-		pendingRemoveBusinessId =
-			getBusinessId(
-				stand
-			)
-
-
-		removeRequestPending =
-			true
-
-
-		requestRemoveRemote:FireServer(
-			false,
-			pendingRemoveBusinessId
-		)
-
-
-		task.delay(
-			2,
-			function()
-				removeRequestPending =
-					false
-			end
-		)
-	end)
-
-
-	managementGui =
-	billboard
-
-
-managementStand =
-	stand
-
-
-managementVisible =
-	false
-
-
--- A newly created billboard should already be
--- prepared for its first entrance animation.
-managementGui.Enabled =
-	false
-
-
-applyManagementHiddenPose()
-end
-
-
---==================================================
--- REMOVE CONFIRMATION UI
---==================================================
-
-local function hideRemoveConfirmation(
-	clearPendingId: boolean?
-)
-	if not confirmationOverlay
-		or not confirmationScale then
-
-		return
-	end
-
-
-	if not confirmationOpen then
-		if clearPendingId
-			~= false then
-
-			removeRequestPending =
-				false
-
-			pendingRemoveBusinessId =
-				nil
-		end
-
-		return
-	end
-
-
-	if confirmationAnimating then
-		return
-	end
-
-
-	confirmationOpen =
-		false
-
-
-	confirmationAnimating =
-		true
-
-
-	local overlayTween =
-		TweenService:Create(
-			confirmationOverlay,
-
-			TweenInfo.new(
-				0.15,
-				Enum.EasingStyle.Quad,
-				Enum.EasingDirection.In
-			),
-
-			{
-				BackgroundTransparency =
-					1,
-			}
-		)
-
-
-	local windowTween =
-		TweenService:Create(
-			confirmationScale,
-
-			TweenInfo.new(
-				0.14,
-				Enum.EasingStyle.Quad,
-				Enum.EasingDirection.In
-			),
-
-			{
-				Scale =
-					0.92,
-			}
-		)
-
-
-	overlayTween:Play()
-	windowTween:Play()
-
-
-	windowTween.Completed:Once(function()
-		confirmationAnimating =
-			false
-
-
-		if confirmationOpen then
-			return
-		end
-
-
-		if confirmationOverlay then
-			confirmationOverlay.Visible =
-				false
-		end
-
-
-		if clearPendingId
-			~= false then
-
-			removeRequestPending =
-				false
-
-			pendingRemoveBusinessId =
-				nil
-		end
-	end)
-end
-
-
-local function showRemoveConfirmation()
-	if not confirmationOverlay
-		or not confirmationScale
-		or confirmationOpen then
-
-		return
-	end
-
-
-	confirmationOpen =
-		true
-
-
-	confirmationAnimating =
-		false
-
-
-	confirmationOverlay.Visible =
-		true
-
-
-	confirmationOverlay.BackgroundTransparency =
-		1
-
-
-	confirmationScale.Scale =
-		0.88
-
-
-	TweenService:Create(
-		confirmationOverlay,
-
-		TweenInfo.new(
-			0.18,
-			Enum.EasingStyle.Quad,
-			Enum.EasingDirection.Out
-		),
-
-		{
-			BackgroundTransparency =
-				0.3,
-		}
-	):Play()
-
-
-	TweenService:Create(
-		confirmationScale,
-
-		TweenInfo.new(
-			0.22,
-			Enum.EasingStyle.Back,
-			Enum.EasingDirection.Out
-		),
-
-		{
-			Scale =
-				1,
-		}
-	):Play()
-end
-
-
-local function createConfirmationUI()
-	local old =
-		playerGui:FindFirstChild(
-			"RemoveBusinessConfirmation"
-		)
-
-
-	if old then
-		old:Destroy()
-	end
-
-
-	local screenGui =
-		Instance.new(
-			"ScreenGui"
-		)
-
-
-	screenGui.Name =
-		"RemoveBusinessConfirmation"
-
-
-	screenGui.IgnoreGuiInset =
-		true
-
-
-	screenGui.ResetOnSpawn =
-		false
-
-
-	screenGui.DisplayOrder =
-		100
-
-
-	screenGui.Parent =
-		playerGui
-
-
-	local overlay =
-		Instance.new(
-			"Frame"
-		)
-
-
-	overlay.Name =
-		"Overlay"
-
-
-	overlay.Size =
-		UDim2.fromScale(
-			1,
-			1
-		)
-
-
-	overlay.BackgroundColor3 =
-		Color3.new(
-			0,
-			0,
-			0
-		)
-
-
-	overlay.BackgroundTransparency =
-		1
-
-
-	overlay.BorderSizePixel =
-		0
-
-
-	overlay.Visible =
-		false
-
-
-	overlay.Active =
-		true
-
-
-	overlay.Parent =
-		screenGui
-
-
-	local window =
-		Instance.new(
-			"Frame"
-		)
-
-
-	window.Name =
-		"Window"
-
-
-	window.AnchorPoint =
-		Vector2.new(
-			0.5,
-			0.5
-		)
-
-
-	window.Position =
-		UDim2.fromScale(
-			0.5,
-			0.5
-		)
-
-
-	window.Size =
-		UDim2.fromOffset(
-			520,
-			280
-		)
-
-
-	window.BackgroundColor3 =
-		Colors.Surface
-
-
-	window.BorderSizePixel =
-		0
-
-
-	window.Parent =
-		overlay
-
-
-	UITheme.AddCorner(
-		window,
-		0.06
-	)
-
-
-	UITheme.AddStroke(
-		window,
-		Colors.Stroke,
-		2,
-		0.15
-	)
-
-
-	local scale =
-		Instance.new(
-			"UIScale"
-		)
-
-
-	scale.Scale =
-		1
-
-
-	scale.Parent =
-		window
-
-
-	local title =
-		Instance.new(
-			"TextLabel"
-		)
-
-
-	title.Name =
-		"Title"
-
-
-	title.Position =
-		UDim2.fromOffset(
-			26,
-			24
-		)
-
-
-	title.Size =
-		UDim2.new(
-			1,
-			-52,
-			0,
-			48
-		)
-
-
-	title.BackgroundTransparency =
-		1
-
-
-	title.Text =
-		"Remove Lemonade Stand?"
-
-
-	title.TextXAlignment =
-		Enum.TextXAlignment.Left
-
-
-	title.Parent =
-		window
-
-
-	UITheme.StyleText(
-		title,
-		18,
-		26,
-		Colors.Text,
-		Fonts.Black
-	)
-
-
-	local description =
-		Instance.new(
-			"TextLabel"
-		)
-
-
-	description.Position =
-		UDim2.fromOffset(
-			26,
-			82
-		)
-
-
-	description.Size =
-		UDim2.new(
-			1,
-			-52,
-			0,
-			82
-		)
-
-
-	description.BackgroundTransparency =
-		1
-
-
-	description.Text =
-		"Customers waiting at this stand will leave. Your other stands will continue operating normally."
-
-
-	description.TextWrapped =
-		true
-
-
-	description.TextXAlignment =
-		Enum.TextXAlignment.Left
-
-
-	description.TextYAlignment =
-		Enum.TextYAlignment.Top
-
-
-	description.Parent =
-		window
-
-
-	UITheme.StyleText(
-		description,
-		10,
-		16,
-		Colors.TextMuted,
-		Fonts.Medium
-	)
-
-
-	local buttons =
-		Instance.new(
-			"Frame"
-		)
-
-
-	buttons.Position =
-		UDim2.new(
-			0,
-			26,
-			1,
-			-82
-		)
-
-
-	buttons.Size =
-		UDim2.new(
-			1,
-			-52,
-			0,
-			56
-		)
-
-
-	buttons.BackgroundTransparency =
-		1
-
-
-	buttons.Parent =
-		window
-
-
-	local layout =
-		Instance.new(
-			"UIListLayout"
-		)
-
-
-	layout.FillDirection =
-		Enum.FillDirection.Horizontal
-
-
-	layout.HorizontalAlignment =
-		Enum.HorizontalAlignment.Center
-
-
-	layout.VerticalAlignment =
-		Enum.VerticalAlignment.Center
-
-
-	layout.Padding =
-		UDim.new(
-			0,
-			12
-		)
-
-
-	layout.Parent =
-		buttons
-
-
-	local keepButton =
-		Instance.new(
-			"TextButton"
-		)
-
-
-	keepButton.Name =
-		"Keep"
-
-
-	keepButton.Size =
-		UDim2.new(
-			0.5,
-			-6,
-			1,
-			0
-		)
-
-
-	keepButton.Text =
-		"KEEP STAND"
-
-
-	keepButton.BackgroundColor3 =
-		Colors.SurfaceRaised
-
-
-	keepButton.TextColor3 =
-		Colors.Text
-
-
-	keepButton.Parent =
-		buttons
-
-
-	UITheme.AddCorner(
-		keepButton,
-		0.12
-	)
-
-
-	UITheme.AddStroke(
-		keepButton,
-		Colors.Stroke,
-		1.5,
-		0.25
-	)
-
-
-	UITheme.StyleText(
-		keepButton,
-		11,
-		18,
-		Colors.Text,
-		Fonts.Black
-	)
-
-
-	local removeButton =
-		Instance.new(
-			"TextButton"
-		)
-
-
-	removeButton.Name =
-		"Remove"
-
-
-	removeButton.Size =
-		UDim2.new(
-			0.5,
-			-6,
-			1,
-			0
-		)
-
-
-	removeButton.Text =
-		"REMOVE STAND"
-
-
-	removeButton.BackgroundColor3 =
-		Colors.Danger
-
-
-	removeButton.TextColor3 =
-		Colors.Text
-
-
-	removeButton.Parent =
-		buttons
-
-
-	UITheme.AddCorner(
-		removeButton,
-		0.12
-	)
-
-
-	UITheme.AddStroke(
-		removeButton,
-		Colors.DangerDark,
-		1.5,
-		0.15
-	)
-
-
-	UITheme.StyleText(
-		removeButton,
-		11,
-		18,
-		Colors.Text,
-		Fonts.Black
-	)
-
-
-	prepareButton(
-		keepButton
-	)
-
-
-	prepareButton(
-		removeButton
-	)
-
-
-	keepButton.Activated:Connect(function()
-		hideRemoveConfirmation()
-	end)
-
-
-	removeButton.Activated:Connect(function()
-		if removeRequestPending then
-			return
-		end
-
-
-		local businessId =
-			pendingRemoveBusinessId
-
-
-		if not businessId then
-			hideRemoveConfirmation()
-
-			return
-		end
-
-
-		removeRequestPending =
-			true
-
-
-		removeButton.Active =
-			false
-
-
-		removeButton.Selectable =
-			false
-
-
-		hideRemoveConfirmation(
-			false
-		)
-
-
-		requestRemoveRemote:FireServer(
-			true,
-			businessId
-		)
-
-
-		task.delay(
-			2,
-			function()
-				removeRequestPending =
-					false
-
-
-				if removeButton then
-					removeButton.Active =
-						true
-
-
-					removeButton.Selectable =
-						true
+			task.delay(
+				2,
+				function()
+					-- Only release this timeout lock if
+					-- the confirmation never opened.
+					if not removeOpen then
+						removeRequestPending =
+							false
+					end
 				end
-			end
-		)
-	end)
+			)
+		end
+	)
 
 
-	local toast =
-		Instance.new(
-			"TextLabel"
-		)
-
-
-	toast.Name =
-		"Toast"
-
-
-	toast.AnchorPoint =
-		Vector2.new(
-			0.5,
-			0
-		)
-
-
-	toast.Position =
-		UDim2.new(
-			0.5,
-			0,
-			0,
-			18
-		)
-
-
-	toast.Size =
-		UDim2.fromOffset(
-			560,
-			50
-		)
-
-
-	toast.BackgroundColor3 =
-		Colors.Surface
-
-
-	toast.BackgroundTransparency =
-		0.04
-
-
-	toast.BorderSizePixel =
-		0
-
-
-	toast.Visible =
+	managementVisible =
 		false
 
+	billboard.Enabled =
+		false
 
-	toast.Parent =
-		screenGui
-
-
-	UITheme.AddCorner(
-		toast,
-		0.15
-	)
-
-
-	UITheme.AddStroke(
-		toast,
-		Colors.Stroke,
-		1.5,
-		0.2
-	)
-
-
-	UITheme.StyleText(
-		toast,
-		10,
-		16,
-		Colors.Text,
-		Fonts.Bold
-	)
-
-
-	confirmationScreen =
-		screenGui
-
-
-	confirmationOverlay =
-		overlay
-
-
-	confirmationWindow =
-		window
-
-
-	confirmationScale =
-		scale
-
-
-	confirmRemoveButton =
-		removeButton
-
-
-	toastLabel =
-		toast
+	applyManagementHiddenPose()
 end
 
 
-createConfirmationUI()
-
-
 --==================================================
--- INPUT
+-- REMOVE UI INPUT
 --==================================================
 
 UserInputService.InputBegan:Connect(
 	function(
 		input: InputObject,
-		gameProcessed: boolean
+		_gameProcessed: boolean
 	)
-		if not confirmationOpen then
+		if not removeOpen then
 			return
 		end
 
 
 		if input.KeyCode
-			== Enum.KeyCode.Escape
+				== Enum.KeyCode.Escape
 			or input.KeyCode
 				== Enum.KeyCode.ButtonB then
 
 			hideRemoveConfirmation()
-
-			return
-		end
-
-
-		if gameProcessed then
-			return
 		end
 	end
 )
@@ -2385,6 +2042,11 @@ interactionResultRemote.OnClientEvent:Connect(
 				false
 
 
+			setManagementVisible(
+				false
+			)
+
+
 			showRemoveConfirmation()
 
 			return
@@ -2396,11 +2058,9 @@ interactionResultRemote.OnClientEvent:Connect(
 
 			hideRemoveConfirmation()
 
-
 			setManagementVisible(
 				false
 			)
-
 
 			return
 		end
@@ -2411,7 +2071,6 @@ interactionResultRemote.OnClientEvent:Connect(
 
 			hideRemoveConfirmation()
 
-
 			destroyManagementUI()
 
 
@@ -2421,7 +2080,6 @@ interactionResultRemote.OnClientEvent:Connect(
 					and message
 					or "Lemonade stand removed."
 			)
-
 
 			return
 		end
@@ -2441,7 +2099,6 @@ interactionResultRemote.OnClientEvent:Connect(
 
 				true
 			)
-
 
 			return
 		end
@@ -2481,106 +2138,109 @@ interactionResultRemote.OnClientEvent:Connect(
 -- CHARACTER CLEANUP
 --==================================================
 
-player.CharacterRemoving:Connect(function()
-	setManagementVisible(
-		false
-	)
+player.CharacterRemoving:Connect(
+	function()
+		setManagementVisible(
+			false
+		)
 
-
-	hideRemoveConfirmation()
-end)
+		hideRemoveConfirmation()
+	end
+)
 
 
 --==================================================
 -- MANAGEMENT UPDATE LOOP
 --==================================================
 
-task.spawn(function()
-	while true do
-		local stand =
-			getClosestOwnedStand()
+task.spawn(
+	function()
+		while true do
+			local stand =
+				getClosestOwnedStand()
 
+			local root =
+				getCharacterRoot()
 
-		local root =
-			getCharacterRoot()
-
-
-		if stand
-			~= managementStand then
 
 			if stand
-				and not managementCreationPending then
+				~= managementStand then
 
-				managementCreationPending =
-					true
+				if stand
+					and not managementCreationPending then
+
+					managementCreationPending =
+						true
 
 
-				task.spawn(function()
-					createManagementUI(
+					task.spawn(
+						function()
+							createManagementUI(
+								stand
+							)
+
+							managementCreationPending =
+								false
+						end
+					)
+
+				elseif not stand then
+
+					destroyManagementUI()
+
+					managementCreationPending =
+						false
+				end
+			end
+
+
+			local shouldShow =
+				false
+
+
+			if stand
+				and root
+				and managementGui
+				and managementStand
+					== stand
+				and not removeOpen
+				and stand:GetAttribute(
+					"IsBeingEdited"
+				) ~= true
+				and stand:GetAttribute(
+					"StandUnavailable"
+				) ~= true then
+
+
+				local adornee =
+					getUIAdornee(
 						stand
 					)
 
 
-					managementCreationPending =
-						false
-				end)
+				if adornee then
+					local distance =
+						(
+							root.Position
+								- adornee.Position
+						).Magnitude
 
-			elseif not stand then
 
-				destroyManagementUI()
-
-
-				managementCreationPending =
-					false
+					shouldShow =
+						distance
+						<= MANAGEMENT_DISTANCE
+				end
 			end
+
+
+			setManagementVisible(
+				shouldShow
+			)
+
+
+			task.wait(
+				UPDATE_INTERVAL
+			)
 		end
-
-
-		local shouldShow =
-			false
-
-
-		if stand
-			and root
-			and managementGui
-			and managementStand
-				== stand
-			and stand:GetAttribute(
-				"IsBeingEdited"
-			) ~= true
-			and stand:GetAttribute(
-				"StandUnavailable"
-			) ~= true then
-
-
-			local adornee =
-				getUIAdornee(
-					stand
-				)
-
-
-			if adornee then
-				local distance =
-					(
-						root.Position
-							- adornee.Position
-					).Magnitude
-
-
-				shouldShow =
-					distance
-					<= MANAGEMENT_DISTANCE
-			end
-		end
-
-
-		setManagementVisible(
-			shouldShow
-		)
-
-
-		task.wait(
-			UPDATE_INTERVAL
-		)
 	end
-end)
+)
