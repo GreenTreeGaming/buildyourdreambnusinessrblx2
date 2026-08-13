@@ -52,7 +52,7 @@ local questClaimResultRemote =
 
 
 --==================================================
--- UI REFERENCES
+-- UI
 --==================================================
 
 local questsGui =
@@ -109,28 +109,25 @@ local OPEN_ARROW =
 
 
 local OPEN_TIME =
-	0.34
+	0.30
 
 local CLOSE_TIME =
-	0.28
---==================================================
--- IMPORTANT:
--- NO LAYOUT/SIZE CHANGES
---==================================================
+	0.24
+
 
 --
--- We intentionally DO NOT touch:
+-- ONLY drawer positioning number.
 --
---   Main.Size
---   Template.Size
---   UIGridLayout.CellSize
---   UIGridLayout.CellPadding
---   ScrollingFrame.Size
---   ScrollingFrame.CanvasSize
---   ScrollingFrame.AutomaticCanvasSize
+-- Your previous 0.30 was pulling the entire drawer
+-- way too far left.
 --
--- All of those remain exactly as authored in Studio.
---
+local DRAWER_X_SHIFT =
+	0.2
+
+
+--==================================================
+-- STARTING STATE
+--==================================================
 
 questsGui.Enabled =
 	true
@@ -143,7 +140,7 @@ template.Visible =
 
 
 --==================================================
--- REMOVE OLD RUNTIME CLONES
+-- REMOVE RUNTIME CLONES
 --==================================================
 
 for _, child in
@@ -158,7 +155,7 @@ end
 
 
 --==================================================
--- QUEST CARD TYPE
+-- TYPES
 --==================================================
 
 type QuestCard = {
@@ -184,59 +181,41 @@ local cards: {
 } = {}
 
 
-local currentState = {}
 --==================================================
 -- DRAWER POSITIONS
 --==================================================
 
 --
--- Main.Position in Studio is its OPEN position.
--- We never change Main.Size.
+-- Studio positions are CLOSED positions.
 --
-local MAIN_OPEN_POSITION =
+local MAIN_CLOSED_POSITION =
 	main.Position
 
-
---
--- Closed button sits against the RIGHT side.
---
--- Keep the Y position you designed in Studio.
---
 local BUTTON_CLOSED_POSITION =
-	UDim2.new(
-		1,
-		-75,
+	openButton.Position
 
-		openButton.Position.Y.Scale,
-		openButton.Position.Y.Offset
+
+local MAIN_OPEN_POSITION =
+	UDim2.new(
+		MAIN_CLOSED_POSITION.X.Scale
+			- DRAWER_X_SHIFT,
+
+		MAIN_CLOSED_POSITION.X.Offset,
+
+		MAIN_CLOSED_POSITION.Y.Scale,
+		MAIN_CLOSED_POSITION.Y.Offset
 	)
 
 
---
--- When the menu is open, the button moves left
--- alongside the quest panel.
---
 local BUTTON_OPEN_POSITION =
 	UDim2.new(
-		0.47,
-		0,
+		BUTTON_CLOSED_POSITION.X.Scale
+			- DRAWER_X_SHIFT,
 
-		openButton.Position.Y.Scale,
-		openButton.Position.Y.Offset
-	)
+		BUTTON_CLOSED_POSITION.X.Offset,
 
-
---
--- Main starts to the right of the screen.
--- POSITION ONLY.
---
-local MAIN_HIDDEN_POSITION =
-	UDim2.new(
-		1.05,
-		MAIN_OPEN_POSITION.X.Offset,
-
-		MAIN_OPEN_POSITION.Y.Scale,
-		MAIN_OPEN_POSITION.Y.Offset
+		BUTTON_CLOSED_POSITION.Y.Scale,
+		BUTTON_CLOSED_POSITION.Y.Offset
 	)
 
 
@@ -251,10 +230,12 @@ local animationVersion =
 	0
 
 
-local mainTween: Tween? =
+local mainTween:
+	Tween? =
 	nil
 
-local buttonTween: Tween? =
+local buttonTween:
+	Tween? =
 	nil
 
 
@@ -276,18 +257,8 @@ local function stopDrawerTweens()
 end
 
 
---==================================================
--- FORCE CORRECT STARTING STATE
---==================================================
-
-questsGui.Enabled =
-	true
-
-main.Visible =
-	false
-
 main.Position =
-	MAIN_OPEN_POSITION
+	MAIN_CLOSED_POSITION
 
 openButton.Position =
 	BUTTON_CLOSED_POSITION
@@ -297,7 +268,7 @@ openButtonImage.Image =
 
 
 --==================================================
--- OPEN DRAWER
+-- OPEN
 --==================================================
 
 local function openDrawer()
@@ -320,17 +291,13 @@ local function openDrawer()
 	stopDrawerTweens()
 
 
-	--
-	-- Put the panel offscreen first.
-	--
 	main.Position =
-		MAIN_HIDDEN_POSITION
+		MAIN_CLOSED_POSITION
+
+	openButton.Position =
+		BUTTON_CLOSED_POSITION
 
 
-	--
-	-- IMPORTANT:
-	-- Make Main visible BEFORE tweening it.
-	--
 	main.Visible =
 		true
 
@@ -344,7 +311,7 @@ local function openDrawer()
 			main,
 
 			TweenInfo.new(
-				0.32,
+				OPEN_TIME,
 				Enum.EasingStyle.Quart,
 				Enum.EasingDirection.Out
 			),
@@ -361,7 +328,7 @@ local function openDrawer()
 			openButton,
 
 			TweenInfo.new(
-				0.32,
+				OPEN_TIME,
 				Enum.EasingStyle.Quart,
 				Enum.EasingDirection.Out
 			),
@@ -389,13 +356,16 @@ local function openDrawer()
 
 			main.Position =
 				MAIN_OPEN_POSITION
+
+			openButton.Position =
+				BUTTON_OPEN_POSITION
 		end
 	)
 end
 
 
 --==================================================
--- CLOSE DRAWER
+-- CLOSE
 --==================================================
 
 local function closeDrawer()
@@ -423,14 +393,14 @@ local function closeDrawer()
 			main,
 
 			TweenInfo.new(
-				0.25,
+				CLOSE_TIME,
 				Enum.EasingStyle.Quart,
 				Enum.EasingDirection.In
 			),
 
 			{
 				Position =
-					MAIN_HIDDEN_POSITION,
+					MAIN_CLOSED_POSITION,
 			}
 		)
 
@@ -440,7 +410,7 @@ local function closeDrawer()
 			openButton,
 
 			TweenInfo.new(
-				0.25,
+				CLOSE_TIME,
 				Enum.EasingStyle.Quart,
 				Enum.EasingDirection.In
 			),
@@ -470,12 +440,11 @@ local function closeDrawer()
 				false
 
 
-			--
-			-- Reset while invisible so the next
-			-- opening always starts consistently.
-			--
 			main.Position =
-				MAIN_OPEN_POSITION
+				MAIN_CLOSED_POSITION
+
+			openButton.Position =
+				BUTTON_CLOSED_POSITION
 
 
 			openButtonImage.Image =
@@ -485,10 +454,6 @@ local function closeDrawer()
 end
 
 
---==================================================
--- TOGGLE
---==================================================
-
 local function toggleDrawer()
 	if menuOpen then
 		closeDrawer()
@@ -496,8 +461,10 @@ local function toggleDrawer()
 		openDrawer()
 	end
 end
+
+
 --==================================================
--- BUTTON ANIMATION
+-- BUTTON EFFECTS
 --==================================================
 
 local function prepareButton(
@@ -569,7 +536,7 @@ local function prepareButton(
 		1
 
 
-	local activeTween:
+	local tween:
 		Tween? =
 		nil
 
@@ -578,12 +545,12 @@ local function prepareButton(
 		value: number,
 		duration: number
 	)
-		if activeTween then
-			activeTween:Cancel()
+		if tween then
+			tween:Cancel()
 		end
 
 
-		activeTween =
+		tween =
 			TweenService:Create(
 				scale,
 
@@ -600,21 +567,18 @@ local function prepareButton(
 			)
 
 
-		activeTween:Play()
+		tween:Play()
 	end
 
 
 	button.MouseEnter:Connect(
 		function()
-			if not button.Active then
-				return
+			if button.Active then
+				tweenTo(
+					1.045,
+					0.10
+				)
 			end
-
-
-			tweenTo(
-				1.045,
-				0.1
-			)
 		end
 	)
 
@@ -623,7 +587,7 @@ local function prepareButton(
 		function()
 			tweenTo(
 				1,
-				0.1
+				0.10
 			)
 		end
 	)
@@ -631,30 +595,24 @@ local function prepareButton(
 
 	button.MouseButton1Down:Connect(
 		function()
-			if not button.Active then
-				return
+			if button.Active then
+				tweenTo(
+					0.94,
+					0.06
+				)
 			end
-
-
-			tweenTo(
-				0.94,
-				0.06
-			)
 		end
 	)
 
 
 	button.MouseButton1Up:Connect(
 		function()
-			if not button.Active then
-				return
+			if button.Active then
+				tweenTo(
+					1.045,
+					0.07
+				)
 			end
-
-
-			tweenTo(
-				1.045,
-				0.07
-			)
 		end
 	)
 end
@@ -665,17 +623,13 @@ prepareButton(
 )
 
 
-openButtonImage.Image =
-	CLOSED_ARROW
-
-
 openButton.MouseButton1Click:Connect(
 	toggleDrawer
 )
 
 
 --==================================================
--- QUEST CARD CREATION
+-- CREATE QUEST CARD
 --==================================================
 
 local function createCard(
@@ -778,6 +732,7 @@ local function createCard(
 				card.CompleteButton.Active =
 					false
 
+
 				card.CompleteText.Text =
 					"CLAIMING..."
 
@@ -791,7 +746,8 @@ local function createCard(
 
 	cards[
 		questId
-	] = card
+	] =
+		card
 
 
 	return card
@@ -799,7 +755,7 @@ end
 
 
 --==================================================
--- CARD UPDATE
+-- FORMAT
 --==================================================
 
 local function formatProgressNumber(
@@ -811,6 +767,10 @@ local function formatProgressNumber(
 	)
 end
 
+
+--==================================================
+-- UPDATE CARD
+--==================================================
 
 local function updateCard(
 	card: QuestCard,
@@ -840,6 +800,7 @@ local function updateCard(
 				or 0
 		)
 
+
 	local required =
 		math.max(
 			1,
@@ -857,16 +818,17 @@ local function updateCard(
 
 
 	--
-	-- This is the ONLY intentional Size modification.
+	-- Only the progress bar fill changes size.
 	--
-	-- Background.Bar is the progress fill itself.
-	-- Template/card/grid sizes are never touched.
-	--
+	local currentSize =
+		card.ProgressBar.Size
+
+
 	TweenService:Create(
 		card.ProgressBar,
 
 		TweenInfo.new(
-			0.2,
+			0.20,
 			Enum.EasingStyle.Quad,
 			Enum.EasingDirection.Out
 		),
@@ -877,15 +839,8 @@ local function updateCard(
 					ratio,
 					0,
 
-					card.ProgressBar
-						.Size
-						.Y
-						.Scale,
-
-					card.ProgressBar
-						.Size
-						.Y
-						.Offset
+					currentSize.Y.Scale,
+					currentSize.Y.Offset
 				),
 		}
 	):Play()
@@ -902,21 +857,7 @@ local function updateCard(
 		)}`
 
 
-	if state.Claimed then
-		card.CompleteText.Text =
-			"CLAIMED"
-
-		card.CompleteButton.Active =
-			false
-
-		card.CompleteButton.Selectable =
-			false
-
-		card.CompleteButton.AutoButtonColor =
-			false
-
-
-	elseif state.Completed then
+	if state.Completed then
 		card.CompleteText.Text =
 			"CLAIM"
 
@@ -925,11 +866,6 @@ local function updateCard(
 
 		card.CompleteButton.Selectable =
 			true
-
-		card.CompleteButton.AutoButtonColor =
-			false
-
-
 	else
 		card.CompleteText.Text =
 			"IN PROGRESS"
@@ -939,15 +875,12 @@ local function updateCard(
 
 		card.CompleteButton.Selectable =
 			false
-
-		card.CompleteButton.AutoButtonColor =
-			false
 	end
 end
 
 
 --==================================================
--- WHOLE STATE UPDATE
+-- APPLY SERVER STATE
 --==================================================
 
 local function applyState(
@@ -960,18 +893,12 @@ local function applyState(
 	end
 
 
-	currentState =
-		state
-
-
 	local seen: {
 		[string]: boolean
 	} = {}
 
 
-	for index, quest in
-		state
-	do
+	for index, quest in state do
 		if typeof(quest)
 				~= "table"
 			or typeof(quest.Id)
@@ -983,7 +910,8 @@ local function applyState(
 
 		seen[
 			quest.Id
-		] = true
+		] =
+			true
 
 
 		local card =
@@ -1012,6 +940,10 @@ local function applyState(
 	end
 
 
+	--
+	-- This is what removes the claimed quest card
+	-- when the server replaces it with the next quest.
+	--
 	for questId, card in
 		cards
 	do
@@ -1021,9 +953,11 @@ local function applyState(
 
 			card.Root:Destroy()
 
+
 			cards[
 				questId
-			] = nil
+			] =
+				nil
 		end
 	end
 end
@@ -1065,7 +999,7 @@ task.spawn(
 
 
 --==================================================
--- SERVER UPDATES
+-- LIVE UPDATES
 --==================================================
 
 questStateChangedRemote.OnClientEvent:Connect(

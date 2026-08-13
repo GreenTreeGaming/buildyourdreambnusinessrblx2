@@ -1,6 +1,3 @@
-local Players =
-	game:GetService("Players")
-
 local ReplicatedStorage =
 	game:GetService("ReplicatedStorage")
 
@@ -121,7 +118,7 @@ end
 
 
 --==================================================
--- PROFILE QUEST DATA
+-- QUEST SAVE DATA
 --==================================================
 
 local function getQuestData(
@@ -194,7 +191,7 @@ end
 
 
 --==================================================
--- EXISTING SAVE MIGRATION
+-- EXISTING PLAYER PROGRESS
 --==================================================
 
 local function getSavedBusinessTotals(
@@ -218,19 +215,16 @@ local function getSavedBusinessTotals(
 		0
 
 
-	local placedBusinesses =
+	if typeof(
 		profile.PlacedBusinesses
-
-
-	if typeof(placedBusinesses)
-		~= "table" then
+	) ~= "table" then
 
 		return 0, 0
 	end
 
 
 	for _, business in
-		placedBusinesses
+		profile.PlacedBusinesses
 	do
 		if typeof(business)
 			~= "table" then
@@ -270,10 +264,6 @@ function QuestService.InitializePlayer(
 	end
 
 
-	--
-	-- Players who already had businesses before
-	-- quests were added should not start at 0.
-	--
 	local existingSales,
 		existingEarnings =
 		getSavedBusinessTotals(
@@ -299,7 +289,7 @@ end
 
 
 --==================================================
--- PLOT / BUSINESS HELPERS
+-- PLOT HELPERS
 --==================================================
 
 local function getPlayerPlot(
@@ -335,14 +325,10 @@ local function getPlayerPlot(
 	for _, plot in
 		plotsFolder:GetChildren()
 	do
-		if not plot:IsA("Model") then
-			continue
-		end
-
-
-		if plot:GetAttribute(
-			"OwnerUserId"
-		) == player.UserId then
+		if plot:IsA("Model")
+			and plot:GetAttribute(
+				"OwnerUserId"
+			) == player.UserId then
 
 			return plot
 		end
@@ -371,7 +357,6 @@ local function getPlacedBusinesses(
 		plot:FindFirstChild(
 			"PlacedBusinesses"
 		)
-
 
 	if not folder then
 		return {}
@@ -431,12 +416,16 @@ local function getBusinessType(
 end
 
 
+--==================================================
+-- BUSINESS PROGRESS
+--==================================================
+
 local function getBusinessCount(
 	player: Player,
 	businessType: string?
 ): number
 
-	local amount =
+	local count =
 		0
 
 
@@ -454,11 +443,11 @@ local function getBusinessCount(
 		end
 
 
-		amount += 1
+		count += 1
 	end
 
 
-	return amount
+	return count
 end
 
 
@@ -473,7 +462,8 @@ local function getMaximumUpgradeLevel(
 
 
 	local attributeName =
-		upgradeName .. "Level"
+		upgradeName
+		.. "Level"
 
 
 	for _, business in
@@ -558,7 +548,7 @@ end
 
 
 --==================================================
--- STAT TRACKING
+-- GLOBAL STATS
 --==================================================
 
 function QuestService.AddStat(
@@ -577,21 +567,21 @@ function QuestService.AddStat(
 	end
 
 
+	if statName
+			~= "TotalSales"
+		and statName
+			~= "LifetimeEarnings" then
+
+		return false
+	end
+
+
 	local questData =
 		getQuestData(
 			player
 		)
 
 	if not questData then
-		return false
-	end
-
-
-	if statName
-			~= "TotalSales"
-		and statName
-			~= "LifetimeEarnings" then
-
 		return false
 	end
 
@@ -603,7 +593,8 @@ function QuestService.AddStat(
 			questData.Stats[
 				statName
 			]
-		) + math.floor(amount)
+		)
+		+ math.floor(amount)
 
 
 	return true
@@ -630,11 +621,7 @@ local function getQuestProgress(
 	end
 
 
-	local questType =
-		definition.Type
-
-
-	if questType
+	if definition.Type
 		== "TotalSales" then
 
 		return questData
@@ -643,7 +630,7 @@ local function getQuestProgress(
 	end
 
 
-	if questType
+	if definition.Type
 		== "LifetimeEarnings" then
 
 		return questData
@@ -652,7 +639,7 @@ local function getQuestProgress(
 	end
 
 
-	if questType
+	if definition.Type
 		== "BusinessCount" then
 
 		return getBusinessCount(
@@ -662,7 +649,7 @@ local function getQuestProgress(
 	end
 
 
-	if questType
+	if definition.Type
 		== "UpgradeLevel" then
 
 		if typeof(
@@ -681,7 +668,7 @@ local function getQuestProgress(
 	end
 
 
-	if questType
+	if definition.Type
 		== "AppearanceLevel" then
 
 		return getMaximumAppearanceLevel(
@@ -692,13 +679,17 @@ local function getQuestProgress(
 
 
 	warn(
-		`Unknown quest type "{tostring(questType)}" for quest "{questId}".`
+		`Unknown quest type "{tostring(definition.Type)}" for "{questId}".`
 	)
 
 
 	return 0
 end
 
+
+--==================================================
+-- COMPLETION
+--==================================================
 
 function QuestService.EvaluateCompletions(
 	player: Player
@@ -718,51 +709,65 @@ function QuestService.EvaluateCompletions(
 		false
 
 
-	for _, questId in
-		QuestConfig.Order
+	for _, chainName in
+		QuestConfig.ChainOrder
 	do
-		local definition =
-			QuestConfig.Quests[
-				questId
+		local chain =
+			QuestConfig.Chains[
+				chainName
 			]
 
-
-		if not definition then
-			continue
-		end
-
-
-		if questData.Completed[
-			questId
-		] == true then
+		if typeof(chain)
+			~= "table" then
 
 			continue
 		end
 
 
-		local required =
-			sanitizeNumber(
-				definition.Required
-			)
+		for _, questId in chain do
+			local definition =
+				QuestConfig.Quests[
+					questId
+				]
+
+			if not definition then
+				continue
+			end
 
 
-		local progress =
-			getQuestProgress(
-				player,
-				questId,
-				definition
-			)
-
-
-		if required > 0
-			and progress >= required then
-
-			questData.Completed[
+			if questData.Completed[
 				questId
-			] = true
+			] then
 
-			changed =
-				true
+				continue
+			end
+
+
+			local required =
+				sanitizeNumber(
+					definition.Required
+				)
+
+
+			local progress =
+				getQuestProgress(
+					player,
+					questId,
+					definition
+				)
+
+
+			if required > 0
+				and progress
+					>= required then
+
+				questData.Completed[
+					questId
+				] = true
+
+				changed =
+					true
+			end
 		end
 	end
 
@@ -772,7 +777,47 @@ end
 
 
 --==================================================
--- STATE FOR CLIENT
+-- ACTIVE QUEST
+--==================================================
+
+local function getActiveQuestFromChain(
+	questData: QuestSaveData,
+	chainName: string
+): string?
+
+	local chain =
+		QuestConfig.Chains[
+			chainName
+		]
+
+
+	if typeof(chain)
+		~= "table" then
+
+		return nil
+	end
+
+
+	for _, questId in chain do
+		--
+		-- The FIRST unclaimed quest is the currently
+		-- active quest for this chain.
+		--
+		if questData.Claimed[
+			questId
+		] ~= true then
+
+			return questId
+		end
+	end
+
+
+	return nil
+end
+
+
+--==================================================
+-- CLIENT STATE
 --==================================================
 
 function QuestService.GetState(
@@ -798,14 +843,31 @@ function QuestService.GetState(
 		{}
 
 
-	for _, questId in
-		QuestConfig.Order
+	for _, chainName in
+		QuestConfig.ChainOrder
 	do
+		if #state
+			>= QuestConfig.MaxVisible then
+
+			break
+		end
+
+
+		local questId =
+			getActiveQuestFromChain(
+				questData,
+				chainName
+			)
+
+		if not questId then
+			continue
+		end
+
+
 		local definition =
 			QuestConfig.Quests[
 				questId
 			]
-
 
 		if not definition then
 			continue
@@ -817,23 +879,13 @@ function QuestService.GetState(
 				definition.Required
 			)
 
+
 		local progress =
 			getQuestProgress(
 				player,
 				questId,
 				definition
 			)
-
-
-		local completed =
-			questData.Completed[
-				questId
-			] == true
-
-		local claimed =
-			questData.Claimed[
-				questId
-			] == true
 
 
 		table.insert(
@@ -855,10 +907,7 @@ function QuestService.GetState(
 					),
 
 				Progress =
-					math.max(
-						0,
-						progress
-					),
+					progress,
 
 				Required =
 					required,
@@ -869,10 +918,12 @@ function QuestService.GetState(
 					),
 
 				Completed =
-					completed,
+					questData.Completed[
+						questId
+					] == true,
 
 				Claimed =
-					claimed,
+					false,
 			}
 		)
 	end
@@ -883,7 +934,7 @@ end
 
 
 --==================================================
--- CLAIMING
+-- CLAIM QUEST
 --==================================================
 
 function QuestService.Claim(
@@ -905,16 +956,10 @@ function QuestService.Claim(
 			questId
 		]
 
-
 	if not definition then
 		return false,
 			"That quest does not exist."
 	end
-
-
-	QuestService.EvaluateCompletions(
-		player
-	)
 
 
 	local questData =
@@ -926,6 +971,11 @@ function QuestService.Claim(
 		return false,
 			"Your data has not loaded yet."
 	end
+
+
+	QuestService.EvaluateCompletions(
+		player
+	)
 
 
 	if questData.Claimed[
@@ -943,6 +993,37 @@ function QuestService.Claim(
 
 		return false,
 			"That quest is not complete yet."
+	end
+
+
+	--
+	-- Security:
+	-- only allow claiming if this is CURRENTLY
+	-- active in its chain.
+	--
+	local isActive =
+		false
+
+
+	for _, chainName in
+		QuestConfig.ChainOrder
+	do
+		if getActiveQuestFromChain(
+			questData,
+			chainName
+		) == questId then
+
+			isActive =
+				true
+
+			break
+		end
+	end
+
+
+	if not isActive then
+		return false,
+			"That quest is not currently active."
 	end
 
 
@@ -975,8 +1056,8 @@ function QuestService.Claim(
 
 
 	--
-	-- Mark claimed on the server before rewarding,
-	-- preventing duplicate claims from spam.
+	-- Mark before giving cash so claim spam cannot
+	-- duplicate the reward.
 	--
 	questData.Claimed[
 		questId
