@@ -16,12 +16,23 @@ local UserInputService =
 local Workspace =
 	game:GetService("Workspace")
 
+local FormatNumber =
+	require(
+		ReplicatedStorage
+			:WaitForChild("Shared")
+			:WaitForChild("FormatNumber")
+	)
+
 
 local player =
 	Players.LocalPlayer
 
 local playerGui =
 	player:WaitForChild("PlayerGui")
+
+local businessButtons: {
+	[string]: TextButton
+} = {}
 
 
 local UITheme =
@@ -461,7 +472,64 @@ end
 local function getStandCount(): number
 	return #getLemonadeStands()
 end
+local function getBusinessButtonText(
+	businessName: string,
+	config: {[any]: any}
+): string
+	local displayName =
+		config.DisplayName
+		or businessName
 
+	if businessName
+		~= DEFAULT_BUSINESS_NAME then
+
+		return displayName
+	end
+
+	local standCount =
+		getStandCount()
+
+	if config.FirstStandFree
+		and standCount == 0 then
+
+		return `{displayName} - FREE`
+	end
+
+	local price =
+		config.AdditionalStandCost
+		or 0
+
+	return `{displayName} - ${FormatNumber.Compact(price)}`
+end
+
+
+local function updateBusinessButtonTexts()
+	for businessName, button in
+		businessButtons do
+
+		local config =
+			BusinessConfig[businessName]
+
+		if not config then
+			continue
+		end
+
+		local title =
+			button:FindFirstChild(
+				"Title"
+			)
+
+		if title
+			and title:IsA("TextLabel") then
+
+			title.Text =
+				getBusinessButtonText(
+					businessName,
+					config
+				)
+		end
+	end
+end
 
 local function findStandByBusinessId(
 	businessId: string
@@ -645,6 +713,7 @@ local function openBusinessMenu()
 		return
 	end
 
+	updateBusinessButtonTexts()
 
 	businessMenuOpen =
 		true
@@ -2798,10 +2867,6 @@ end
 -- BUSINESS LIST
 --==================================================
 
-local businessButtons: {
-	[string]: TextButton
-} = {}
-
 
 local function clearBusinessButtons()
 	for businessName, button in
@@ -2910,14 +2975,16 @@ local function populateBusinessList()
 
 
 		if title
-			and title:IsA(
-				"TextLabel"
-			) then
+	and title:IsA(
+		"TextLabel"
+	) then
 
-			title.Text =
-				config.DisplayName
-				or businessName
-		end
+	title.Text =
+		getBusinessButtonText(
+			businessName,
+			config
+		)
+end
 
 
 		setupButtonHover(
@@ -3535,3 +3602,5 @@ task.spawn(function()
 		)
 	end
 end)
+
+updateBusinessTemplateText()

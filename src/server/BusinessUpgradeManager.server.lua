@@ -570,6 +570,245 @@ local function playConstructionAnimation(
 	end
 end
 
+local UPGRADE_EDGE_PADDING = 0.5
+
+local function rectanglesOverlapXZ(
+	firstCFrame: CFrame,
+	firstSize: Vector3,
+	secondCFrame: CFrame,
+	secondSize: Vector3
+): boolean
+	local firstRight =
+		Vector3.new(
+			firstCFrame.RightVector.X,
+			0,
+			firstCFrame.RightVector.Z
+		).Unit
+
+	local firstForward =
+		Vector3.new(
+			firstCFrame.LookVector.X,
+			0,
+			firstCFrame.LookVector.Z
+		).Unit
+
+	local secondRight =
+		Vector3.new(
+			secondCFrame.RightVector.X,
+			0,
+			secondCFrame.RightVector.Z
+		).Unit
+
+	local secondForward =
+		Vector3.new(
+			secondCFrame.LookVector.X,
+			0,
+			secondCFrame.LookVector.Z
+		).Unit
+
+	local offset =
+		Vector3.new(
+			secondCFrame.Position.X
+				- firstCFrame.Position.X,
+			0,
+			secondCFrame.Position.Z
+				- firstCFrame.Position.Z
+		)
+
+	local axes = {
+		firstRight,
+		firstForward,
+		secondRight,
+		secondForward,
+	}
+
+	local firstHalfX = firstSize.X / 2
+	local firstHalfZ = firstSize.Z / 2
+
+	local secondHalfX = secondSize.X / 2
+	local secondHalfZ = secondSize.Z / 2
+
+	for _, axis in axes do
+		local distance =
+			math.abs(
+				offset:Dot(axis)
+			)
+
+		local firstRadius =
+			math.abs(
+				firstRight:Dot(axis)
+			) * firstHalfX
+			+ math.abs(
+				firstForward:Dot(axis)
+			) * firstHalfZ
+
+		local secondRadius =
+			math.abs(
+				secondRight:Dot(axis)
+			) * secondHalfX
+			+ math.abs(
+				secondForward:Dot(axis)
+			) * secondHalfZ
+
+		if distance >=
+			firstRadius + secondRadius then
+
+			return false
+		end
+	end
+
+	return true
+end
+
+local function isBoundingBoxInsideGround(
+	ground: BasePart,
+	boxCFrame: CFrame,
+	boxSize: Vector3
+): boolean
+	local halfX = boxSize.X / 2
+	local halfZ = boxSize.Z / 2
+
+	local corners = {
+		Vector3.new(-halfX, 0, -halfZ),
+		Vector3.new(-halfX, 0, halfZ),
+		Vector3.new(halfX, 0, -halfZ),
+		Vector3.new(halfX, 0, halfZ),
+	}
+
+	local groundHalfX =
+		ground.Size.X / 2
+		- UPGRADE_EDGE_PADDING
+
+	local groundHalfZ =
+		ground.Size.Z / 2
+		- UPGRADE_EDGE_PADDING
+
+	for _, cornerOffset in corners do
+		local worldCorner =
+			boxCFrame:PointToWorldSpace(
+				cornerOffset
+			)
+
+		local groundSpace =
+			ground.CFrame:PointToObjectSpace(
+				worldCorner
+			)
+
+		if math.abs(groundSpace.X)
+				> groundHalfX
+			or math.abs(groundSpace.Z)
+				> groundHalfZ then
+
+			return false
+		end
+	end
+
+	return true
+end
+
+local function canUpgradeFit(
+	plot: Model,
+	currentStand: Model,
+	upgradeTemplate: Model
+): (boolean, string)
+	local placedBusinesses =
+		getPlacedBusinesses(plot)
+
+	if not placedBusinesses then
+		return false,
+			"The plot is missing PlacedBusinesses."
+	end
+
+	local ground =
+		plot:FindFirstChild("Ground")
+
+	if not ground
+		or not ground:IsA("BasePart") then
+
+		return false,
+			"The plot is missing Ground."
+	end
+
+	local preview =
+		upgradeTemplate:Clone()
+
+	preview:PivotTo(
+		currentStand:GetPivot()
+	)
+
+	local candidateBounds =
+		preview:FindFirstChild(
+			"PlacementBounds",
+			true
+		)
+
+	if not candidateBounds
+		or not candidateBounds:IsA("BasePart") then
+
+		preview:Destroy()
+
+		return false,
+			"The upgraded stand is missing PlacementBounds."
+	end
+
+	local candidateCFrame =
+		candidateBounds.CFrame
+
+	local candidateSize =
+		candidateBounds.Size
+
+	-- Make sure the larger upgraded stand still fits
+	-- completely on the player's plot.
+	if not isBoundingBoxInsideGround(
+		ground,
+		candidateCFrame,
+		candidateSize
+	) then
+		preview:Destroy()
+
+		return false,
+			"Not enough room to upgrade here. Move the stand farther from the edge first."
+	end
+
+	for _, business in
+		placedBusinesses:GetChildren() do
+
+		if not business:IsA("Model")
+			or business == currentStand then
+
+			continue
+		end
+
+		local existingBounds =
+			business:FindFirstChild(
+				"PlacementBounds",
+				true
+			)
+
+		if not existingBounds
+			or not existingBounds:IsA("BasePart") then
+
+			continue
+		end
+
+		if rectanglesOverlapXZ(
+			candidateCFrame,
+			candidateSize,
+			existingBounds.CFrame,
+			existingBounds.Size
+		) then
+			preview:Destroy()
+
+			return false,
+				"Not enough room to upgrade this stand. Move nearby businesses first."
+		end
+	end
+
+	preview:Destroy()
+
+	return true, ""
+end
+
 local function performUpgrade(player: Player, stand: Model)
 	if activeUpgrades[player] then
 		return
@@ -772,6 +1011,26 @@ end
 
 		return
 	end
+
+	local fitsUpgrade, fitReason =
+	canUpgradeFit(
+		plot,
+		stand,
+		template
+	)
+
+if not fitsUpgrade then
+	finish()
+
+	sendResult(
+		player,
+		false,
+		fitReason,
+		currentLevel
+	)
+
+	return
+end
 
 	local cash = getCashValue(player)
 
