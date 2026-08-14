@@ -27,9 +27,7 @@ local player =
 
 
 local playerGui =
-	player:WaitForChild(
-		"PlayerGui"
-	)
+	player:WaitForChild("PlayerGui")
 
 
 local remotes =
@@ -59,6 +57,12 @@ local getPlotStateRemote =
 local purchasePlotRemote =
 	remotes:WaitForChild(
 		"PurchasePlotExpansion"
+	) :: RemoteFunction
+
+
+local getReputationStateRemote =
+	remotes:WaitForChild(
+		"GetReputationState"
 	) :: RemoteFunction
 
 
@@ -95,6 +99,25 @@ type PlotState = {
 }
 
 
+type ReputationState = {
+	Success: boolean,
+	Message: string?,
+
+	Rating: number?,
+	ReputationLevel: number?,
+
+	CurrentProgress: number?,
+	RequiredProgress: number?,
+
+	CustomerRateBonus: number?,
+
+	RecentReview: string?,
+
+	NextUnlockTitle: string?,
+	NextUnlockSubtitle: string?,
+}
+
+
 type PanelRefs = {
 	Root: Frame,
 
@@ -110,6 +133,29 @@ type PanelRefs = {
 	Level: TextLabel,
 	Name: TextLabel,
 	Description: TextLabel,
+
+	ProgressTitle: TextLabel,
+	ProgressSubtitle: TextLabel,
+	ProgressBar: Frame,
+}
+
+
+type ReputationRefs = {
+	Root: Frame,
+
+	Rating: TextLabel,
+
+	Stars: {
+		ImageLabel
+	},
+
+	Review: TextLabel,
+
+	CurrentBenefitsTitle: TextLabel,
+	CurrentBenefitsSubtitle: TextLabel,
+
+	NextUnlockTitle: TextLabel,
+	NextUnlockSubtitle: TextLabel,
 
 	ProgressTitle: TextLabel,
 	ProgressSubtitle: TextLabel,
@@ -165,6 +211,12 @@ local plotButton =
 	) :: TextButton
 
 
+local reputationButton =
+	main:WaitForChild(
+		"ReputationButton"
+	) :: TextButton
+
+
 local marketingButtonText =
 	marketingButton:WaitForChild(
 		"InText"
@@ -173,6 +225,12 @@ local marketingButtonText =
 
 local plotButtonText =
 	plotButton:WaitForChild(
+		"InText"
+	) :: TextLabel
+
+
+local reputationButtonText =
+	reputationButton:WaitForChild(
 		"InText"
 	) :: TextLabel
 
@@ -188,82 +246,22 @@ local plotFrame =
 		"PlotFrame"
 	) :: Frame
 
---==================================================
--- UI INPUT / ZINDEX SAFETY
---==================================================
+
+local reputationFrame =
+	main:WaitForChild(
+		"ReputationFrame"
+	) :: Frame
+
 
 main.ClipsDescendants =
 	false
 
 
--- Content pages stay behind all menu controls.
-marketingFrame.ZIndex =
-	1
-
-plotFrame.ZIndex =
-	1
-
-
--- Tab buttons must sit above the content pages.
-marketingButton.ZIndex =
-	10
-
-plotButton.ZIndex =
-	10
-
-
-marketingButtonText.ZIndex =
-	11
-
-plotButtonText.ZIndex =
-	11
-
-
--- Close button must always be clickable.
-closeButton.ZIndex =
-	20
-
-
-local closeX =
-	closeButton:FindFirstChild(
-		"X"
-	)
-
-if closeX
-	and closeX:IsA(
-		"GuiObject"
-	) then
-
-	closeX.ZIndex =
-		21
-end
-
-
--- Explicitly enable interaction.
-marketingButton.Active =
-	true
-
-marketingButton.Selectable =
-	true
-
-
-plotButton.Active =
-	true
-
-plotButton.Selectable =
-	true
-
-
-closeButton.Active =
-	true
-
-closeButton.Selectable =
-	true
-
 local function setPageZIndex(
 	page: Frame,
 	baseZIndex: number
 )
+
 	page.ZIndex =
 		baseZIndex
 
@@ -292,16 +290,28 @@ setPageZIndex(
 	1
 )
 
-marketingButton.ZIndex = 10
-marketingButtonText.ZIndex = 11
+setPageZIndex(
+	reputationFrame,
+	1
+)
 
+
+marketingButton.ZIndex = 10
 plotButton.ZIndex = 10
+reputationButton.ZIndex = 10
+
+marketingButtonText.ZIndex = 11
 plotButtonText.ZIndex = 11
+reputationButtonText.ZIndex = 11
 
 closeButton.ZIndex = 20
 
-marketingButtonText.Active = false
-plotButtonText.Active = false
+
+local closeX =
+	closeButton:FindFirstChild(
+		"X"
+	)
+
 
 if closeX
 	and closeX:IsA("GuiObject") then
@@ -311,33 +321,45 @@ if closeX
 end
 
 
+marketingButton.Active = true
+marketingButton.Selectable = true
+
+plotButton.Active = true
+plotButton.Selectable = true
+
+reputationButton.Active = true
+reputationButton.Selectable = true
+
+closeButton.Active = true
+closeButton.Selectable = true
+
+
+marketingButtonText.Active = false
+plotButtonText.Active = false
+reputationButtonText.Active = false
+
+
 local function getPanel(
 	root: Frame
 ): PanelRefs
 
 	local buy =
-	root:WaitForChild(
-		"Buy"
-	) :: TextButton
+		root:WaitForChild(
+			"Buy"
+		) :: TextButton
 
 
--- The TextButton itself should not draw text.
--- The child InText label handles all visible button text.
-buy.Text =
-	""
+	buy.Text = ""
 
 
-local buyText =
-	buy:WaitForChild(
-		"InText"
-	) :: TextLabel
+	local buyText =
+		buy:WaitForChild(
+			"InText"
+		) :: TextLabel
 
 
-buyText.Active =
-	false
-
-buyText.Selectable =
-	false
+	buyText.Active = false
+	buyText.Selectable = false
 
 
 	local customerLimit =
@@ -371,14 +393,10 @@ buyText.Selectable =
 
 
 	return {
-		Root =
-			root,
+		Root = root,
 
-		Buy =
-			buy,
-
-		BuyText =
-	buyText,
+		Buy = buy,
+		BuyText = buyText,
 
 		StatOneTitle =
 			customerLimit:WaitForChild(
@@ -433,6 +451,117 @@ buyText.Selectable =
 end
 
 
+local function getReputationPanel(
+	root: Frame
+): ReputationRefs
+
+	local starsPanel =
+		root:WaitForChild(
+			"Stars"
+		) :: Frame
+
+
+	local starsFrame =
+		starsPanel:WaitForChild(
+			"Frame"
+		) :: Frame
+
+
+	local stars = {}
+
+
+	for index = 1, 5 do
+
+		stars[index] =
+			starsFrame:WaitForChild(
+				`Star{index}`
+			) :: ImageLabel
+	end
+
+
+	local recentReviews =
+		root:WaitForChild(
+			"RecentReviews"
+		) :: Frame
+
+
+	local currentBenefits =
+		root:WaitForChild(
+			"CurrentBenefits"
+		) :: Frame
+
+
+	local nextUnlock =
+		root:WaitForChild(
+			"NextUnlock"
+		) :: Frame
+
+
+	local progress =
+		root:WaitForChild(
+			"Progress"
+		) :: Frame
+
+
+	local progressBackground =
+		progress:WaitForChild(
+			"Background"
+		) :: Frame
+
+
+	return {
+		Root = root,
+
+		Rating =
+			starsPanel:WaitForChild(
+				"Rating"
+			) :: TextLabel,
+
+		Stars = stars,
+
+		Review =
+			recentReviews:WaitForChild(
+				"Reviews"
+			) :: TextLabel,
+
+		CurrentBenefitsTitle =
+			currentBenefits:WaitForChild(
+				"Title"
+			) :: TextLabel,
+
+		CurrentBenefitsSubtitle =
+			currentBenefits:WaitForChild(
+				"Subtitle"
+			) :: TextLabel,
+
+		NextUnlockTitle =
+			nextUnlock:WaitForChild(
+				"Title"
+			) :: TextLabel,
+
+		NextUnlockSubtitle =
+			nextUnlock:WaitForChild(
+				"Subtitle"
+			) :: TextLabel,
+
+		ProgressTitle =
+			progress:WaitForChild(
+				"Title"
+			) :: TextLabel,
+
+		ProgressSubtitle =
+			progress:WaitForChild(
+				"Subtitle"
+			) :: TextLabel,
+
+		ProgressBar =
+			progressBackground:WaitForChild(
+				"Bar"
+			) :: Frame,
+	}
+end
+
+
 local marketingPanel =
 	getPanel(
 		marketingFrame
@@ -442,6 +571,12 @@ local marketingPanel =
 local plotPanel =
 	getPanel(
 		plotFrame
+	)
+
+
+local reputationPanel =
+	getReputationPanel(
+		reputationFrame
 	)
 
 
@@ -458,6 +593,10 @@ local marketingPending =
 
 
 local plotPending =
+	false
+
+
+local reputationPending =
 	false
 
 
@@ -515,11 +654,9 @@ local function formatCurrency(
 	value: number
 ): string
 
-	return `${
-		FormatNumber.Compact(
-			math.floor(value)
-		)
-	}`
+	return FormatNumber.Compact(
+		math.floor(value)
+	)
 end
 
 
@@ -528,21 +665,15 @@ local function formatSpawnTime(
 	maximum: number?
 ): string
 
-	if typeof(minimum)
-			~= "number"
-		or typeof(maximum)
-			~= "number" then
+	if typeof(minimum) ~= "number"
+		or typeof(maximum) ~= "number" then
 
 		return "--"
 	end
 
 
 	local average =
-		(
-			minimum
-			+ maximum
-		)
-		/ 2
+		(minimum + maximum) / 2
 
 
 	return string.format(
@@ -556,6 +687,7 @@ local function setButtonEnabled(
 	panel: PanelRefs,
 	enabled: boolean
 )
+
 	panel.Buy.Active =
 		enabled
 
@@ -575,30 +707,21 @@ local function setButtonEnabled(
 end
 
 
-local function setProgress(
-	panel: PanelRefs,
-	currentLevel: number,
-	maximumLevel: number
+local function tweenProgressBar(
+	bar: Frame,
+	progress: number
 )
-	local progress =
-		0
 
-
-	if maximumLevel > 0 then
-
-		progress =
-			math.clamp(
-				currentLevel
-					/ maximumLevel,
-
-				0,
-				1
-			)
-	end
+	progress =
+		math.clamp(
+			progress,
+			0,
+			1
+		)
 
 
 	TweenService:Create(
-		panel.ProgressBar,
+		bar,
 
 		TweenInfo.new(
 			0.2,
@@ -612,17 +735,42 @@ local function setProgress(
 					progress,
 					0,
 
-					panel.ProgressBar.Size.Y.Scale,
-					panel.ProgressBar.Size.Y.Offset
+					bar.Size.Y.Scale,
+					bar.Size.Y.Offset
 				),
 		}
 	):Play()
 end
 
 
+local function setProgress(
+	panel: PanelRefs,
+	currentLevel: number,
+	maximumLevel: number
+)
+
+	local progress = 0
+
+
+	if maximumLevel > 0 then
+
+		progress =
+			currentLevel
+				/ maximumLevel
+	end
+
+
+	tweenProgressBar(
+		panel.ProgressBar,
+		progress
+	)
+end
+
+
 local function updateMarketingInterface(
 	state: MarketingState
 )
+
 	currentMarketingState =
 		state
 
@@ -705,8 +853,7 @@ local function updateMarketingInterface(
 
 
 	if maximumLevel > 0
-		and currentLevel
-			>= maximumLevel then
+		and currentLevel >= maximumLevel then
 
 		marketingPanel.BuyText.Text =
 			"Max Marketing Level"
@@ -726,7 +873,7 @@ local function updateMarketingInterface(
 		== "number" then
 
 		marketingPanel.BuyText.Text =
-			`Upgrade Marketing - {formatCurrency(state.NextCost)}`
+			`Upgrade Marketing - ${formatCurrency(state.NextCost)}`
 
 
 		setButtonEnabled(
@@ -735,6 +882,7 @@ local function updateMarketingInterface(
 		)
 
 	else
+
 		marketingPanel.BuyText.Text =
 			"Upgrade Unavailable"
 
@@ -750,6 +898,7 @@ end
 local function updatePlotInterface(
 	state: PlotState
 )
+
 	currentPlotState =
 		state
 
@@ -801,7 +950,9 @@ local function updatePlotInterface(
 
 		plotPanel.StatOneSubtitle.Text =
 			`{state.CurrentSize} x {state.CurrentSize}`
+
 	else
+
 		plotPanel.StatOneSubtitle.Text =
 			"--"
 	end
@@ -816,7 +967,9 @@ local function updatePlotInterface(
 
 		plotPanel.StatTwoSubtitle.Text =
 			`{state.NextSize} x {state.NextSize}`
+
 	else
+
 		plotPanel.StatTwoSubtitle.Text =
 			"MAX"
 	end
@@ -838,8 +991,7 @@ local function updatePlotInterface(
 
 
 	if maximumLevel > 0
-		and currentLevel
-			>= maximumLevel then
+		and currentLevel >= maximumLevel then
 
 		plotPanel.BuyText.Text =
 			"Maximum Plot Size"
@@ -859,7 +1011,7 @@ local function updatePlotInterface(
 		== "number" then
 
 		plotPanel.BuyText.Text =
-			`Expand Plot - {formatCurrency(state.NextCost)}`
+			`Expand Plot - ${formatCurrency(state.NextCost)}`
 
 
 		setButtonEnabled(
@@ -868,6 +1020,7 @@ local function updatePlotInterface(
 		)
 
 	else
+
 		plotPanel.BuyText.Text =
 			"Expansion Unavailable"
 
@@ -880,14 +1033,178 @@ local function updatePlotInterface(
 end
 
 
+local function setStars(
+	rating: number
+)
+
+	local roundedStars =
+		math.clamp(
+			math.floor(
+				rating + 0.5
+			),
+
+			0,
+			5
+		)
+
+
+	for index, star in
+		reputationPanel.Stars do
+
+		local filled =
+			index <= roundedStars
+
+
+		TweenService:Create(
+			star,
+
+			TweenInfo.new(
+				0.15,
+				Enum.EasingStyle.Quad,
+				Enum.EasingDirection.Out
+			),
+
+			{
+				ImageColor3 =
+					filled
+						and Color3.fromRGB(
+							255,
+							255,
+							255
+						)
+						or Color3.fromRGB(
+							95,
+							95,
+							95
+						),
+
+				ImageTransparency =
+					filled
+						and 0
+						or 0.35,
+			}
+		):Play()
+	end
+end
+
+
+local function updateReputationInterface(
+	state: ReputationState
+)
+
+	local rating =
+		typeof(state.Rating)
+				== "number"
+			and math.clamp(
+				state.Rating,
+				0,
+				5
+			)
+			or 0
+
+
+	local reputationLevel =
+		typeof(state.ReputationLevel)
+				== "number"
+			and math.max(
+				1,
+				math.floor(
+					state.ReputationLevel
+				)
+			)
+			or 1
+
+
+	local currentProgress =
+		typeof(state.CurrentProgress)
+				== "number"
+			and math.max(
+				0,
+				state.CurrentProgress
+			)
+			or 0
+
+
+	local requiredProgress =
+		typeof(state.RequiredProgress)
+				== "number"
+			and math.max(
+				1,
+				state.RequiredProgress
+			)
+			or 1
+
+
+	local customerRateBonus =
+		typeof(state.CustomerRateBonus)
+				== "number"
+			and math.max(
+				0,
+				state.CustomerRateBonus
+			)
+			or 0
+
+
+	reputationPanel.Rating.Text =
+		string.format(
+			"%.1f",
+			rating
+		)
+
+
+	setStars(
+		rating
+	)
+
+
+	reputationPanel.Review.Text =
+		state.RecentReview
+		or "No recent reviews yet."
+
+
+	reputationPanel.CurrentBenefitsTitle.Text =
+		"Current Benefits"
+
+
+	reputationPanel.CurrentBenefitsSubtitle.Text =
+		`+{math.round(customerRateBonus * 100)}% Customers`
+
+
+	reputationPanel.NextUnlockTitle.Text =
+		state.NextUnlockTitle
+		or "Next Unlock"
+
+
+	reputationPanel.NextUnlockSubtitle.Text =
+		state.NextUnlockSubtitle
+		or "--"
+
+
+	reputationPanel.ProgressTitle.Text =
+		"Reputation Level"
+
+
+	reputationPanel.ProgressSubtitle.Text =
+		`Level {reputationLevel}  •  {math.floor(currentProgress)}/{math.floor(requiredProgress)}`
+
+
+	tweenProgressBar(
+		reputationPanel.ProgressBar,
+
+		currentProgress
+			/ requiredProgress
+	)
+end
+
+
 local function requestMarketingState()
+
 	if marketingPending then
 		return
 	end
 
 
-	marketingPending =
-		true
+	marketingPending = true
 
 
 	marketingPanel.BuyText.Text =
@@ -914,13 +1231,11 @@ local function requestMarketingState()
 				)
 
 
-			marketingPending =
-				false
+			marketingPending = false
 
 
 			if not success
-				or type(result)
-					~= "table" then
+				or type(result) ~= "table" then
 
 				marketingPanel.BuyText.Text =
 					"Try Again"
@@ -950,13 +1265,13 @@ end
 
 
 local function requestPlotState()
+
 	if plotPending then
 		return
 	end
 
 
-	plotPending =
-		true
+	plotPending = true
 
 
 	plotPanel.BuyText.Text =
@@ -983,13 +1298,11 @@ local function requestPlotState()
 				)
 
 
-			plotPending =
-				false
+			plotPending = false
 
 
 			if not success
-				or type(result)
-					~= "table" then
+				or type(result) ~= "table" then
 
 				plotPanel.BuyText.Text =
 					"Try Again"
@@ -1018,11 +1331,69 @@ local function requestPlotState()
 end
 
 
+local function requestReputationState()
+
+	if reputationPending then
+		return
+	end
+
+
+	reputationPending = true
+
+
+	reputationPanel.Rating.Text =
+		"..."
+
+
+	task.spawn(
+		function()
+
+			local success,
+				result =
+				pcall(
+					function()
+
+						return getReputationStateRemote
+							:InvokeServer()
+					end
+				)
+
+
+			reputationPending = false
+
+
+			if not success
+				or type(result) ~= "table"
+				or result.Success ~= true then
+
+				reputationPanel.Rating.Text =
+					"--"
+
+
+				warn(
+					"[ManageUI] Failed to load reputation state."
+				)
+
+
+				return
+			end
+
+
+			updateReputationInterface(
+				result :: ReputationState
+			)
+		end
+	)
+end
+
+
 local function showTab(
 	tabName: string
 )
+
 	if tabName ~= "Marketing"
-		and tabName ~= "Plot" then
+		and tabName ~= "Plot"
+		and tabName ~= "Reputation" then
 
 		return
 	end
@@ -1032,63 +1403,79 @@ local function showTab(
 		tabName
 
 
+	marketingFrame.Visible =
+		tabName == "Marketing"
+
+
+	plotFrame.Visible =
+		tabName == "Plot"
+
+
+	reputationFrame.Visible =
+		tabName == "Reputation"
+
+
+	marketingButton.BackgroundTransparency =
+		tabName == "Marketing"
+			and 0
+			or 0.2
+
+
+	plotButton.BackgroundTransparency =
+		tabName == "Plot"
+			and 0
+			or 0.2
+
+
+	reputationButton.BackgroundTransparency =
+		tabName == "Reputation"
+			and 0
+			or 0.2
+
+
 	if tabName == "Marketing" then
-
-		-- Show marketing page.
-		marketingFrame.Visible =
-			true
-
-		plotFrame.Visible =
-			false
-
 
 		mainTitle.Text =
 			"Manage - Marketing"
+
 
 		mainSubtitle.Text =
 			"Bring more customers to your business!"
 
 
-		-- Selected / unselected button look.
-		marketingButton.BackgroundTransparency =
-			0
-
-		plotButton.BackgroundTransparency =
-			0.2
-
-
 		requestMarketingState()
 
-	else
 
-		-- Show plot page.
-		marketingFrame.Visible =
-			false
-
-		plotFrame.Visible =
-			true
-
+	elseif tabName == "Plot" then
 
 		mainTitle.Text =
 			"Manage - Plot"
+
 
 		mainSubtitle.Text =
 			"Expand your land and grow your business!"
 
 
-		-- Selected / unselected button look.
-		marketingButton.BackgroundTransparency =
-			0.2
-
-		plotButton.BackgroundTransparency =
-			0
-
-
 		requestPlotState()
+
+
+	else
+
+		mainTitle.Text =
+			"Manage - Reputation"
+
+
+		mainSubtitle.Text =
+			"Keep customers happy and grow your reputation!"
+
+
+		requestReputationState()
 	end
 end
 
+
 local function stopMenuTween()
+
 	if activeMenuTween then
 
 		activeMenuTween:Cancel()
@@ -1100,13 +1487,13 @@ end
 
 
 local function openMenu()
+
 	if menuOpen then
 		return
 	end
 
 
-	menuOpen =
-		true
+	menuOpen = true
 
 
 	stopMenuTween()
@@ -1116,7 +1503,7 @@ local function openMenu()
 		true
 
 
-	-- Side Manage button stays visible.
+	-- Keep the side Manage button visible.
 	openButton.Visible =
 		true
 
@@ -1148,9 +1535,7 @@ local function openMenu()
 	tween.Completed:Once(
 		function()
 
-			if activeMenuTween
-				== tween then
-
+			if activeMenuTween == tween then
 				activeMenuTween =
 					nil
 			end
@@ -1168,13 +1553,13 @@ end
 
 
 local function closeMenu()
+
 	if not menuOpen then
 		return
 	end
 
 
-	menuOpen =
-		false
+	menuOpen = false
 
 
 	stopMenuTween()
@@ -1203,9 +1588,7 @@ local function closeMenu()
 	tween.Completed:Once(
 		function()
 
-			if activeMenuTween
-				~= tween then
-
+			if activeMenuTween ~= tween then
 				return
 			end
 
@@ -1257,8 +1640,7 @@ marketingPanel.Buy.Activated:Connect(
 			true
 
 
-		marketingRequestId +=
-			1
+		marketingRequestId += 1
 
 
 		local requestId =
@@ -1325,6 +1707,7 @@ marketingPanel.Buy.Activated:Connect(
 					)
 
 				else
+
 					requestMarketingState()
 				end
 			end
@@ -1359,8 +1742,7 @@ plotPanel.Buy.Activated:Connect(
 			true
 
 
-		plotRequestId +=
-			1
+		plotRequestId += 1
 
 
 		local requestId =
@@ -1427,6 +1809,7 @@ plotPanel.Buy.Activated:Connect(
 					)
 
 				else
+
 					requestPlotState()
 				end
 			end
@@ -1435,12 +1818,8 @@ plotPanel.Buy.Activated:Connect(
 )
 
 
-marketingButton.MouseButton1Click:Connect(
+marketingButton.Activated:Connect(
 	function()
-
-		print(
-			"[ManageUI] Marketing clicked"
-		)
 
 		showTab(
 			"Marketing"
@@ -1449,15 +1828,21 @@ marketingButton.MouseButton1Click:Connect(
 )
 
 
-plotButton.MouseButton1Click:Connect(
+plotButton.Activated:Connect(
 	function()
-
-		print(
-			"[ManageUI] Plot clicked"
-		)
 
 		showTab(
 			"Plot"
+		)
+	end
+)
+
+
+reputationButton.Activated:Connect(
+	function()
+
+		showTab(
+			"Reputation"
 		)
 	end
 )
@@ -1468,15 +1853,8 @@ openButton.Activated:Connect(
 )
 
 
-closeButton.MouseButton1Click:Connect(
-	function()
-
-		print(
-			"[ManageUI] Close clicked"
-		)
-
-		closeMenu()
-	end
+closeButton.Activated:Connect(
+	closeMenu
 )
 
 
@@ -1518,16 +1896,33 @@ player:GetAttributeChangedSignal(
 		end
 
 
-		if currentTab
-			== "Marketing" then
+		showTab(
+			currentTab
+		)
+	end
+)
 
-			requestMarketingState()
 
-		else
-			requestPlotState()
+-- Refresh reputation while that page is open so
+-- sales and upgrades visibly update without reopening it.
+task.spawn(
+	function()
+
+		while true do
+
+			task.wait(3)
+
+
+			if menuOpen
+				and currentTab
+					== "Reputation" then
+
+				requestReputationState()
+			end
 		end
 	end
 )
+
 
 marketingButtonText.Text =
 	"Marketing"
@@ -1535,6 +1930,10 @@ marketingButtonText.Text =
 
 plotButtonText.Text =
 	"Plot"
+
+
+reputationButtonText.Text =
+	"Reputation"
 
 
 marketingPanel.ProgressBar.Size =
@@ -1557,22 +1956,35 @@ plotPanel.ProgressBar.Size =
 	)
 
 
--- Default tab.
+reputationPanel.ProgressBar.Size =
+	UDim2.new(
+		0,
+		0,
+
+		reputationPanel.ProgressBar.Size.Y.Scale,
+		reputationPanel.ProgressBar.Size.Y.Offset
+	)
+
+
 currentTab =
 	"Marketing"
 
 
--- Set page visibility explicitly.
 marketingFrame.Visible =
 	true
+
 
 plotFrame.Visible =
 	false
 
 
--- Correct title before opening.
+reputationFrame.Visible =
+	false
+
+
 mainTitle.Text =
 	"Manage - Marketing"
+
 
 mainSubtitle.Text =
 	"Bring more customers to your business!"
@@ -1580,6 +1992,7 @@ mainSubtitle.Text =
 
 main.Visible =
 	false
+
 
 openButton.Visible =
 	true

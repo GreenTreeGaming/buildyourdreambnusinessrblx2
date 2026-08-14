@@ -529,7 +529,7 @@ getPlotCustomerRateMultiplier = function(
 	plot: Model
 ): number
 
-	local bestMultiplier =
+	local bestStandMultiplier =
 		1
 
 
@@ -546,9 +546,9 @@ getPlotCustomerRateMultiplier = function(
 		end
 
 
-		bestMultiplier =
+		bestStandMultiplier =
 			math.max(
-				bestMultiplier,
+				bestStandMultiplier,
 
 				getStandCustomerRateMultiplier(
 					stand
@@ -557,7 +557,23 @@ getPlotCustomerRateMultiplier = function(
 	end
 
 
-	return bestMultiplier
+	local reputationMultiplier =
+		plot:GetAttribute(
+			"ReputationCustomerRateMultiplier"
+		)
+
+
+	if typeof(reputationMultiplier)
+			~= "number"
+		or reputationMultiplier < 1 then
+
+		reputationMultiplier =
+			1
+	end
+
+
+	return bestStandMultiplier
+		* reputationMultiplier
 end
 
 
