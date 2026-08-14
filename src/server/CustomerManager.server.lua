@@ -26,6 +26,9 @@ local UITheme = require(
 		:WaitForChild("UITheme")
 )
 
+local CUSTOMER_WALK_ANIMATION_ID =
+	"rbxassetid://180426354"
+
 local Colors = UITheme.Colors
 local Fonts = UITheme.Fonts
 
@@ -69,6 +72,11 @@ local PATH_FINAL_REACHED_DISTANCE = 2
 local PATH_REISSUE_INTERVAL = 0.75
 local PATH_STUCK_TIME = 2
 
+-- Customers pathfind to a point outside the business
+-- before the normal queue controller takes over.
+local STAND_APPROACH_CLEARANCE =
+	3.5
+
 local plotsFolder =
 	Workspace:WaitForChild("Plots")
 
@@ -98,6 +106,10 @@ type QueueEntry = {
 
 	reachedPosition: boolean,
 	isLeaving: boolean,
+
+	-- False while the customer is pathfinding around
+	-- the stand toward the queue entrance.
+	approachComplete: boolean,
 
 	assignedSlot: number,
 	targetPosition: BasePart?,
@@ -553,6 +565,110 @@ local function getStandQueueSpace(
 		queueCapacity
 end
 
+local function prepareStandPathfinding(
+	stand: Model
+)
+	local placementBounds =
+		stand:FindFirstChild(
+			"PlacementBounds",
+			true
+		)
+
+	if not placementBounds
+		or not placementBounds:IsA(
+			"BasePart"
+		) then
+
+		return
+	end
+
+	local existing =
+		stand:FindFirstChild(
+			"CustomerPathBlocker"
+		)
+
+	if existing
+		and existing:IsA(
+			"BasePart"
+		) then
+
+		return
+	end
+
+	local blocker =
+		Instance.new("Part")
+
+	blocker.Name =
+		"CustomerPathBlocker"
+
+	blocker.Anchored =
+		true
+
+	blocker.CanCollide =
+		false
+
+	blocker.CanTouch =
+		false
+
+	blocker.CanQuery =
+		false
+
+	blocker.Transparency =
+		1
+
+	blocker.CastShadow =
+		false
+
+	-- Reserve the physical center of the business while
+	-- leaving some room around the edge where its queue,
+	-- door and customer positions may exist.
+	blocker.Size =
+		Vector3.new(
+			math.max(
+				1,
+				placementBounds.Size.X - 1.25
+			),
+
+			math.max(
+				4,
+				placementBounds.Size.Y
+			),
+
+			math.max(
+				1,
+				placementBounds.Size.Z - 1.25
+			)
+		)
+
+	blocker.CFrame =
+		placementBounds.CFrame
+			* CFrame.new(
+				0,
+				blocker.Size.Y / 2,
+				0
+			)
+
+	blocker.Parent =
+		stand
+
+	local modifier =
+		Instance.new(
+			"PathfindingModifier"
+		)
+
+	modifier.Name =
+		"BusinessPathfindingModifier"
+
+	modifier.Label =
+		"BusinessObstacle"
+
+	modifier.PassThrough =
+		false
+
+	modifier.Parent =
+		blocker
+end
+
 local function chooseStandForCustomer(
 	plot: Model
 ): Model?
@@ -563,6 +679,10 @@ local function chooseStandForCustomer(
 
 	for _, stand in
 		getLemonadeStands(plot) do
+
+			prepareStandPathfinding(
+		stand
+	)
 
 		local hasSpace, queueCount =
 			getStandQueueSpace(stand)
@@ -835,6 +955,171 @@ local function getNextNpcTemplate(
 	end
 end
 
+local function setupCustomerMovementAnimation(
+	customer: Model,
+	humanoid: Humanoid
+)
+	-- We control customer walking ourselves.
+	-- Disable any copied Animate scripts so they cannot
+	-- fight with this movement animation controller.
+	for _, descendant in customer:GetDescendants() do
+		if descendant.Name == "Animate"
+			and (
+				descendant:IsA("LocalScript")
+				or descendant:IsA("Script")
+			) then
+
+			descendant.Enabled = false
+		end
+	end
+
+	local animator =
+		humanoid:FindFirstChildOfClass(
+			"Animator"
+		)
+
+	if not animator then
+		animator =
+			Instance.new("Animator")
+
+		animator.Parent =
+			humanoid
+	end
+
+	local animation =
+		Instance.new("Animation")
+
+	animation.Name =
+		"CustomerWalkAnimation"
+
+	animation.AnimationId =
+		CUSTOMER_WALK_ANIMATION_ID
+
+	local success, walkTrack =
+		pcall(function()
+			return animator:LoadAnimation(
+				animation
+			)
+		end)
+
+	animation:Destroy()
+
+	if not success
+		or not walkTrack then
+
+		warn(
+			`Could not load walk animation for {customer:GetFullName()}.`
+		)
+
+		return
+	end
+
+	walkTrack.Name =
+		"CustomerWalk"
+
+	walkTrack.Priority =
+		Enum.AnimationPriority.Movement
+
+	walkTrack.Looped =
+		true
+
+	local function updateWalkAnimation(
+		speed: number
+	)
+		if humanoid.Health <= 0 then
+			if walkTrack.IsPlaying then
+				walkTrack:Stop(0.1)
+			end
+
+			return
+		end
+
+		if speed > 0.15 then
+			if not walkTrack.IsPlaying then
+				walkTrack:Play(
+					0.12,
+					1,
+					1
+				)
+			end
+
+			-- Keep animation speed reasonably matched
+			-- to actual humanoid movement.
+			walkTrack:AdjustSpeed(
+				math.clamp(
+					speed / 11,
+					0.75,
+					1.4
+				)
+			)
+		elseif walkTrack.IsPlaying then
+			walkTrack:Stop(
+				0.12
+			)
+		end
+	end
+
+	humanoid.Running:Connect(
+		updateWalkAnimation
+	)
+
+	humanoid.Died:Connect(function()
+		if walkTrack.IsPlaying then
+			walkTrack:Stop(0)
+		end
+	end)
+
+	-- Safety check.
+	--
+	-- Running can occasionally miss the exact moment an
+	-- NPC begins moving after spawning/path recalculation,
+	-- so periodically make sure physical movement and the
+	-- animation track agree.
+	task.spawn(function()
+		while customer.Parent
+			and humanoid.Parent
+			and humanoid.Health > 0 do
+
+			local rootPart =
+				customer:FindFirstChild(
+					"HumanoidRootPart"
+				)
+
+			if rootPart
+				and rootPart:IsA("BasePart") then
+
+				local horizontalVelocity =
+					Vector3.new(
+						rootPart.AssemblyLinearVelocity.X,
+						0,
+						rootPart.AssemblyLinearVelocity.Z
+					).Magnitude
+
+				if horizontalVelocity > 0.5 then
+					if not walkTrack.IsPlaying then
+						walkTrack:Play(
+							0.08,
+							1,
+							1
+						)
+					end
+				elseif walkTrack.IsPlaying
+					and humanoid.MoveDirection.Magnitude
+						<= 0.01 then
+
+					walkTrack:Stop(
+						0.1
+					)
+				end
+			end
+
+			task.wait(
+				0.2
+			)
+		end
+	end)
+end
+
 local function prepareCustomer(
 	customer: Model
 )
@@ -849,12 +1134,20 @@ local function prepareCustomer(
 		)
 
 	if humanoid then
-		humanoid.DisplayName =
-			"Customer"
+	humanoid.DisplayName =
+		"Customer"
 
-		humanoid.AutoRotate = true
-		humanoid.WalkSpeed = 11
-	end
+	humanoid.AutoRotate =
+		true
+
+	humanoid.WalkSpeed =
+		11
+
+	setupCustomerMovementAnimation(
+		customer,
+		humanoid
+	)
+end
 
 	for _, descendant in
 		customer:GetDescendants() do
@@ -898,9 +1191,16 @@ local function createPathPoints(
 		PathfindingService:CreatePath({
 			AgentRadius = 2,
 			AgentHeight = 5,
+
 			AgentCanJump = true,
 			AgentCanClimb = false,
-			WaypointSpacing = 6,
+
+			WaypointSpacing = 4,
+
+			Costs = {
+				BusinessObstacle =
+					math.huge,
+			},
 		})
 
 	local success, calculationError =
@@ -928,9 +1228,11 @@ local function createPathPoints(
 	return path:GetWaypoints()
 end
 
-local function moveCustomerTo(
+local function moveCustomerToPosition(
 	customer: Model,
-	target: BasePart
+	targetPosition: Vector3,
+	allowDirectFallback: boolean?,
+	shouldContinue: (() -> boolean)?
 ): boolean
 	local humanoid =
 		customer:FindFirstChildOfClass(
@@ -949,8 +1251,10 @@ local function moveCustomerTo(
 		return false
 	end
 
-	local targetPosition =
-		target.Position
+
+	humanoid.AutoRotate =
+		true
+
 
 	local waypoints =
 		createPathPoints(
@@ -958,20 +1262,35 @@ local function moveCustomerTo(
 			targetPosition
 		)
 
+
 	if not waypoints
 		or #waypoints == 0 then
 
+		-- For queue approaches we specifically DON'T
+		-- want to fall back to a straight MoveTo because
+		-- that is what lets NPCs walk through buildings.
+		if allowDirectFallback == false then
+			return false
+		end
+
+
 		waypoints = {
 			{
-				Position = targetPosition,
+				Position =
+					targetPosition,
+
 				Action =
 					Enum.PathWaypointAction.Walk,
+
 				Label = "",
 			},
 		}
 	end
 
-	local waypointIndex = 1
+
+	local waypointIndex =
+		1
+
 
 	if #waypoints >= 2
 		and (
@@ -980,17 +1299,40 @@ local function moveCustomerTo(
 		).Magnitude
 			<= PATH_WAYPOINT_REACHED_DISTANCE then
 
-		waypointIndex = 2
+		waypointIndex =
+			2
 	end
 
-	local startedAt = time()
-	local lastCommandAt = 0
-	local lastProgressAt = time()
-	local lastDistance = math.huge
-	local recalculations = 0
+
+	local startedAt =
+		time()
+
+	local lastCommandAt =
+		0
+
+	local lastProgressAt =
+		time()
+
+	local lastDistance =
+		math.huge
+
+	local recalculations =
+		0
+
 
 	while customer.Parent
 		and humanoid.Health > 0 do
+
+		if shouldContinue
+			and not shouldContinue() then
+
+			humanoid:MoveTo(
+				rootPart.Position
+			)
+
+			return false
+		end
+
 
 		if time() - startedAt
 			>= PATH_TIMEOUT then
@@ -998,14 +1340,18 @@ local function moveCustomerTo(
 			return false
 		end
 
+
 		local finalOffset =
 			Vector3.new(
 				rootPart.Position.X
 					- targetPosition.X,
+
 				0,
+
 				rootPart.Position.Z
 					- targetPosition.Z
 			)
+
 
 		if finalOffset.Magnitude
 			<= PATH_FINAL_REACHED_DISTANCE then
@@ -1017,44 +1363,65 @@ local function moveCustomerTo(
 			return true
 		end
 
+
 		local waypoint =
-			waypoints[waypointIndex]
+			waypoints[
+				waypointIndex
+			]
+
 
 		if not waypoint then
 			waypoint = {
-				Position = targetPosition,
+				Position =
+					targetPosition,
+
 				Action =
 					Enum.PathWaypointAction.Walk,
+
 				Label = "",
 			}
 		end
+
 
 		local waypointOffset =
 			Vector3.new(
 				rootPart.Position.X
 					- waypoint.Position.X,
+
 				0,
+
 				rootPart.Position.Z
 					- waypoint.Position.Z
 			)
+
 
 		if waypointOffset.Magnitude
 			<= PATH_WAYPOINT_REACHED_DISTANCE
 			and waypointIndex
 				< #waypoints then
 
-			waypointIndex += 1
-			waypoint =
-				waypoints[waypointIndex]
+			waypointIndex +=
+				1
 
-			lastCommandAt = 0
+
+			waypoint =
+				waypoints[
+					waypointIndex
+				]
+
+
+			lastCommandAt =
+				0
 		end
+
 
 		if waypoint.Action
 			== Enum.PathWaypointAction.Jump then
 
-			humanoid.Jump = true
+			humanoid.Jump =
+				true
 		end
+
 
 		if time() - lastCommandAt
 			>= PATH_REISSUE_INTERVAL then
@@ -1063,14 +1430,23 @@ local function moveCustomerTo(
 				waypoint.Position
 			)
 
-			lastCommandAt = time()
+
+			lastCommandAt =
+				time()
 		end
 
+
 		local currentDistance =
-			(
-				rootPart.Position
-					- targetPosition
+			Vector3.new(
+				rootPart.Position.X
+					- targetPosition.X,
+
+				0,
+
+				rootPart.Position.Z
+					- targetPosition.Z
 			).Magnitude
+
 
 		if currentDistance
 			< lastDistance - 0.1 then
@@ -1078,13 +1454,20 @@ local function moveCustomerTo(
 			lastDistance =
 				currentDistance
 
-			lastProgressAt = time()
+			lastProgressAt =
+				time()
+
 		elseif time() - lastProgressAt
 				>= PATH_STUCK_TIME
-			and recalculations < 2 then
+			and recalculations < 3 then
 
-			recalculations += 1
-			lastProgressAt = time()
+			recalculations +=
+				1
+
+
+			lastProgressAt =
+				time()
+
 
 			local newWaypoints =
 				createPathPoints(
@@ -1092,30 +1475,65 @@ local function moveCustomerTo(
 					targetPosition
 				)
 
+
 			if newWaypoints
 				and #newWaypoints > 0 then
 
 				waypoints =
 					newWaypoints
 
-				waypointIndex =
-					math.min(
-						2,
-						#waypoints
-					)
 
-				lastCommandAt = 0
-			else
+				waypointIndex =
+					1
+
+
+				if #waypoints >= 2
+					and (
+						rootPart.Position
+							- waypoints[1].Position
+					).Magnitude
+						<= PATH_WAYPOINT_REACHED_DISTANCE then
+
+					waypointIndex =
+						2
+				end
+
+
+				lastCommandAt =
+					0
+
+				lastDistance =
+					math.huge
+			elseif allowDirectFallback
+				~= false then
+
 				humanoid:MoveTo(
 					targetPosition
 				)
+			else
+				return false
 			end
 		end
+
 
 		RunService.Heartbeat:Wait()
 	end
 
+
 	return false
+end
+
+
+local function moveCustomerTo(
+	customer: Model,
+	target: BasePart
+): boolean
+	return moveCustomerToPosition(
+		customer,
+		target.Position,
+		true,
+		nil
+	)
 end
 
 local function faceCustomerTowardStand(
@@ -1473,7 +1891,8 @@ local function runQueueMovementController(
 		return
 	end
 
-	entry.controllerRunning = true
+	entry.controllerRunning =
+		true
 
 	local customer =
 		entry.customer
@@ -1490,15 +1909,15 @@ local function runQueueMovementController(
 
 	if not humanoid
 		or not rootPart
-		or not rootPart:IsA("BasePart") then
+		or not rootPart:IsA(
+			"BasePart"
+		) then
 
-		entry.controllerRunning = false
+		entry.controllerRunning =
+			false
+
 		return
 	end
-
-	local lastTarget: BasePart? = nil
-	local lastCommandAt = 0
-	local targetStartedAt = time()
 
 	while customer.Parent
 		and not entry.isLeaving do
@@ -1509,62 +1928,103 @@ local function runQueueMovementController(
 		if not target
 			or not target.Parent then
 
-			entry.reachedPosition = false
+			entry.reachedPosition =
+				false
+
 			RunService.Heartbeat:Wait()
+
 			continue
 		end
 
-		if target ~= lastTarget then
-			lastTarget = target
-			lastCommandAt = 0
-			targetStartedAt = time()
-			entry.reachedPosition = false
-		end
 
-		local horizontalOffset =
-			Vector3.new(
-				rootPart.Position.X
-					- target.Position.X,
-				0,
-				rootPart.Position.Z
-					- target.Position.Z
+		local movementVersion =
+			entry.movementVersion
+
+		local targetAtStart =
+			target
+
+
+		local reached =
+			moveCustomerToPosition(
+				customer,
+				target.Position,
+
+				-- This is crucial.
+				--
+				-- Never use direct MoveTo fallback for
+				-- movement around businesses.
+				false,
+
+				function()
+					return customer.Parent
+							~= nil
+
+						and not entry.isLeaving
+
+						and entry.targetPosition
+							== targetAtStart
+
+						and entry.movementVersion
+							== movementVersion
+				end
 			)
 
-		if horizontalOffset.Magnitude
-			<= QUEUE_REACHED_DISTANCE then
 
-			if not entry.reachedPosition then
-				entry.reachedPosition = true
+		if entry.isLeaving
+			or not customer.Parent then
 
-				humanoid:MoveTo(
-					rootPart.Position
-				)
-			end
-		else
-			entry.reachedPosition = false
-
-			if time() - lastCommandAt
-				>= QUEUE_COMMAND_INTERVAL then
-
-				humanoid:MoveTo(
-					target.Position
-				)
-
-				lastCommandAt = time()
-			end
-
-			if time() - targetStartedAt
-				>= QUEUE_MOVE_TIMEOUT then
-
-				entry.isLeaving = true
-				break
-			end
+			break
 		end
 
-		RunService.Heartbeat:Wait()
+
+		-- Queue moved while we were pathfinding.
+		-- Recalculate for the new target.
+		if entry.targetPosition
+			~= targetAtStart
+			or entry.movementVersion
+				~= movementVersion then
+
+			continue
+		end
+
+
+		if reached then
+			entry.reachedPosition =
+				true
+
+
+			humanoid:MoveTo(
+				rootPart.Position
+			)
+
+
+			-- Wait here until this customer advances
+			-- to another queue position.
+			while customer.Parent
+				and not entry.isLeaving
+				and entry.targetPosition
+					== targetAtStart
+				and entry.movementVersion
+					== movementVersion do
+
+				RunService.Heartbeat:Wait()
+			end
+		else
+			-- Don't walk straight through the stand just
+			-- because pathfinding failed.
+			entry.isLeaving =
+				true
+
+			entry.reachedPosition =
+				false
+
+			break
+		end
 	end
 
-	entry.controllerRunning = false
+
+	entry.controllerRunning =
+		false
 end
 
 local function moveQueueForward(
@@ -1572,18 +2032,29 @@ local function moveQueueForward(
 	state: StandState
 )
 	local queuePositions =
-		getQueuePositions(stand)
+		getQueuePositions(
+			stand
+		)
 
 	for queueIndex, entry in
 		state.queue do
 
 		local targetPosition =
-			queuePositions[queueIndex]
+			queuePositions[
+				queueIndex
+			]
 
 		if not targetPosition
 			or entry.isLeaving then
 
 			continue
+		end
+
+		if entry.targetPosition
+			~= targetPosition then
+
+			entry.movementVersion +=
+				1
 		end
 
 		entry.assignedSlot =
@@ -1592,7 +2063,8 @@ local function moveQueueForward(
 		entry.targetPosition =
 			targetPosition
 
-		entry.reachedPosition = false
+		entry.reachedPosition =
+			false
 
 		if not entry.controllerRunning then
 			task.spawn(
@@ -1601,6 +2073,237 @@ local function moveQueueForward(
 			)
 		end
 	end
+end
+
+local function getStandApproachPosition(
+	stand: Model,
+	queuePosition: Vector3
+): Vector3
+
+	local placementBounds =
+		stand:FindFirstChild(
+			"PlacementBounds",
+			true
+		)
+
+
+	if not placementBounds
+		or not placementBounds:IsA(
+			"BasePart"
+		) then
+
+		return queuePosition
+	end
+
+
+	local localQueuePosition =
+		placementBounds.CFrame
+			:PointToObjectSpace(
+				queuePosition
+			)
+
+
+	local halfX =
+		placementBounds.Size.X
+			/ 2
+
+	local halfZ =
+		placementBounds.Size.Z
+			/ 2
+
+
+	local normalizedX =
+		math.abs(
+			localQueuePosition.X
+		) / math.max(
+			halfX,
+			0.01
+		)
+
+
+	local normalizedZ =
+		math.abs(
+			localQueuePosition.Z
+		) / math.max(
+			halfZ,
+			0.01
+		)
+
+
+	local approachLocal
+
+
+	if normalizedX > normalizedZ then
+
+		local direction =
+			localQueuePosition.X >= 0
+				and 1
+				or -1
+
+
+		approachLocal =
+			Vector3.new(
+				direction
+					* (
+						halfX
+						+ STAND_APPROACH_CLEARANCE
+					),
+
+				0,
+
+				math.clamp(
+					localQueuePosition.Z,
+					-halfZ,
+					halfZ
+				)
+			)
+	else
+
+		local direction =
+			localQueuePosition.Z >= 0
+				and 1
+				or -1
+
+
+		approachLocal =
+			Vector3.new(
+				math.clamp(
+					localQueuePosition.X,
+					-halfX,
+					halfX
+				),
+
+				0,
+
+				direction
+					* (
+						halfZ
+						+ STAND_APPROACH_CLEARANCE
+					)
+			)
+	end
+
+
+	local worldApproach =
+		placementBounds.CFrame
+			:PointToWorldSpace(
+				approachLocal
+			)
+
+
+	return Vector3.new(
+		worldApproach.X,
+		queuePosition.Y,
+		worldApproach.Z
+	)
+end
+
+
+local function approachStandBeforeQueue(
+	plot: Model,
+	stand: Model,
+	state: StandState,
+	entry: QueueEntry
+)
+	local customer =
+		entry.customer
+
+
+	if not customer.Parent
+		or entry.isLeaving then
+
+		return
+	end
+
+
+	local initialMovementVersion =
+		entry.movementVersion
+
+
+	local queueTarget =
+		entry.targetPosition
+
+
+	if not queueTarget
+		or not queueTarget.Parent then
+
+		entry.isLeaving =
+			true
+
+		return
+	end
+
+
+	local approachPosition =
+		getStandApproachPosition(
+			stand,
+			queueTarget.Position
+		)
+
+
+	local reachedApproach =
+		moveCustomerToPosition(
+			customer,
+			approachPosition,
+
+			-- Never straight-line fallback through
+			-- the business.
+			false,
+
+			function()
+				return customer.Parent
+						~= nil
+
+					and stand.Parent
+						~= nil
+
+					and standIsAvailable(
+						stand
+					)
+
+					and not entry.isLeaving
+
+					and entry.movementVersion
+						== initialMovementVersion
+			end
+		)
+
+
+	if not customer.Parent
+		or entry.isLeaving
+		or entry.movementVersion
+			~= initialMovementVersion then
+
+		return
+	end
+
+
+	if not reachedApproach then
+		entry.isLeaving =
+			true
+
+		entry.targetPosition =
+			nil
+
+		entry.reachedPosition =
+			false
+
+		return
+	end
+
+
+	-- The NPC has now approached the OUTSIDE of the
+	-- stand using real pathfinding.
+	entry.approachComplete =
+		true
+
+
+	-- Their queue position may have changed while
+	-- walking toward the stand, so refresh assignments.
+	moveQueueForward(
+		stand,
+		state
+	)
 end
 
 local function evacuateStandCustomers(
@@ -1773,14 +2476,25 @@ local function processQueue(
 				break
 			end
 
-			if time() - waitStartedAt
-				>= QUEUE_MOVE_TIMEOUT then
+			local allowedMoveTime
 
-				firstEntry.isLeaving =
-					true
+if firstEntry.approachComplete then
+	allowedMoveTime =
+		QUEUE_MOVE_TIMEOUT
+else
+	allowedMoveTime =
+		PATH_TIMEOUT + 2
+end
 
-				break
-			end
+
+if time() - waitStartedAt
+	>= allowedMoveTime then
+
+	firstEntry.isLeaving =
+		true
+
+	break
+end
 
 			task.wait(0.05)
 		end
@@ -2036,17 +2750,19 @@ local function spawnCustomerForStand(
 	)
 
 	local entry: QueueEntry = {
-		customer = customer,
+	customer = customer,
 
-		reachedPosition = false,
-		isLeaving = false,
+	reachedPosition = false,
+	isLeaving = false,
 
-		assignedSlot = 0,
-		targetPosition = nil,
+	approachComplete = false,
 
-		controllerRunning = false,
-		movementVersion = 0,
-	}
+	assignedSlot = 0,
+	targetPosition = nil,
+
+	controllerRunning = false,
+	movementVersion = 0,
+}
 
 	table.insert(
 		state.queue,
@@ -2058,16 +2774,29 @@ local function spawnCustomerForStand(
 		state
 	)
 
-	moveQueueForward(
-		stand,
-		state
-	)
+	-- Reserve and assign the customer's queue position,
+-- but moveQueueForward will NOT start the direct queue
+-- controller until approachComplete becomes true.
+moveQueueForward(
+	stand,
+	state
+)
 
-	task.spawn(
-		processQueue,
-		plot,
-		stand
-	)
+
+task.spawn(
+	approachStandBeforeQueue,
+	plot,
+	stand,
+	state,
+	entry
+)
+
+
+task.spawn(
+	processQueue,
+	plot,
+	stand
+)
 
 	return true
 end

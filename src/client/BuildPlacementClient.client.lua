@@ -3603,4 +3603,4 @@ task.spawn(function()
 	end
 end)
 
-updateBusinessTemplateText()
+updateBusinessButtonTexts()
