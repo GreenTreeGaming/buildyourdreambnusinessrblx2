@@ -15,12 +15,7 @@ local BusinessConfig = {
 		TemplateName = "LemonadeStand",
 		UpgradeCost = 50,
 
-		-- How strongly customers prefer this stand
-		-- compared with other available stands.
 		CustomerAttraction = 1.00,
-
-		-- Plot-wide customer arrival speed if this is
-		-- the best-looking stand on the plot.
 		CustomerRateMultiplier = 1.00,
 	},
 
@@ -42,10 +37,18 @@ local BusinessConfig = {
 
 	[4] = {
 		TemplateName = "LemonadeStand4",
-		UpgradeCost = nil,
+		UpgradeCost = 4000,
 
 		CustomerAttraction = 1.60,
 		CustomerRateMultiplier = 1.45,
+	},
+
+	[5] = {
+		TemplateName = "LemonadeStand5",
+		UpgradeCost = nil,
+
+		CustomerAttraction = 1.90,
+		CustomerRateMultiplier = 1.70,
 	},
 },
 

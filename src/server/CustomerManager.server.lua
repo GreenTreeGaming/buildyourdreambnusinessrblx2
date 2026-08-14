@@ -167,6 +167,10 @@ type QueueEntry = {
 	reachedPosition: boolean,
 	isLeaving: boolean,
 
+	-- Customer must visit the plot's entrance waypoint
+	-- before approaching any stand.
+	hasReachedPlotWaypoint: boolean,
+
 	-- Becomes true after this customer has physically
 	-- walked to Queue4 once.
 	hasEnteredQueue: boolean,
@@ -202,6 +206,28 @@ local plotNextSpawnTimes: {
 --==================================================
 -- PLOT HELPERS
 --==================================================
+
+local function getCustomerWaypoint(
+	plot: Model
+): BasePart?
+
+	local waypoint =
+		plot:FindFirstChild(
+			"CustomerWaypoint1"
+		)
+
+
+	if waypoint
+		and waypoint:IsA(
+			"BasePart"
+		) then
+
+		return waypoint
+	end
+
+
+	return nil
+end
 
 local function getPlotCustomerLimit(
 	plot: Model
@@ -2432,21 +2458,51 @@ local function sendCustomerToExit(
 	end
 
 
+	local waypoint =
+		getCustomerWaypoint(
+			plot
+		)
+
+
 	task.spawn(function()
 
-		moveCustomerToPart(
+		--==================================================
+		-- FIRST: RETURN TO CUSTOMER WAYPOINT
+		--==================================================
+
+		if waypoint
+			and waypoint.Parent
+			and customer.Parent then
+
+			moveCustomerToPosition(
+				customer,
+				waypoint.Position,
+				nil
+			)
+		end
+
+
+		if not customer.Parent then
+			return
+		end
+
+
+		--==================================================
+		-- THEN: WALK TO EXIT
+		--==================================================
+
+		moveCustomerToPosition(
 			customer,
-			customerExit
+			customerExit.Position,
+			nil
 		)
 
 
 		if customer.Parent then
-
 			customer:Destroy()
 		end
 	end)
 end
-
 
 --==================================================
 -- QUEUE MOVEMENT
@@ -2508,15 +2564,10 @@ local function runQueueMovementController(
 			entry.reachedPosition =
 				false
 
-
 			RunService.Heartbeat:Wait()
 
 			continue
 		end
-
-
-		local targetAtStart =
-			target
 
 
 		local movementVersion =
@@ -2528,7 +2579,101 @@ local function runQueueMovementController(
 
 
 		--==================================================
-		-- FIRST ENTRY: ALWAYS WALK TO QUEUE4
+		-- STEP 1: ALWAYS VISIT CUSTOMERWAYPOINT1 FIRST
+		--==================================================
+
+		if not entry.hasReachedPlotWaypoint then
+
+			local plot =
+				getPlotFromStand(
+					stand
+				)
+
+
+			if not plot then
+
+				entry.isLeaving =
+					true
+
+				break
+			end
+
+
+			local waypoint =
+				getCustomerWaypoint(
+					plot
+				)
+
+
+			if not waypoint then
+
+				warn(
+					`{plot:GetFullName()} is missing CustomerWaypoint1.`
+				)
+
+				entry.isLeaving =
+					true
+
+				break
+			end
+
+
+			local waypointVersion =
+				entry.movementVersion
+
+
+			local reachedWaypoint =
+				moveCustomerToPosition(
+					customer,
+					waypoint.Position,
+
+					function()
+
+						return customer.Parent
+								~= nil
+
+							and stand.Parent
+								~= nil
+
+							and not entry.isLeaving
+
+							and entry.movementVersion
+								== waypointVersion
+					end
+				)
+
+
+			if not customer.Parent
+				or entry.isLeaving then
+
+				break
+			end
+
+
+			-- Queue assignment changed while walking.
+			if entry.movementVersion
+				~= waypointVersion then
+
+				continue
+			end
+
+
+			if not reachedWaypoint then
+
+				entry.isLeaving =
+					true
+
+				break
+			end
+
+
+			entry.hasReachedPlotWaypoint =
+				true
+		end
+
+
+		--==================================================
+		-- STEP 2: FIRST STAND ENTRY ALWAYS GOES TO QUEUE4
 		--==================================================
 
 		if not entry.hasEnteredQueue then
@@ -2554,6 +2699,10 @@ local function runQueueMovementController(
 			end
 
 
+			local entranceVersion =
+				entry.movementVersion
+
+
 			local reachedEntrance =
 				moveCustomerToPosition(
 					customer,
@@ -2570,14 +2719,20 @@ local function runQueueMovementController(
 							and not entry.isLeaving
 
 							and entry.movementVersion
-								== movementVersion
+								== entranceVersion
 					end
 				)
 
 
-			-- Queue assignment changed while walking.
+			if not customer.Parent
+				or entry.isLeaving then
+
+				break
+			end
+
+
 			if entry.movementVersion
-				~= movementVersion then
+				~= entranceVersion then
 
 				continue
 			end
@@ -2592,45 +2747,13 @@ local function runQueueMovementController(
 			end
 
 
-			-- This is intentionally true regardless of
-			-- whether another customer occupies Queue4.
 			entry.hasEnteredQueue =
 				true
-
-
-			-- If their actual queue assignment IS Queue4,
-			-- they're already done.
-			if targetAtStart
-				== entrance then
-
-				entry.reachedPosition =
-					true
-
-
-				humanoid:MoveTo(
-					rootPart.Position
-				)
-
-
-				while customer.Parent
-					and stand.Parent
-					and not entry.isLeaving
-					and entry.targetPosition
-						== targetAtStart
-					and entry.movementVersion
-						== movementVersion do
-
-					RunService.Heartbeat:Wait()
-				end
-
-
-				continue
-			end
 		end
 
 
 		--==================================================
-		-- NOW WALK FROM QUEUE4 TO ACTUAL QUEUE SLOT
+		-- STEP 3: WALK TO THE CURRENT ASSIGNED QUEUE SLOT
 		--==================================================
 
 		local currentTarget =
@@ -2644,14 +2767,50 @@ local function runQueueMovementController(
 		end
 
 
-		-- Refresh version because reaching Queue4 may have
-		-- taken enough time for the queue assignment to move.
 		movementVersion =
 			entry.movementVersion
 
 
-		targetAtStart =
+		local targetAtStart =
 			currentTarget
+
+
+		-- If Queue4 itself is their assigned slot,
+		-- they are already at the correct position.
+		local entrance =
+			getQueuePosition(
+				stand,
+				QUEUE_ENTRANCE_NUMBER
+			)
+
+
+		if entrance
+			and targetAtStart
+				== entrance then
+
+			entry.reachedPosition =
+				true
+
+
+			humanoid:MoveTo(
+				rootPart.Position
+			)
+
+
+			while customer.Parent
+				and stand.Parent
+				and not entry.isLeaving
+				and entry.targetPosition
+					== targetAtStart
+				and entry.movementVersion
+					== movementVersion do
+
+				RunService.Heartbeat:Wait()
+			end
+
+
+			continue
+		end
 
 
 		local reachedTarget =
@@ -2685,9 +2844,9 @@ local function runQueueMovementController(
 		end
 
 
-		-- Queue changed while customer was moving.
+		-- Their queue slot changed while walking.
 		if entry.targetPosition
-			~= targetAtStart
+				~= targetAtStart
 			or entry.movementVersion
 				~= movementVersion then
 
@@ -2716,8 +2875,7 @@ local function runQueueMovementController(
 		)
 
 
-		-- Stay here until this customer moves forward in
-		-- the queue or leaves.
+		-- Remain here until the queue moves forward.
 		while customer.Parent
 			and stand.Parent
 			and not entry.isLeaving
@@ -2734,7 +2892,6 @@ local function runQueueMovementController(
 	entry.controllerRunning =
 		false
 end
-
 
 local function moveQueueForward(
 	stand: Model,
@@ -3411,30 +3568,33 @@ local function spawnCustomerForStand(
 
 
 	local entry: QueueEntry = {
-		customer =
-			customer,
+	customer =
+		customer,
 
-		reachedPosition =
-			false,
+	reachedPosition =
+		false,
 
-		isLeaving =
-			false,
+	isLeaving =
+		false,
 
-		hasEnteredQueue =
-			false,
+	hasReachedPlotWaypoint =
+		false,
 
-		assignedSlot =
-			0,
+	hasEnteredQueue =
+		false,
 
-		targetPosition =
-			nil,
+	assignedSlot =
+		0,
 
-		controllerRunning =
-			false,
+	targetPosition =
+		nil,
 
-		movementVersion =
-			0,
-	}
+	controllerRunning =
+		false,
+
+	movementVersion =
+		0,
+}
 
 
 	table.insert(
