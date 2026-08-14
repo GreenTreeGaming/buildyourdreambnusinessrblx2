@@ -18,9 +18,21 @@ local BusinessConfig = {
 
 			[2] = {
 				TemplateName = "LemonadeStand2",
-
-				-- Cost to upgrade from Level 2 to Level 3 later.
 				UpgradeCost = 250,
+			},
+
+			[3] = {
+				TemplateName = "LemonadeStand3",
+
+				-- Cost to upgrade from Level 3 to Level 4.
+				UpgradeCost = 1000,
+			},
+
+			[4] = {
+				TemplateName = "LemonadeStand4",
+
+				-- No Level 5 yet, so this is currently max level.
+				UpgradeCost = nil,
 			},
 
 			-- Add these when the models are ready.
