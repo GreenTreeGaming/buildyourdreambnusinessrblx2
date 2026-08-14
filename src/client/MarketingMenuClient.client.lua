@@ -1,17 +1,11 @@
 task.wait(3)
 
+
 local Players =
 	game:GetService("Players")
 
 local ReplicatedStorage =
 	game:GetService("ReplicatedStorage")
-
-local FormatNumber =
-	require(
-		ReplicatedStorage
-			:WaitForChild("Shared")
-			:WaitForChild("FormatNumber")
-	)
 
 local TweenService =
 	game:GetService("TweenService")
@@ -20,11 +14,22 @@ local UserInputService =
 	game:GetService("UserInputService")
 
 
+local FormatNumber =
+	require(
+		ReplicatedStorage
+			:WaitForChild("Shared")
+			:WaitForChild("FormatNumber")
+	)
+
+
 local player =
 	Players.LocalPlayer
 
+
 local playerGui =
-	player:WaitForChild("PlayerGui")
+	player:WaitForChild(
+		"PlayerGui"
+	)
 
 
 local remotes =
@@ -36,17 +41,25 @@ local remotes =
 local getMarketingStateRemote =
 	remotes:WaitForChild(
 		"GetMarketingState"
-	)
+	) :: RemoteFunction
+
 
 local purchaseMarketingRemote =
 	remotes:WaitForChild(
-		"PurchaseMarketing"
-	)
+		"PurchaseMarketingRequest"
+	) :: RemoteFunction
 
-local marketingResultRemote =
+
+local getPlotStateRemote =
 	remotes:WaitForChild(
-		"MarketingResult"
-	)
+		"GetPlotExpansionState"
+	) :: RemoteFunction
+
+
+local purchasePlotRemote =
+	remotes:WaitForChild(
+		"PurchasePlotExpansion"
+	) :: RemoteFunction
 
 
 type MarketingState = {
@@ -59,11 +72,48 @@ type MarketingState = {
 
 	DisplayName: string?,
 	Description: string?,
-	TemplateName: string?,
 
 	CustomerLimit: number?,
 	MinimumSpawnInterval: number?,
 	MaximumSpawnInterval: number?,
+}
+
+
+type PlotState = {
+	Success: boolean,
+	Message: string?,
+
+	CurrentLevel: number?,
+	MaximumLevel: number?,
+	NextCost: number?,
+
+	DisplayName: string?,
+	Description: string?,
+
+	CurrentSize: number?,
+	NextSize: number?,
+}
+
+
+type PanelRefs = {
+	Root: Frame,
+
+	Buy: TextButton,
+	BuyText: TextLabel,
+
+	StatOneTitle: TextLabel,
+	StatOneSubtitle: TextLabel,
+
+	StatTwoTitle: TextLabel,
+	StatTwoSubtitle: TextLabel,
+
+	Level: TextLabel,
+	Name: TextLabel,
+	Description: TextLabel,
+
+	ProgressTitle: TextLabel,
+	ProgressSubtitle: TextLabel,
+	ProgressBar: Frame,
 }
 
 
@@ -91,130 +141,342 @@ local closeButton =
 	) :: TextButton
 
 
-local content =
+local mainTitle =
+	main:WaitForChild(
+		"Title"
+	) :: TextLabel
+
+
+local mainSubtitle =
+	main:WaitForChild(
+		"Subtitle"
+	) :: TextLabel
+
+
+local marketingButton =
+	main:WaitForChild(
+		"MarketingButton"
+	) :: TextButton
+
+
+local plotButton =
+	main:WaitForChild(
+		"PlotButton"
+	) :: TextButton
+
+
+local marketingButtonText =
+	marketingButton:WaitForChild(
+		"InText"
+	) :: TextLabel
+
+
+local plotButtonText =
+	plotButton:WaitForChild(
+		"InText"
+	) :: TextLabel
+
+
+local marketingFrame =
 	main:WaitForChild(
 		"Frame"
 	) :: Frame
 
 
-local buyButton =
-	content:WaitForChild(
+local plotFrame =
+	main:WaitForChild(
+		"PlotFrame"
+	) :: Frame
+
+--==================================================
+-- UI INPUT / ZINDEX SAFETY
+--==================================================
+
+main.ClipsDescendants =
+	false
+
+
+-- Content pages stay behind all menu controls.
+marketingFrame.ZIndex =
+	1
+
+plotFrame.ZIndex =
+	1
+
+
+-- Tab buttons must sit above the content pages.
+marketingButton.ZIndex =
+	10
+
+plotButton.ZIndex =
+	10
+
+
+marketingButtonText.ZIndex =
+	11
+
+plotButtonText.ZIndex =
+	11
+
+
+-- Close button must always be clickable.
+closeButton.ZIndex =
+	20
+
+
+local closeX =
+	closeButton:FindFirstChild(
+		"X"
+	)
+
+if closeX
+	and closeX:IsA(
+		"GuiObject"
+	) then
+
+	closeX.ZIndex =
+		21
+end
+
+
+-- Explicitly enable interaction.
+marketingButton.Active =
+	true
+
+marketingButton.Selectable =
+	true
+
+
+plotButton.Active =
+	true
+
+plotButton.Selectable =
+	true
+
+
+closeButton.Active =
+	true
+
+closeButton.Selectable =
+	true
+
+local function setPageZIndex(
+	page: Frame,
+	baseZIndex: number
+)
+	page.ZIndex =
+		baseZIndex
+
+
+	for _, descendant in
+		page:GetDescendants() do
+
+		if descendant:IsA(
+			"GuiObject"
+		) then
+
+			descendant.ZIndex =
+				baseZIndex
+		end
+	end
+end
+
+
+setPageZIndex(
+	marketingFrame,
+	1
+)
+
+setPageZIndex(
+	plotFrame,
+	1
+)
+
+marketingButton.ZIndex = 10
+marketingButtonText.ZIndex = 11
+
+plotButton.ZIndex = 10
+plotButtonText.ZIndex = 11
+
+closeButton.ZIndex = 20
+
+marketingButtonText.Active = false
+plotButtonText.Active = false
+
+if closeX
+	and closeX:IsA("GuiObject") then
+
+	closeX.ZIndex = 21
+	closeX.Active = false
+end
+
+
+local function getPanel(
+	root: Frame
+): PanelRefs
+
+	local buy =
+	root:WaitForChild(
 		"Buy"
 	) :: TextButton
 
 
+-- The TextButton itself should not draw text.
+-- The child InText label handles all visible button text.
+buy.Text =
+	""
+
+
 local buyText =
-	buyButton:WaitForChild(
+	buy:WaitForChild(
 		"InText"
 	) :: TextLabel
 
 
-local customerLimitFrame =
-	content:WaitForChild(
-		"CustomerLimit"
-	) :: Frame
+buyText.Active =
+	false
+
+buyText.Selectable =
+	false
 
 
-local customerLimitTitle =
-	customerLimitFrame:WaitForChild(
-		"Title"
-	) :: TextLabel
+	local customerLimit =
+		root:WaitForChild(
+			"CustomerLimit"
+		) :: Frame
 
 
-local customerLimitSubtitle =
-	customerLimitFrame:WaitForChild(
-		"Subtitle"
-	) :: TextLabel
+	local spawnTime =
+		root:WaitForChild(
+			"SpawnTime"
+		) :: Frame
 
 
-local spawnTimeFrame =
-	content:WaitForChild(
-		"SpawnTime"
-	) :: Frame
+	local levels =
+		root:WaitForChild(
+			"Levels"
+		) :: Frame
 
 
-local spawnTimeTitle =
-	spawnTimeFrame:WaitForChild(
-		"Title"
-	) :: TextLabel
+	local progress =
+		root:WaitForChild(
+			"Progress"
+		) :: Frame
 
 
-local spawnTimeSubtitle =
-	spawnTimeFrame:WaitForChild(
-		"Subtitle"
-	) :: TextLabel
+	local progressBackground =
+		progress:WaitForChild(
+			"Background"
+		) :: Frame
 
 
-local levelsFrame =
-	content:WaitForChild(
-		"Levels"
-	) :: Frame
+	return {
+		Root =
+			root,
+
+		Buy =
+			buy,
+
+		BuyText =
+	buyText,
+
+		StatOneTitle =
+			customerLimit:WaitForChild(
+				"Title"
+			) :: TextLabel,
+
+		StatOneSubtitle =
+			customerLimit:WaitForChild(
+				"Subtitle"
+			) :: TextLabel,
+
+		StatTwoTitle =
+			spawnTime:WaitForChild(
+				"Title"
+			) :: TextLabel,
+
+		StatTwoSubtitle =
+			spawnTime:WaitForChild(
+				"Subtitle"
+			) :: TextLabel,
+
+		Level =
+			levels:WaitForChild(
+				"Level"
+			) :: TextLabel,
+
+		Name =
+			levels:WaitForChild(
+				"Title"
+			) :: TextLabel,
+
+		Description =
+			levels:WaitForChild(
+				"Subtitle"
+			) :: TextLabel,
+
+		ProgressTitle =
+			progress:WaitForChild(
+				"Title"
+			) :: TextLabel,
+
+		ProgressSubtitle =
+			progress:WaitForChild(
+				"Subtitle"
+			) :: TextLabel,
+
+		ProgressBar =
+			progressBackground:WaitForChild(
+				"Bar"
+			) :: Frame,
+	}
+end
 
 
-local levelLabel =
-	levelsFrame:WaitForChild(
-		"Level"
-	) :: TextLabel
+local marketingPanel =
+	getPanel(
+		marketingFrame
+	)
 
 
-local marketingNameLabel =
-	levelsFrame:WaitForChild(
-		"Title"
-	) :: TextLabel
+local plotPanel =
+	getPanel(
+		plotFrame
+	)
 
 
-local marketingDescriptionLabel =
-	levelsFrame:WaitForChild(
-		"Subtitle"
-	) :: TextLabel
-
-
-local progressFrame =
-	content:WaitForChild(
-		"Progress"
-	) :: Frame
-
-
-local progressTitle =
-	progressFrame:WaitForChild(
-		"Title"
-	) :: TextLabel
-
-
-local progressSubtitle =
-	progressFrame:WaitForChild(
-		"Subtitle"
-	) :: TextLabel
-
-
-local progressBackground =
-	progressFrame:WaitForChild(
-		"Background"
-	) :: Frame
-
-
-local progressBar =
-	progressBackground:WaitForChild(
-		"Bar"
-	) :: Frame
+local currentTab =
+	"Marketing"
 
 
 local menuOpen =
 	false
 
-local requestPending =
+
+local marketingPending =
 	false
 
-local currentState:
+
+local plotPending =
+	false
+
+
+local marketingRequestId =
+	0
+
+
+local plotRequestId =
+	0
+
+
+local currentMarketingState:
 	MarketingState? =
 	nil
 
 
-local MAIN_OPEN_POSITION =
-	main.Position
-
-local MAIN_OPEN_SIZE =
-	main.Size
+local currentPlotState:
+	PlotState? =
+	nil
 
 
 local mainScale =
@@ -222,18 +484,42 @@ local mainScale =
 		"UIScale"
 	)
 
+
 if not mainScale then
+
 	mainScale =
-		Instance.new("UIScale")
+		Instance.new(
+			"UIScale"
+		)
+
 
 	mainScale.Name =
 		"MenuScale"
 
+
 	mainScale.Scale =
 		1
 
+
 	mainScale.Parent =
 		main
+end
+
+
+local activeMenuTween:
+	Tween? =
+	nil
+
+
+local function formatCurrency(
+	value: number
+): string
+
+	return `${
+		FormatNumber.Compact(
+			math.floor(value)
+		)
+	}`
 end
 
 
@@ -241,14 +527,23 @@ local function formatSpawnTime(
 	minimum: number?,
 	maximum: number?
 ): string
-	if typeof(minimum) ~= "number"
-		or typeof(maximum) ~= "number" then
+
+	if typeof(minimum)
+			~= "number"
+		or typeof(maximum)
+			~= "number" then
 
 		return "--"
 	end
 
+
 	local average =
-		(minimum + maximum) / 2
+		(
+			minimum
+			+ maximum
+		)
+		/ 2
+
 
 	return string.format(
 		"%.1fs",
@@ -257,36 +552,45 @@ local function formatSpawnTime(
 end
 
 
-local function setBuyEnabled(
+local function setButtonEnabled(
+	panel: PanelRefs,
 	enabled: boolean
 )
-	buyButton.Active =
+	panel.Buy.Active =
 		enabled
 
-	buyButton.Selectable =
+
+	panel.Buy.Selectable =
 		enabled
 
-	buyButton.AutoButtonColor =
+
+	panel.Buy.AutoButtonColor =
 		enabled
 
-	buyButton.BackgroundTransparency =
+
+	panel.Buy.BackgroundTransparency =
 		enabled
 			and 0
 			or 0.35
 end
 
 
-local function updateProgress(
+local function setProgress(
+	panel: PanelRefs,
 	currentLevel: number,
 	maximumLevel: number
 )
 	local progress =
 		0
 
+
 	if maximumLevel > 0 then
+
 		progress =
 			math.clamp(
-				currentLevel / maximumLevel,
+				currentLevel
+					/ maximumLevel,
+
 				0,
 				1
 			)
@@ -294,34 +598,38 @@ local function updateProgress(
 
 
 	TweenService:Create(
-		progressBar,
+		panel.ProgressBar,
+
 		TweenInfo.new(
-			0.22,
+			0.2,
 			Enum.EasingStyle.Quad,
 			Enum.EasingDirection.Out
 		),
+
 		{
 			Size =
 				UDim2.new(
 					progress,
 					0,
-					progressBar.Size.Y.Scale,
-					progressBar.Size.Y.Offset
+
+					panel.ProgressBar.Size.Y.Scale,
+					panel.ProgressBar.Size.Y.Offset
 				),
 		}
 	):Play()
 end
 
 
-local function updateInterface(
+local function updateMarketingInterface(
 	state: MarketingState
 )
-	currentState =
+	currentMarketingState =
 		state
 
 
 	local currentLevel =
-		typeof(state.CurrentLevel) == "number"
+		typeof(state.CurrentLevel)
+				== "number"
 			and math.max(
 				0,
 				math.floor(
@@ -332,7 +640,8 @@ local function updateInterface(
 
 
 	local maximumLevel =
-		typeof(state.MaximumLevel) == "number"
+		typeof(state.MaximumLevel)
+				== "number"
 			and math.max(
 				0,
 				math.floor(
@@ -342,153 +651,450 @@ local function updateInterface(
 			or 0
 
 
-	-- Top information card.
-	levelLabel.Text =
+	marketingPanel.Level.Text =
 		`Level {currentLevel}/{maximumLevel}`
 
-	marketingNameLabel.Text =
+
+	marketingPanel.Name.Text =
 		state.DisplayName
 		or "Marketing"
 
-	marketingDescriptionLabel.Text =
+
+	marketingPanel.Description.Text =
 		state.Description
-		or "Bring more customers to your business!"
+		or "Bring more customers to your businesses."
 
 
-	-- Customer limit card.
-	customerLimitTitle.Text =
+	marketingPanel.StatOneTitle.Text =
 		"Customer Limit"
 
-	if typeof(state.CustomerLimit) == "number" then
-		customerLimitSubtitle.Text =
-	FormatNumber.Compact(
-		state.CustomerLimit
-	)
-	else
-		customerLimitSubtitle.Text =
-			"--"
-	end
+
+	marketingPanel.StatOneSubtitle.Text =
+		typeof(state.CustomerLimit)
+				== "number"
+			and FormatNumber.Compact(
+				state.CustomerLimit
+			)
+			or "--"
 
 
-	-- Spawn time card.
-	spawnTimeTitle.Text =
+	marketingPanel.StatTwoTitle.Text =
 		"Spawn Time"
 
-	spawnTimeSubtitle.Text =
+
+	marketingPanel.StatTwoSubtitle.Text =
 		formatSpawnTime(
 			state.MinimumSpawnInterval,
 			state.MaximumSpawnInterval
 		)
 
 
-	-- Progress card.
-	progressTitle.Text =
+	marketingPanel.ProgressTitle.Text =
 		"Marketing Progress"
 
-	progressSubtitle.Text =
+
+	marketingPanel.ProgressSubtitle.Text =
 		`{currentLevel}/{maximumLevel}`
 
-	updateProgress(
+
+	setProgress(
+		marketingPanel,
 		currentLevel,
 		maximumLevel
 	)
 
 
-	-- Maximum level.
 	if maximumLevel > 0
-		and currentLevel >= maximumLevel then
+		and currentLevel
+			>= maximumLevel then
 
-		buyText.Text =
+		marketingPanel.BuyText.Text =
 			"Max Marketing Level"
 
-		setBuyEnabled(
+
+		setButtonEnabled(
+			marketingPanel,
 			false
 		)
+
 
 		return
 	end
 
 
-	-- Upgrade button.
-	if typeof(state.NextCost) == "number" then
-		buyText.Text =
-	`Upgrade Marketing - ${FormatNumber.Compact(state.NextCost)}`
+	if typeof(state.NextCost)
+		== "number" then
 
-		setBuyEnabled(
-			not requestPending
+		marketingPanel.BuyText.Text =
+			`Upgrade Marketing - {formatCurrency(state.NextCost)}`
+
+
+		setButtonEnabled(
+			marketingPanel,
+			not marketingPending
 		)
+
 	else
-		buyText.Text =
+		marketingPanel.BuyText.Text =
 			"Upgrade Unavailable"
 
-		setBuyEnabled(
+
+		setButtonEnabled(
+			marketingPanel,
 			false
 		)
 	end
 end
 
 
-local function requestState()
-	if requestPending then
+local function updatePlotInterface(
+	state: PlotState
+)
+	currentPlotState =
+		state
+
+
+	local currentLevel =
+		typeof(state.CurrentLevel)
+				== "number"
+			and math.max(
+				0,
+				math.floor(
+					state.CurrentLevel
+				)
+			)
+			or 0
+
+
+	local maximumLevel =
+		typeof(state.MaximumLevel)
+				== "number"
+			and math.max(
+				0,
+				math.floor(
+					state.MaximumLevel
+				)
+			)
+			or 0
+
+
+	plotPanel.Level.Text =
+		`Level {currentLevel}/{maximumLevel}`
+
+
+	plotPanel.Name.Text =
+		state.DisplayName
+		or "Business Plot"
+
+
+	plotPanel.Description.Text =
+		state.Description
+		or "Expand your business property."
+
+
+	plotPanel.StatOneTitle.Text =
+		"Current Size"
+
+
+	if typeof(state.CurrentSize)
+		== "number" then
+
+		plotPanel.StatOneSubtitle.Text =
+			`{state.CurrentSize} x {state.CurrentSize}`
+	else
+		plotPanel.StatOneSubtitle.Text =
+			"--"
+	end
+
+
+	plotPanel.StatTwoTitle.Text =
+		"Next Size"
+
+
+	if typeof(state.NextSize)
+		== "number" then
+
+		plotPanel.StatTwoSubtitle.Text =
+			`{state.NextSize} x {state.NextSize}`
+	else
+		plotPanel.StatTwoSubtitle.Text =
+			"MAX"
+	end
+
+
+	plotPanel.ProgressTitle.Text =
+		"Plot Progress"
+
+
+	plotPanel.ProgressSubtitle.Text =
+		`{currentLevel}/{maximumLevel}`
+
+
+	setProgress(
+		plotPanel,
+		currentLevel,
+		maximumLevel
+	)
+
+
+	if maximumLevel > 0
+		and currentLevel
+			>= maximumLevel then
+
+		plotPanel.BuyText.Text =
+			"Maximum Plot Size"
+
+
+		setButtonEnabled(
+			plotPanel,
+			false
+		)
+
+
 		return
 	end
 
 
-	requestPending =
+	if typeof(state.NextCost)
+		== "number" then
+
+		plotPanel.BuyText.Text =
+			`Expand Plot - {formatCurrency(state.NextCost)}`
+
+
+		setButtonEnabled(
+			plotPanel,
+			not plotPending
+		)
+
+	else
+		plotPanel.BuyText.Text =
+			"Expansion Unavailable"
+
+
+		setButtonEnabled(
+			plotPanel,
+			false
+		)
+	end
+end
+
+
+local function requestMarketingState()
+	if marketingPending then
+		return
+	end
+
+
+	marketingPending =
 		true
 
-	buyText.Text =
+
+	marketingPanel.BuyText.Text =
 		"Loading..."
 
-	setBuyEnabled(
+
+	setButtonEnabled(
+		marketingPanel,
 		false
 	)
 
 
-	local success, result =
-		pcall(function()
-			return getMarketingStateRemote
-				:InvokeServer()
-		end)
+	task.spawn(
+		function()
+
+			local success,
+				result =
+				pcall(
+					function()
+
+						return getMarketingStateRemote
+							:InvokeServer()
+					end
+				)
 
 
-	requestPending =
-		false
+			marketingPending =
+				false
 
 
-	if not success
-		or type(result) ~= "table" then
+			if not success
+				or type(result)
+					~= "table" then
 
-		warn(
-			"[MarketingMenu] Failed to load marketing state."
-		)
-
-		buyText.Text =
-			"Try Again"
-
-		setBuyEnabled(
-			true
-		)
-
-		return
-	end
+				marketingPanel.BuyText.Text =
+					"Try Again"
 
 
-	updateInterface(
-		result :: MarketingState
+				setButtonEnabled(
+					marketingPanel,
+					true
+				)
+
+
+				warn(
+					"[ManageUI] Failed to load marketing state."
+				)
+
+
+				return
+			end
+
+
+			updateMarketingInterface(
+				result :: MarketingState
+			)
+		end
 	)
 end
 
 
-local activeMenuTween:
-	Tween? =
-	nil
+local function requestPlotState()
+	if plotPending then
+		return
+	end
 
+
+	plotPending =
+		true
+
+
+	plotPanel.BuyText.Text =
+		"Loading..."
+
+
+	setButtonEnabled(
+		plotPanel,
+		false
+	)
+
+
+	task.spawn(
+		function()
+
+			local success,
+				result =
+				pcall(
+					function()
+
+						return getPlotStateRemote
+							:InvokeServer()
+					end
+				)
+
+
+			plotPending =
+				false
+
+
+			if not success
+				or type(result)
+					~= "table" then
+
+				plotPanel.BuyText.Text =
+					"Try Again"
+
+
+				setButtonEnabled(
+					plotPanel,
+					true
+				)
+
+
+				warn(
+					"[ManageUI] Failed to load plot state."
+				)
+
+
+				return
+			end
+
+
+			updatePlotInterface(
+				result :: PlotState
+			)
+		end
+	)
+end
+
+
+local function showTab(
+	tabName: string
+)
+	if tabName ~= "Marketing"
+		and tabName ~= "Plot" then
+
+		return
+	end
+
+
+	currentTab =
+		tabName
+
+
+	if tabName == "Marketing" then
+
+		-- Show marketing page.
+		marketingFrame.Visible =
+			true
+
+		plotFrame.Visible =
+			false
+
+
+		mainTitle.Text =
+			"Manage - Marketing"
+
+		mainSubtitle.Text =
+			"Bring more customers to your business!"
+
+
+		-- Selected / unselected button look.
+		marketingButton.BackgroundTransparency =
+			0
+
+		plotButton.BackgroundTransparency =
+			0.2
+
+
+		requestMarketingState()
+
+	else
+
+		-- Show plot page.
+		marketingFrame.Visible =
+			false
+
+		plotFrame.Visible =
+			true
+
+
+		mainTitle.Text =
+			"Manage - Plot"
+
+		mainSubtitle.Text =
+			"Expand your land and grow your business!"
+
+
+		-- Selected / unselected button look.
+		marketingButton.BackgroundTransparency =
+			0.2
+
+		plotButton.BackgroundTransparency =
+			0
+
+
+		requestPlotState()
+	end
+end
 
 local function stopMenuTween()
 	if activeMenuTween then
+
 		activeMenuTween:Cancel()
-		activeMenuTween = nil
+
+		activeMenuTween =
+			nil
 	end
 end
 
@@ -498,173 +1104,378 @@ local function openMenu()
 		return
 	end
 
-	menuOpen = true
+
+	menuOpen =
+		true
+
 
 	stopMenuTween()
 
-	main.Visible = true
 
-	-- Keep the side Manage button visible
-	-- while the marketing menu is open.
-	openButton.Visible = true
+	main.Visible =
+		true
 
-	mainScale.Scale = 0.92
+
+	-- Side Manage button stays visible.
+	openButton.Visible =
+		true
+
+
+	mainScale.Scale =
+		0.92
+
 
 	local tween =
 		TweenService:Create(
 			mainScale,
+
 			TweenInfo.new(
-				0.22,
+				0.2,
 				Enum.EasingStyle.Back,
 				Enum.EasingDirection.Out
 			),
+
 			{
 				Scale = 1,
 			}
 		)
 
-	activeMenuTween = tween
 
-	tween.Completed:Once(function()
-		if activeMenuTween == tween then
-			activeMenuTween = nil
+	activeMenuTween =
+		tween
+
+
+	tween.Completed:Once(
+		function()
+
+			if activeMenuTween
+				== tween then
+
+				activeMenuTween =
+					nil
+			end
 		end
-	end)
+	)
+
 
 	tween:Play()
 
-	requestState()
+
+	showTab(
+		currentTab
+	)
 end
+
 
 local function closeMenu()
 	if not menuOpen then
 		return
 	end
 
-	menuOpen = false
+
+	menuOpen =
+		false
+
 
 	stopMenuTween()
+
 
 	local tween =
 		TweenService:Create(
 			mainScale,
+
 			TweenInfo.new(
-				0.14,
+				0.13,
 				Enum.EasingStyle.Quad,
 				Enum.EasingDirection.In
 			),
+
 			{
 				Scale = 0.92,
 			}
 		)
 
-	activeMenuTween = tween
 
-	tween.Completed:Once(function()
-		if activeMenuTween ~= tween then
-			return
+	activeMenuTween =
+		tween
+
+
+	tween.Completed:Once(
+		function()
+
+			if activeMenuTween
+				~= tween then
+
+				return
+			end
+
+
+			activeMenuTween =
+				nil
+
+
+			if not menuOpen then
+
+				main.Visible =
+					false
+
+
+				mainScale.Scale =
+					1
+			end
 		end
+	)
 
-		activeMenuTween = nil
-
-		if not menuOpen then
-			main.Visible = false
-			openButton.Visible = true
-			mainScale.Scale = 1
-		end
-	end)
 
 	tween:Play()
 end
 
-openButton.Activated:Connect(function()
-	openMenu()
-end)
+
+marketingPanel.Buy.Activated:Connect(
+	function()
+
+		if marketingPending then
+			return
+		end
 
 
-closeButton.Active = true
-closeButton.Selectable = true
-
-closeButton.Activated:Connect(function()
-	print("CLOSE BUTTON CLICKED")
-	closeMenu()
-end)
+		local state =
+			currentMarketingState
 
 
-buyButton.Activated:Connect(function()
-	if requestPending then
-		return
-	end
+		if not state
+			or typeof(state.NextCost)
+				~= "number" then
 
-
-	local state =
-		currentState
-
-	if not state then
-		requestState()
-		return
-	end
-
-
-	local currentLevel =
-		typeof(state.CurrentLevel) == "number"
-			and state.CurrentLevel
-			or 0
-
-	local maximumLevel =
-		typeof(state.MaximumLevel) == "number"
-			and state.MaximumLevel
-			or 0
-
-
-	if maximumLevel > 0
-		and currentLevel >= maximumLevel then
-
-		return
-	end
-
-
-	if typeof(state.NextCost) ~= "number" then
-		return
-	end
-
-
-	requestPending =
-		true
-
-	buyText.Text =
-		"Purchasing..."
-
-	setBuyEnabled(
-		false
-	)
-
-
-	purchaseMarketingRemote
-		:FireServer()
-end)
-
-
-marketingResultRemote.OnClientEvent:Connect(
-	function(result)
-		requestPending =
-			false
-
-
-		if type(result) ~= "table" then
-			warn(
-				"[MarketingMenu] Invalid marketing result."
-			)
-
-			requestState()
+			requestMarketingState()
 
 			return
 		end
 
 
-		updateInterface(
-			result :: MarketingState
+		marketingPending =
+			true
+
+
+		marketingRequestId +=
+			1
+
+
+		local requestId =
+			marketingRequestId
+
+
+		marketingPanel.BuyText.Text =
+			"Purchasing..."
+
+
+		setButtonEnabled(
+			marketingPanel,
+			false
 		)
+
+
+		task.spawn(
+			function()
+
+				local success,
+					result =
+					pcall(
+						function()
+
+							return purchaseMarketingRemote
+								:InvokeServer()
+						end
+					)
+
+
+				if requestId
+					~= marketingRequestId then
+
+					return
+				end
+
+
+				marketingPending =
+					false
+
+
+				if not success
+					or type(result)
+						~= "table" then
+
+					marketingPanel.BuyText.Text =
+						"Try Again"
+
+
+					setButtonEnabled(
+						marketingPanel,
+						true
+					)
+
+
+					return
+				end
+
+
+				if result.Success then
+
+					updateMarketingInterface(
+						result
+					)
+
+				else
+					requestMarketingState()
+				end
+			end
+		)
+	end
+)
+
+
+plotPanel.Buy.Activated:Connect(
+	function()
+
+		if plotPending then
+			return
+		end
+
+
+		local state =
+			currentPlotState
+
+
+		if not state
+			or typeof(state.NextCost)
+				~= "number" then
+
+			requestPlotState()
+
+			return
+		end
+
+
+		plotPending =
+			true
+
+
+		plotRequestId +=
+			1
+
+
+		local requestId =
+			plotRequestId
+
+
+		plotPanel.BuyText.Text =
+			"Expanding..."
+
+
+		setButtonEnabled(
+			plotPanel,
+			false
+		)
+
+
+		task.spawn(
+			function()
+
+				local success,
+					result =
+					pcall(
+						function()
+
+							return purchasePlotRemote
+								:InvokeServer()
+						end
+					)
+
+
+				if requestId
+					~= plotRequestId then
+
+					return
+				end
+
+
+				plotPending =
+					false
+
+
+				if not success
+					or type(result)
+						~= "table" then
+
+					plotPanel.BuyText.Text =
+						"Try Again"
+
+
+					setButtonEnabled(
+						plotPanel,
+						true
+					)
+
+
+					return
+				end
+
+
+				if result.Success then
+
+					updatePlotInterface(
+						result
+					)
+
+				else
+					requestPlotState()
+				end
+			end
+		)
+	end
+)
+
+
+marketingButton.MouseButton1Click:Connect(
+	function()
+
+		print(
+			"[ManageUI] Marketing clicked"
+		)
+
+		showTab(
+			"Marketing"
+		)
+	end
+)
+
+
+plotButton.MouseButton1Click:Connect(
+	function()
+
+		print(
+			"[ManageUI] Plot clicked"
+		)
+
+		showTab(
+			"Plot"
+		)
+	end
+)
+
+
+openButton.Activated:Connect(
+	openMenu
+)
+
+
+closeButton.MouseButton1Click:Connect(
+	function()
+
+		print(
+			"[ManageUI] Close clicked"
+		)
+
+		closeMenu()
 	end
 )
 
@@ -674,6 +1485,7 @@ UserInputService.InputBegan:Connect(
 		input,
 		gameProcessed
 	)
+
 		if gameProcessed
 			or not menuOpen then
 
@@ -681,8 +1493,10 @@ UserInputService.InputBegan:Connect(
 		end
 
 
-		if input.KeyCode == Enum.KeyCode.Escape
-			or input.KeyCode == Enum.KeyCode.ButtonB then
+		if input.KeyCode
+				== Enum.KeyCode.Escape
+			or input.KeyCode
+				== Enum.KeyCode.ButtonB then
 
 			closeMenu()
 		end
@@ -692,34 +1506,80 @@ UserInputService.InputBegan:Connect(
 
 player:GetAttributeChangedSignal(
 	"DataLoaded"
-):Connect(function()
-	if player:GetAttribute(
-		"DataLoaded"
-	) == true
-		and menuOpen then
+):Connect(
+	function()
 
-		requestState()
+		if player:GetAttribute(
+			"DataLoaded"
+		) ~= true
+			or not menuOpen then
+
+			return
+		end
+
+
+		if currentTab
+			== "Marketing" then
+
+			requestMarketingState()
+
+		else
+			requestPlotState()
+		end
 	end
-end)
+)
+
+marketingButtonText.Text =
+	"Marketing"
 
 
--- Initial UI state.
-main.Position =
-	MAIN_OPEN_POSITION
+plotButtonText.Text =
+	"Plot"
 
-main.Size =
-	MAIN_OPEN_SIZE
+
+marketingPanel.ProgressBar.Size =
+	UDim2.new(
+		0,
+		0,
+
+		marketingPanel.ProgressBar.Size.Y.Scale,
+		marketingPanel.ProgressBar.Size.Y.Offset
+	)
+
+
+plotPanel.ProgressBar.Size =
+	UDim2.new(
+		0,
+		0,
+
+		plotPanel.ProgressBar.Size.Y.Scale,
+		plotPanel.ProgressBar.Size.Y.Offset
+	)
+
+
+-- Default tab.
+currentTab =
+	"Marketing"
+
+
+-- Set page visibility explicitly.
+marketingFrame.Visible =
+	true
+
+plotFrame.Visible =
+	false
+
+
+-- Correct title before opening.
+mainTitle.Text =
+	"Manage - Marketing"
+
+mainSubtitle.Text =
+	"Bring more customers to your business!"
+
 
 main.Visible =
 	false
 
 openButton.Visible =
 	true
-
-progressBar.Size =
-	UDim2.new(
-		0,
-		0,
-		progressBar.Size.Y.Scale,
-		progressBar.Size.Y.Offset
-	)

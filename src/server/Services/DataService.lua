@@ -12,20 +12,27 @@ local MarketingConfig = require(
 		:WaitForChild("MarketingConfig")
 )
 
+local PlotConfig =
+	require(
+		ReplicatedStorage
+			:WaitForChild("Shared")
+			:WaitForChild("PlotConfig")
+	)
+
 local BusinessConfig = require(
 	ReplicatedStorage
 		:WaitForChild("Shared")
 		:WaitForChild("BusinessConfig")
 )
 
-local DATA_STORE_NAME = "PlayerData_v2"
+local DATA_STORE_NAME = "PlayerData_v3"
 
 -- Version 2 changed Businesses from one fixed stand
 -- into a list of uniquely identified placed businesses.
 --
 -- Version 3 saves each placed business's physical model level.
 -- Version 4 adds plot-wide marketing progression.
-local CURRENT_DATA_VERSION = 4
+local CURRENT_DATA_VERSION = 5
 
 local MAX_RETRIES = 3
 local RETRY_DELAY_SECONDS = 2
@@ -50,6 +57,8 @@ local DEFAULT_PROFILE = {
 
 	-- Plot-wide marketing progression.
 	MarketingLevel = 0,
+
+	PlotLevel = 0,
 
 	-- Every placed business receives a unique ID.
 	PlacedBusinesses = {},
@@ -99,6 +108,8 @@ type PlayerProfile = {
 	Version: number,
 	Cash: number,
 	MarketingLevel: number,
+
+	PlotLevel: number,
 
 	PlacedBusinesses: {
 		SavedPlacedBusiness
@@ -294,6 +305,56 @@ local function getMaximumMarketingLevel(): number
 	end
 
 	return maximumLevel
+end
+
+local function getMaximumPlotLevel(): number
+	local maximumLevel =
+		0
+
+
+	for _, definition in
+		PlotConfig.Levels do
+
+		if typeof(definition.Level)
+			== "number" then
+
+			maximumLevel =
+				math.max(
+					maximumLevel,
+					math.floor(
+						definition.Level
+					)
+				)
+		end
+	end
+
+
+	return maximumLevel
+end
+
+
+local function sanitizePlotLevel(
+	value: any
+): number
+
+	if typeof(value)
+			~= "number"
+		or value ~= value
+		or value == math.huge
+		or value == -math.huge then
+
+		return 0
+	end
+
+
+	return math.clamp(
+		math.floor(
+			value
+		),
+
+		0,
+		getMaximumPlotLevel()
+	)
 end
 
 local function sanitizeMarketingLevel(
@@ -572,6 +633,11 @@ local function migrateProfile(
 	profile.MarketingLevel =
 	sanitizeMarketingLevel(
 		profile.MarketingLevel
+	)
+
+	profile.PlotLevel =
+	sanitizePlotLevel(
+		profile.PlotLevel
 	)
 
 	if type(profile.Upgrades) ~= "table" then
@@ -1146,6 +1212,59 @@ function DataService.SetMarketingLevel(
 
 	profile.MarketingLevel =
 		sanitizeMarketingLevel(level)
+
+	return true
+end
+
+function DataService.GetPlotLevel(
+	player: Player
+): number
+
+	local profile =
+		profiles[
+			player
+		]
+
+
+	if not profile then
+		return 0
+	end
+
+
+	return sanitizePlotLevel(
+		profile.PlotLevel
+	)
+end
+
+
+function DataService.SetPlotLevel(
+	player: Player,
+	level: number
+): boolean
+
+	local profile =
+		profiles[
+			player
+		]
+
+
+	if not profile then
+		return false
+	end
+
+
+	if typeof(level)
+		~= "number" then
+
+		return false
+	end
+
+
+	profile.PlotLevel =
+		sanitizePlotLevel(
+			level
+		)
+
 
 	return true
 end
