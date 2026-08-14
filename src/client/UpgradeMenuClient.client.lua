@@ -263,6 +263,104 @@ if oldUpgradeGui then
 	oldUpgradeGui:Destroy()
 end
 
+local function getAppearanceLevelConfig(
+	level: number
+): {[any]: any}?
+	local lemonadeConfig =
+		BusinessConfig.LemonadeStand
+
+	if typeof(lemonadeConfig)
+		~= "table" then
+
+		return nil
+	end
+
+	local standLevels =
+		lemonadeConfig.StandLevels
+
+	if typeof(standLevels)
+		~= "table" then
+
+		return nil
+	end
+
+	local config =
+		standLevels[level]
+
+	if typeof(config)
+		~= "table" then
+
+		return nil
+	end
+
+	return config
+end
+
+
+local function formatMultiplier(
+	value: number?
+): string
+	if typeof(value) ~= "number" then
+		value = 1
+	end
+
+	return string.format(
+		"%.2fx",
+		value
+	)
+end
+
+
+local function formatBonusPercent(
+	multiplier: number?
+): string
+	if typeof(multiplier)
+		~= "number" then
+
+		multiplier = 1
+	end
+
+	local percent =
+		math.round(
+			(multiplier - 1) * 100
+		)
+
+	return `+{percent}%`
+end
+
+
+local function getAppearanceBenefitText(
+	level: number
+): string
+	local config =
+		getAppearanceLevelConfig(
+			level
+		)
+
+	if not config then
+		return `Level {level}`
+	end
+
+	local attraction =
+		config.CustomerAttraction
+		or 1
+
+	local customerRate =
+		config.CustomerRateMultiplier
+		or 1
+
+	return string.format(
+		"Level %d\n%s Attraction\n%s Customer Rate",
+		level,
+		formatBonusPercent(
+			attraction
+		),
+		formatBonusPercent(
+			customerRate
+		)
+	)
+end
+
 
 --==================================================
 -- MENU ANIMATION
@@ -874,16 +972,41 @@ local function getCard(
 
 
 	card.BuyButton.Text =
-		""
+	""
 
-	card.BuyText.Active =
-		false
+card.BuyText.Active =
+	false
 
-	card.BuyText.Selectable =
-		false
+card.BuyText.Selectable =
+	false
+
+card.CurrentAmount.TextWrapped =
+	true
+
+card.CurrentAmount.TextScaled =
+	false
+
+card.CurrentAmount.TextSize =
+	12
+
+card.CurrentAmount.TextYAlignment =
+	Enum.TextYAlignment.Center
 
 
-	return card
+card.AfterAmount.TextWrapped =
+	true
+
+card.AfterAmount.TextScaled =
+	false
+
+card.AfterAmount.TextSize =
+	12
+
+card.AfterAmount.TextYAlignment =
+	Enum.TextYAlignment.Center
+
+
+return card
 end
 
 
@@ -930,6 +1053,15 @@ cards.StandAppearance =
 	createCard(
 		"StandAppearance",
 		1
+	)
+
+
+cards.StandAppearance.Root.Size =
+	UDim2.new(
+		cards.StandAppearance.Root.Size.X.Scale,
+		cards.StandAppearance.Root.Size.X.Offset,
+		0,
+		155
 	)
 
 cards.QueueCapacity =
@@ -1270,10 +1402,10 @@ local function updateAppearanceCard()
 		"Stand Appearance"
 
 	card.Subtitle.Text =
-		"Upgrade your stand with a bigger and better design."
+	"A better-looking stand attracts more customers."
 
 	card.CurrentTitle.Text =
-		"Current Level"
+		"Current"
 
 	card.AfterTitle.Text =
 		"After Upgrade"
@@ -1316,22 +1448,32 @@ local function updateAppearanceCard()
 			)
 		)
 
+
 	local maximumLevel =
 		getMaximumAppearanceLevel()
+
 
 	local currentConfig =
 		getAppearanceConfig(
 			currentLevel
 		)
 
+
+	local nextLevel =
+		currentLevel + 1
+
+
 	local nextConfig =
 		getAppearanceConfig(
-			currentLevel + 1
+			nextLevel
 		)
 
 
+	-- Show the CURRENT visual-level bonuses.
 	card.CurrentAmount.Text =
-		`{currentLevel} / {maximumLevel}`
+		getAppearanceBenefitText(
+			currentLevel
+		)
 
 
 	setProgress(
@@ -1341,6 +1483,10 @@ local function updateAppearanceCard()
 	)
 
 
+	--==================================================
+	-- MAX LEVEL
+	--==================================================
+
 	if currentLevel >= maximumLevel
 		or not nextConfig then
 
@@ -1348,7 +1494,7 @@ local function updateAppearanceCard()
 			"Status"
 
 		card.AfterAmount.Text =
-			"Max Level"
+			"MAX LEVEL"
 
 		setButton(
 			card,
@@ -1360,11 +1506,17 @@ local function updateAppearanceCard()
 	end
 
 
+	--==================================================
+	-- NEXT LEVEL
+	--==================================================
+
 	card.AfterTitle.Text =
-		"Next Design"
+		"After Upgrade"
 
 	card.AfterAmount.Text =
-		`Level {currentLevel + 1}`
+		getAppearanceBenefitText(
+			nextLevel
+		)
 
 
 	local cost =

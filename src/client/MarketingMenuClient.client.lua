@@ -503,7 +503,10 @@ local function openMenu()
 	stopMenuTween()
 
 	main.Visible = true
-	openButton.Visible = false
+
+	-- Keep the side Manage button visible
+	-- while the marketing menu is open.
+	openButton.Visible = true
 
 	mainScale.Scale = 0.92
 
@@ -532,7 +535,6 @@ local function openMenu()
 
 	requestState()
 end
-
 
 local function closeMenu()
 	if not menuOpen then

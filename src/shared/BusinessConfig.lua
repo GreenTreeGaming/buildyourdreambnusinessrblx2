@@ -11,48 +11,43 @@ local BusinessConfig = {
 
 		-- Controls the physical appearance of the stand.
 		StandLevels = {
-			[1] = {
-				TemplateName = "LemonadeStand",
-				UpgradeCost = 50,
-			},
+	[1] = {
+		TemplateName = "LemonadeStand",
+		UpgradeCost = 50,
 
-			[2] = {
-				TemplateName = "LemonadeStand2",
-				UpgradeCost = 250,
-			},
+		-- How strongly customers prefer this stand
+		-- compared with other available stands.
+		CustomerAttraction = 1.00,
 
-			[3] = {
-				TemplateName = "LemonadeStand3",
+		-- Plot-wide customer arrival speed if this is
+		-- the best-looking stand on the plot.
+		CustomerRateMultiplier = 1.00,
+	},
 
-				-- Cost to upgrade from Level 3 to Level 4.
-				UpgradeCost = 1000,
-			},
+	[2] = {
+		TemplateName = "LemonadeStand2",
+		UpgradeCost = 250,
 
-			[4] = {
-				TemplateName = "LemonadeStand4",
+		CustomerAttraction = 1.15,
+		CustomerRateMultiplier = 1.10,
+	},
 
-				-- No Level 5 yet, so this is currently max level.
-				UpgradeCost = nil,
-			},
+	[3] = {
+		TemplateName = "LemonadeStand3",
+		UpgradeCost = 1000,
 
-			-- Add these when the models are ready.
-			--[[
-			[3] = {
-				TemplateName = "LemonadeStand3",
-				UpgradeCost = 1000,
-			},
+		CustomerAttraction = 1.35,
+		CustomerRateMultiplier = 1.25,
+	},
 
-			[4] = {
-				TemplateName = "LemonadeStand4",
-				UpgradeCost = 4000,
-			},
+	[4] = {
+		TemplateName = "LemonadeStand4",
+		UpgradeCost = nil,
 
-			[5] = {
-				TemplateName = "LemonadeStand5",
-				UpgradeCost = nil,
-			},
-			]]
-		},
+		CustomerAttraction = 1.60,
+		CustomerRateMultiplier = 1.45,
+	},
+},
 
 		Upgrades = {
 			ServingSpeed = {
