@@ -126,6 +126,30 @@ local REMOVE_CLOSE_TIME =
 local REMOVE_START_OFFSET =
 	18
 
+--==================================================
+-- EDIT PROPERTIES MODE EVENTS
+--==================================================
+
+local editPropertiesModeEvent =
+	playerGui:WaitForChild(
+		"EditPropertiesModeChanged"
+	) :: BindableEvent
+
+
+local selectBusinessEvent =
+	playerGui:WaitForChild(
+		"SelectBusinessForManagement"
+	) :: BindableEvent
+
+
+local propertyEditMode =
+	false
+
+
+local propertySelectedBusinessId:
+	string? =
+	nil
+
 
 local removeOriginalPosition =
 	removeFrame.Position
@@ -272,6 +296,71 @@ end
 local openUpgradeMenuEvent =
 	getOpenUpgradeMenuEvent()
 
+--==================================================
+-- EDIT PROPERTIES MODE EVENTS
+--==================================================
+
+local function getOrCreateBindable(
+	name: string
+): BindableEvent
+
+	local existing =
+		playerGui:FindFirstChild(
+			name
+		)
+
+
+	if existing then
+
+		if existing:IsA(
+			"BindableEvent"
+		) then
+
+			return existing
+		end
+
+
+		existing:Destroy()
+	end
+
+
+	local event =
+		Instance.new(
+			"BindableEvent"
+		)
+
+
+	event.Name =
+		name
+
+
+	event.Parent =
+		playerGui
+
+
+	return event
+end
+
+
+local editPropertiesModeEvent =
+	getOrCreateBindable(
+		"EditPropertiesModeChanged"
+	)
+
+
+local selectBusinessEvent =
+	getOrCreateBindable(
+		"SelectBusinessForManagement"
+	)
+
+
+local propertyEditMode =
+	false
+
+
+local propertySelectedBusinessId:
+	string? =
+	nil
 
 --==================================================
 -- MANAGEMENT STATE
@@ -848,6 +937,194 @@ local function getBusinessId(
 	return stand.Name
 end
 
+local function findOwnedBusinessById(
+	businessId: string
+): Model?
+
+	local plot =
+		getOwnedPlot()
+
+
+	if not plot then
+		return nil
+	end
+
+
+	local placedBusinesses =
+		plot:FindFirstChild(
+			"PlacedBusinesses"
+		)
+
+
+	if not placedBusinesses then
+		return nil
+	end
+
+
+	for _, child in
+		placedBusinesses:GetChildren() do
+
+		if not child:IsA(
+			"Model"
+		) then
+
+			continue
+		end
+
+
+		if child:GetAttribute(
+			"OwnerUserId"
+		) ~= player.UserId then
+
+			continue
+		end
+
+
+		if getBusinessId(
+			child
+		) == businessId then
+
+			return child
+		end
+	end
+
+
+	return nil
+end
+
+
+local function getPropertySelectedStand():
+	Model?
+
+	if not propertyEditMode then
+		return nil
+	end
+
+
+	if not propertySelectedBusinessId then
+		return nil
+	end
+
+
+	return findOwnedBusinessById(
+		propertySelectedBusinessId
+	)
+end
+
+
+local function isCurrentManagementStand(
+	stand: Model
+): boolean
+
+	if propertyEditMode then
+
+		return getPropertySelectedStand()
+			== stand
+	end
+
+
+	return getClosestOwnedStand()
+		== stand
+end
+
+local function findOwnedBusinessById(
+	businessId: string
+): Model?
+
+	local plot =
+		getOwnedPlot()
+
+
+	if not plot then
+		return nil
+	end
+
+
+	local placedBusinesses =
+		plot:FindFirstChild(
+			"PlacedBusinesses"
+		)
+
+
+	if not placedBusinesses then
+		return nil
+	end
+
+
+	for _, child in
+		placedBusinesses:GetChildren() do
+
+		if not child:IsA(
+			"Model"
+		) then
+
+			continue
+		end
+
+
+		if child:GetAttribute(
+			"OwnerUserId"
+		) ~= player.UserId then
+
+			continue
+		end
+
+
+		local childId =
+			getBusinessId(
+				child
+			)
+
+
+		if childId
+			== businessId then
+
+			return child
+		end
+	end
+
+
+	return nil
+end
+
+
+local function getPropertySelectedStand():
+	Model?
+
+	if not propertyEditMode then
+		return nil
+	end
+
+
+	local businessId =
+		propertySelectedBusinessId
+
+
+	if not businessId then
+		return nil
+	end
+
+
+	return findOwnedBusinessById(
+		businessId
+	)
+end
+
+
+local function isCurrentManagementStand(
+	stand: Model
+): boolean
+
+	if propertyEditMode then
+
+		return getPropertySelectedStand()
+			== stand
+	end
+
+
+	return getClosestOwnedStand()
+		== stand
+end
 
 --==================================================
 -- BUTTON ANIMATION
@@ -1754,8 +2031,25 @@ local function createManagementUI(
 	billboard.LightInfluence =
 		0
 
+	if propertyEditMode then
+
+	-- Overhead editor can be hundreds of studs away.
+	billboard.MaxDistance =
+		100000
+
+
+	-- Force a readable screen-space size while viewing
+	-- the business from high above.
+	billboard.Size =
+		UDim2.fromOffset(
+			360,
+			180
+		)
+
+else
 	billboard.MaxDistance =
 		MANAGEMENT_DISTANCE + 5
+end
 
 	billboard.Parent =
 		playerGui
@@ -1840,8 +2134,9 @@ local function createManagementUI(
 	-- MOVE
 	moveButton.Activated:Connect(
 		function()
-			if stand
-				~= getClosestOwnedStand() then
+			if not isCurrentManagementStand(
+	stand
+) then
 
 				showToast(
 					"Your lemonade stand could not be found.",
@@ -1881,8 +2176,9 @@ local function createManagementUI(
 	-- MANAGE
 	manageButton.Activated:Connect(
 		function()
-			if stand
-				~= getClosestOwnedStand() then
+			if not isCurrentManagementStand(
+	stand
+) then
 
 				showToast(
 					"Your lemonade stand could not be found.",
@@ -1945,8 +2241,9 @@ local function createManagementUI(
 			end
 
 
-			if stand
-				~= getClosestOwnedStand() then
+			if not isCurrentManagementStand(
+	stand
+) then
 
 				showToast(
 					"Your lemonade stand could not be found.",
@@ -2148,16 +2445,279 @@ player.CharacterRemoving:Connect(
 	end
 )
 
+--==================================================
+-- EDIT PROPERTIES MODE
+--==================================================
+
+editPropertiesModeEvent.Event:Connect(
+	function(
+		enabled: boolean
+	)
+
+		propertyEditMode =
+			enabled == true
+
+
+		propertySelectedBusinessId =
+			nil
+
+
+		hideRemoveConfirmation()
+
+
+		destroyManagementUI()
+	end
+)
+
+
+selectBusinessEvent.Event:Connect(
+	function(
+		stand: Model?
+	)
+
+		if not propertyEditMode then
+			return
+		end
+
+
+		if stand == nil then
+
+			propertySelectedBusinessId =
+				nil
+
+
+			destroyManagementUI()
+
+
+			return
+		end
+
+
+		if not stand:IsA(
+			"Model"
+		) then
+
+			return
+		end
+
+
+		if stand:GetAttribute(
+			"OwnerUserId"
+		) ~= player.UserId then
+
+			return
+		end
+
+
+		propertySelectedBusinessId =
+			getBusinessId(
+				stand
+			)
+
+
+		createManagementUI(
+			stand
+		)
+
+
+		if managementGui then
+
+			managementGui.MaxDistance =
+				10000
+		end
+
+
+		setManagementVisible(
+			true
+		)
+	end
+)
 
 --==================================================
--- MANAGEMENT UPDATE LOOP
+-- EDIT PROPERTIES MODE
 --==================================================
+
+editPropertiesModeEvent.Event:Connect(
+	function(
+		enabled: boolean
+	)
+
+		propertyEditMode =
+			enabled == true
+
+
+		propertySelectedBusinessId =
+			nil
+
+
+		hideRemoveConfirmation()
+
+
+		destroyManagementUI()
+	end
+)
+
+
+selectBusinessEvent.Event:Connect(
+	function(
+		stand: Model?
+	)
+
+		if not propertyEditMode then
+			return
+		end
+
+
+		-- Clicking empty land.
+		if stand == nil then
+
+			propertySelectedBusinessId =
+				nil
+
+
+			destroyManagementUI()
+
+
+			return
+		end
+
+
+		if not stand:IsA(
+			"Model"
+		) then
+
+			return
+		end
+
+
+		if stand:GetAttribute(
+			"OwnerUserId"
+		) ~= player.UserId then
+
+			return
+		end
+
+
+		propertySelectedBusinessId =
+			getBusinessId(
+				stand
+			)
+
+
+		createManagementUI(
+			stand
+		)
+
+
+		if managementGui then
+
+			managementGui.MaxDistance =
+				100000
+		end
+
+
+		setManagementVisible(
+			true
+		)
+	end
+)
 
 task.spawn(
 	function()
+
 		while true do
+
+			--==================================================
+			-- OVERHEAD PROPERTY EDITOR
+			--==================================================
+
+			if propertyEditMode then
+
+				local stand =
+					getPropertySelectedStand()
+
+
+				if not stand then
+
+					if managementGui then
+
+						destroyManagementUI()
+					end
+
+
+					task.wait(
+						UPDATE_INTERVAL
+					)
+
+
+					continue
+				end
+
+
+				-- If appearance upgrading replaced the Model
+				-- instance but preserved BusinessId, rediscover
+				-- and rebuild the billboard automatically.
+				if stand
+					~= managementStand then
+
+					createManagementUI(
+						stand
+					)
+				end
+
+
+				if managementGui then
+
+					managementGui.MaxDistance =
+						100000
+				end
+
+
+				local shouldShow =
+					not removeOpen
+
+
+				-- If Move is currently active, hide the
+				-- management billboard temporarily.
+				if stand:GetAttribute(
+					"IsBeingEdited"
+				) == true then
+
+					shouldShow =
+						false
+				end
+
+
+				if stand:GetAttribute(
+					"StandUnavailable"
+				) == true then
+
+					shouldShow =
+						false
+				end
+
+
+				setManagementVisible(
+					shouldShow
+				)
+
+
+				task.wait(
+					UPDATE_INTERVAL
+				)
+
+
+				continue
+			end
+
+
+			--==================================================
+			-- NORMAL PROXIMITY MODE
+			--==================================================
+
 			local stand =
 				getClosestOwnedStand()
+
 
 			local root =
 				getCharacterRoot()
@@ -2175,9 +2735,11 @@ task.spawn(
 
 					task.spawn(
 						function()
+
 							createManagementUI(
 								stand
 							)
+
 
 							managementCreationPending =
 								false
@@ -2187,6 +2749,7 @@ task.spawn(
 				elseif not stand then
 
 					destroyManagementUI()
+
 
 					managementCreationPending =
 						false
@@ -2219,6 +2782,7 @@ task.spawn(
 
 
 				if adornee then
+
 					local distance =
 						(
 							root.Position
@@ -2228,7 +2792,7 @@ task.spawn(
 
 					shouldShow =
 						distance
-						<= MANAGEMENT_DISTANCE
+							<= MANAGEMENT_DISTANCE
 				end
 			end
 
