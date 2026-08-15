@@ -2240,7 +2240,6 @@ UserInputService.InputEnded:Connect(
 	end
 )
 
-
 --==================================================
 -- MOBILE TOUCH INPUT
 --==================================================
@@ -2248,12 +2247,11 @@ UserInputService.InputEnded:Connect(
 UserInputService.TouchStarted:Connect(
 	function(
 		input: InputObject,
-		gameProcessed: boolean
+		_gameProcessed: boolean
 	)
 
 		if not editingProperties
-			or transitionRunning
-			or gameProcessed then
+			or transitionRunning then
 
 			return
 		end
@@ -2266,9 +2264,7 @@ UserInputService.TouchStarted:Connect(
 			)
 
 
-		touches[
-			input
-		] = {
+		touches[input] = {
 			StartPosition =
 				position,
 
@@ -2305,21 +2301,18 @@ UserInputService.TouchStarted:Connect(
 UserInputService.TouchMoved:Connect(
 	function(
 		input: InputObject,
-		gameProcessed: boolean
+		_gameProcessed: boolean
 	)
 
 		if not editingProperties
-			or transitionRunning
-			or gameProcessed then
+			or transitionRunning then
 
 			return
 		end
 
 
 		local info =
-			touches[
-				input
-			]
+			touches[input]
 
 
 		if not info then
@@ -2364,7 +2357,8 @@ UserInputService.TouchMoved:Connect(
 			updatePinch()
 
 
-			-- Both touches should no longer count as taps.
+			-- Neither finger should later be
+			-- interpreted as a selection tap.
 			for _, touchInfo in touches do
 
 				touchInfo.Moved =
@@ -2387,18 +2381,15 @@ UserInputService.TouchMoved:Connect(
 UserInputService.TouchEnded:Connect(
 	function(
 		input: InputObject,
-		gameProcessed: boolean
+		_gameProcessed: boolean
 	)
 
 		local info =
-			touches[
-				input
-			]
+			touches[input]
 
 
-		touches[
-			input
-		] = nil
+		touches[input] =
+			nil
 
 
 		if not editingProperties
@@ -2406,7 +2397,6 @@ UserInputService.TouchEnded:Connect(
 
 			pinchDistance =
 				nil
-
 
 			return
 		end
@@ -2420,11 +2410,27 @@ UserInputService.TouchEnded:Connect(
 		end
 
 
-		if gameProcessed
-			or not info then
-
+		if not info then
 			return
 		end
+
+
+		local endPosition =
+			Vector2.new(
+				input.Position.X,
+				input.Position.Y
+			)
+
+
+		info.LastPosition =
+			endPosition
+
+
+		local totalMovement =
+			(
+				endPosition
+					- info.StartPosition
+			).Magnitude
 
 
 		local duration =
@@ -2432,18 +2438,20 @@ UserInputService.TouchEnded:Connect(
 				- info.StartedAt
 
 
-		-- A short non-drag touch is a business tap.
+		-- A quick finger press with very little
+		-- movement counts as selecting a business.
 		if not info.Moved
+			and totalMovement
+				< TAP_MOVEMENT_THRESHOLD
 			and duration
 				<= TAP_TIME_THRESHOLD then
 
 			selectAtScreenPosition(
-				info.LastPosition
+				endPosition
 			)
 		end
 	end
 )
-
 
 --==================================================
 -- BUTTONS
