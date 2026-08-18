@@ -68,11 +68,8 @@ local devProductsFrame =
 	)
 
 --==================================================
--- SHOP OPEN / CLOSE ANIMATION
+-- SHOP OPEN / CLOSE
 --==================================================
-
-local shopOpen =
-	false
 
 local mainScale =
 	main:FindFirstChildOfClass(
@@ -94,9 +91,11 @@ if not mainScale then
 end
 
 
-local activeMenuTween:
-	Tween? =
+local activeMenuTween: Tween? =
 	nil
+
+local shopOpen =
+	false
 
 
 local function stopMenuTween()
@@ -110,7 +109,15 @@ end
 
 
 local function openShop()
-	if shopOpen then
+	-- ScreenGui NEVER gets disabled.
+	if not shopGui.Enabled then
+		shopGui.Enabled =
+			true
+	end
+
+	if shopOpen
+		and main.Visible then
+
 		return
 	end
 
@@ -119,13 +126,10 @@ local function openShop()
 
 	stopMenuTween()
 
-	-- Main can stay invisible in Studio.
-	-- We only make it visible when opening.
+	-- Only change the FRAME visibility.
 	main.Visible =
 		true
 
-	-- Keep the Shop side button visible while
-	-- the shop itself is open.
 	openButton.Visible =
 		true
 
@@ -153,11 +157,16 @@ local function openShop()
 	tween.Completed:Once(
 		function()
 			if activeMenuTween
-				== tween then
+				~= tween then
 
-				activeMenuTween =
-					nil
+				return
 			end
+
+			activeMenuTween =
+				nil
+
+			mainScale.Scale =
+				1
 		end
 	)
 
@@ -166,7 +175,10 @@ end
 
 
 local function closeShop()
-	if not shopOpen then
+	if not main.Visible then
+		shopOpen =
+			false
+
 		return
 	end
 
@@ -205,11 +217,16 @@ local function closeShop()
 				nil
 
 			if not shopOpen then
+				-- ONLY hide Main.
+				-- Do NOT disable Shop.
 				main.Visible =
 					false
 
 				mainScale.Scale =
 					1
+
+				openButton.Visible =
+					true
 			end
 		end
 	)
@@ -219,8 +236,21 @@ end
 
 
 --==================================================
--- BUTTON CONNECTIONS
+-- BUTTONS
 --==================================================
+
+openButton.Active =
+	true
+
+openButton.Selectable =
+	true
+
+closeButton.Active =
+	true
+
+closeButton.Selectable =
+	true
+
 
 openButton.Activated:Connect(
 	function()
@@ -240,14 +270,22 @@ closeButton.Activated:Connect(
 -- STARTING STATE
 --==================================================
 
+-- ScreenGui stays enabled FOREVER.
 shopGui.Enabled =
 	true
 
+-- Only Main gets hidden/opened.
 main.Visible =
 	false
 
+openButton.Visible =
+	true
+
 mainScale.Scale =
 	1
+
+shopOpen =
+	false
 
 local function getBuyButton(
 	card: Instance
@@ -538,7 +576,7 @@ local function setupDeveloperProduct(
 
 	if not card then
 		warn(
-			`Shop developer product frame "{config.FrameName}" was not found.`
+			`[Shop] Developer product frame "{config.FrameName}" was not found.`
 		)
 
 		return
@@ -549,7 +587,7 @@ local function setupDeveloperProduct(
 
 	if not button then
 		warn(
-			`{card:GetFullName()} is missing Buy.`
+			`[Shop] {card:GetFullName()} is missing Buy.`
 		)
 
 		return
@@ -569,16 +607,64 @@ local function setupDeveloperProduct(
 		return
 	end
 
-	local price =
-		getProductPrice(
-			config.Id,
-			Enum.InfoType.Product
+	local success, productInfo =
+		pcall(function()
+			return MarketplaceService:
+				GetProductInfo(
+					config.Id,
+					Enum.InfoType.Product
+				)
+		end)
+
+	if not success
+		or type(productInfo) ~= "table" then
+
+		warn(
+			`[Shop] Could not load developer product {config.FrameName} ({config.Id}): {productInfo}`
 		)
 
-	if price then
 		setButtonText(
 			button,
-			`Purchase - R{price}`
+			"Unavailable"
+		)
+
+		setButtonEnabled(
+			button,
+			false
+		)
+
+		return
+	end
+
+	print(
+		`[Shop] Loaded {config.FrameName}: ID={config.Id}, Name={tostring(productInfo.Name)}, Price={tostring(productInfo.PriceInRobux)}, IsForSale={tostring(productInfo.IsForSale)}`
+	)
+
+	if productInfo.IsForSale ~= true then
+		warn(
+			`[Shop] Developer product {config.FrameName} ({config.Id}) is NOT currently for sale.`
+		)
+
+		setButtonText(
+			button,
+			"Not For Sale"
+		)
+
+		setButtonEnabled(
+			button,
+			false
+		)
+
+		return
+	end
+
+	local price =
+		productInfo.PriceInRobux
+
+	if typeof(price) == "number" then
+		setButtonText(
+			button,
+			`Purchase - R${price}`
 		)
 	else
 		setButtonText(
@@ -587,10 +673,21 @@ local function setupDeveloperProduct(
 		)
 	end
 
+	setButtonEnabled(
+		button,
+		true
+	)
+
 	button.Activated:Connect(
 		function()
-			local success, errorMessage =
+			print(
+				`[Shop] Purchase button clicked: {config.FrameName}, product ID {config.Id}`
+			)
+
+			local promptSuccess,
+				promptError =
 				pcall(function()
+
 					MarketplaceService:
 						PromptProductPurchase(
 							player,
@@ -598,11 +695,17 @@ local function setupDeveloperProduct(
 						)
 				end)
 
-			if not success then
+			if not promptSuccess then
 				warn(
-					`Could not prompt developer product purchase: {errorMessage}`
+					`[Shop] PromptProductPurchase FAILED for {config.FrameName} ({config.Id}): {promptError}`
 				)
+
+				return
 			end
+
+			print(
+				`[Shop] PromptProductPurchase called successfully for {config.FrameName}.`
+			)
 		end
 	)
 end

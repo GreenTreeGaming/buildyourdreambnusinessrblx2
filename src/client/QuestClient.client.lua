@@ -127,7 +127,7 @@ local CLOSE_TIME =
 -- way too far left.
 --
 local DRAWER_X_SHIFT =
-	0.2
+	0.225
 
 
 --==================================================
