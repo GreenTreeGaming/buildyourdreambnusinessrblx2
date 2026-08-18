@@ -32,6 +32,15 @@ local main =
 local openButton =
 	shopGui:WaitForChild("OpenButton")
 
+local topGui =
+	playerGui:WaitForChild("Top")
+
+local cashAmount =
+	topGui:WaitForChild("CashAmount")
+
+local cashAddButton =
+	cashAmount:WaitForChild("Add") :: TextButton
+
 local closeButton =
 	main:WaitForChild("Close")
 
@@ -253,6 +262,12 @@ closeButton.Selectable =
 
 
 openButton.Activated:Connect(
+	function()
+		openShop()
+	end
+)
+
+cashAddButton.Activated:Connect(
 	function()
 		openShop()
 	end
