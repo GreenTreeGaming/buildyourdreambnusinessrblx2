@@ -32,7 +32,7 @@ local DATA_STORE_NAME = "PlayerData_v4"
 --
 -- Version 3 saves each placed business's physical model level.
 -- Version 4 adds plot-wide marketing progression.
-local CURRENT_DATA_VERSION = 5
+local CURRENT_DATA_VERSION = 6
 
 local MAX_RETRIES = 3
 local RETRY_DELAY_SECONDS = 2
@@ -54,6 +54,20 @@ local DEFAULT_PROFILE = {
 	Version = CURRENT_DATA_VERSION,
 
 	Cash = 0,
+
+		Monetization = {
+		Boosts = {
+			CustomerRushUntil = 0,
+			ReputationBoostUntil = 0,
+			CashBoostUntil = 0,
+		},
+
+		ProcessedReceipts = {},
+
+		-- Extra reputation progress earned from
+		-- Reputation Boost without falsifying TotalSales.
+		ReputationBonusSales = 0,
+	},
 
 	-- Plot-wide marketing progression.
 	MarketingLevel = 0,
@@ -287,6 +301,85 @@ local function sanitizeStatistic(
 		0,
 		math.floor(value)
 	)
+end
+
+local function sanitizeTimestamp(
+	value: any
+): number
+	if typeof(value) ~= "number"
+		or value ~= value
+		or value == math.huge
+		or value == -math.huge then
+
+		return 0
+	end
+
+	return math.max(
+		0,
+		math.floor(value)
+	)
+end
+
+local function sanitizeMonetization(
+	profile: {[any]: any}
+)
+	if type(profile.Monetization) ~= "table" then
+		profile.Monetization =
+			deepCopy(
+				DEFAULT_PROFILE.Monetization
+			)
+
+		return
+	end
+
+	local monetization =
+		profile.Monetization
+
+	if type(monetization.Boosts) ~= "table" then
+		monetization.Boosts = {}
+	end
+
+	monetization.Boosts.CustomerRushUntil =
+		sanitizeTimestamp(
+			monetization.Boosts.CustomerRushUntil
+		)
+
+	monetization.Boosts.ReputationBoostUntil =
+		sanitizeTimestamp(
+			monetization.Boosts.ReputationBoostUntil
+		)
+
+	monetization.Boosts.CashBoostUntil =
+		sanitizeTimestamp(
+			monetization.Boosts.CashBoostUntil
+		)
+
+	if type(monetization.ProcessedReceipts)
+		~= "table" then
+
+		monetization.ProcessedReceipts = {}
+	end
+
+	local sanitizedReceipts = {}
+
+	for purchaseId, processed in
+		monetization.ProcessedReceipts do
+
+		if type(purchaseId) == "string"
+			and purchaseId ~= ""
+			and processed == true then
+
+			sanitizedReceipts[purchaseId] = true
+		end
+	end
+
+	monetization.ProcessedReceipts =
+		sanitizedReceipts
+
+	monetization.ReputationBonusSales =
+		sanitizeStatistic(
+			monetization.ReputationBonusSales
+		)
 end
 
 local function getMaximumMarketingLevel(): number
@@ -618,6 +711,8 @@ local function migrateProfile(
 		profile,
 		DEFAULT_PROFILE
 	)
+
+	sanitizeMonetization(profile)
 
 	if type(profile.Cash) ~= "number" then
 		profile.Cash =
@@ -1882,6 +1977,202 @@ function DataService.SetBusinessUpgradeLevel(
 			break
 		end
 	end
+
+	return true
+end
+
+function DataService.GetBoostUntil(
+	player: Player,
+	boostName: string
+): number
+	local profile =
+		profiles[player]
+
+	if not profile
+		or type(boostName) ~= "string" then
+
+		return 0
+	end
+
+	local monetization =
+		profile.Monetization
+
+	if type(monetization) ~= "table"
+		or type(monetization.Boosts)
+			~= "table" then
+
+		return 0
+	end
+
+	local value =
+		monetization.Boosts[
+			`${boostName}Until`
+		]
+
+	return sanitizeTimestamp(value)
+end
+
+function DataService.SetBoostUntil(
+	player: Player,
+	boostName: string,
+	expiresAt: number
+): boolean
+	local profile =
+		profiles[player]
+
+	if not profile
+		or type(boostName) ~= "string"
+		or typeof(expiresAt) ~= "number" then
+
+		return false
+	end
+
+	local monetization =
+		profile.Monetization
+
+	if type(monetization) ~= "table" then
+		return false
+	end
+
+	if type(monetization.Boosts)
+		~= "table" then
+
+		monetization.Boosts = {}
+	end
+
+	monetization.Boosts[
+		`${boostName}Until`
+	] = sanitizeTimestamp(expiresAt)
+
+	return true
+end
+
+function DataService.HasProcessedReceipt(
+	player: Player,
+	purchaseId: string
+): boolean
+	local profile =
+		profiles[player]
+
+	if not profile
+		or type(purchaseId) ~= "string"
+		or purchaseId == "" then
+
+		return false
+	end
+
+	local monetization =
+		profile.Monetization
+
+	if type(monetization) ~= "table"
+		or type(monetization.ProcessedReceipts)
+			~= "table" then
+
+		return false
+	end
+
+	return monetization.ProcessedReceipts[
+		purchaseId
+	] == true
+end
+
+function DataService.SetReceiptProcessed(
+	player: Player,
+	purchaseId: string,
+	processed: boolean
+): boolean
+	local profile =
+		profiles[player]
+
+	if not profile
+		or type(purchaseId) ~= "string"
+		or purchaseId == "" then
+
+		return false
+	end
+
+	local monetization =
+		profile.Monetization
+
+	if type(monetization) ~= "table" then
+		return false
+	end
+
+	if type(monetization.ProcessedReceipts)
+		~= "table" then
+
+		monetization.ProcessedReceipts = {}
+	end
+
+	if processed then
+		monetization.ProcessedReceipts[
+			purchaseId
+		] = true
+	else
+		monetization.ProcessedReceipts[
+			purchaseId
+		] = nil
+	end
+
+	return true
+end
+
+function DataService.GetReputationBonusSales(
+	player: Player
+): number
+	local profile =
+		profiles[player]
+
+	if not profile then
+		return 0
+	end
+
+	local monetization =
+		profile.Monetization
+
+	if type(monetization) ~= "table" then
+		return 0
+	end
+
+	return sanitizeStatistic(
+		monetization.ReputationBonusSales
+	)
+end
+
+function DataService.AddReputationBonusSales(
+	player: Player,
+	amount: number
+): boolean
+	local profile =
+		profiles[player]
+
+	if not profile
+		or typeof(amount) ~= "number"
+		or amount ~= amount
+		or amount == math.huge
+		or amount == -math.huge then
+
+		return false
+	end
+
+	local monetization =
+		profile.Monetization
+
+	if type(monetization) ~= "table" then
+		return false
+	end
+
+	local current =
+		sanitizeStatistic(
+			monetization.ReputationBonusSales
+		)
+
+	monetization.ReputationBonusSales =
+		math.max(
+			0,
+			current
+				+ math.floor(amount)
+		)
 
 	return true
 end

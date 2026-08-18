@@ -15,6 +15,13 @@ local BusinessConfig =
 			:WaitForChild("BusinessConfig")
 	)
 
+local DataService =
+	require(
+		script.Parent
+			:WaitForChild("Services")
+			:WaitForChild("DataService")
+	)
+
 
 local remotes =
 	ReplicatedStorage:WaitForChild("Remotes")
@@ -547,6 +554,27 @@ local function calculatePlotReputation(
 			QueueScore = 0,
 			AppearanceScore = 0,
 		}
+	end
+
+		local ownerUserId =
+		plot:GetAttribute(
+			"OwnerUserId"
+		)
+
+	if typeof(ownerUserId)
+		== "number" then
+
+		local player =
+			Players:GetPlayerByUserId(
+				ownerUserId
+			)
+
+		if player then
+			totalSales +=
+				DataService.GetReputationBonusSales(
+					player
+				)
+		end
 	end
 
 

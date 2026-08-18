@@ -7,6 +7,13 @@ local ReplicatedStorage =
 local ServerStorage =
 	game:GetService("ServerStorage")
 
+local DataService =
+	require(
+		script.Parent
+			:WaitForChild("Services")
+			:WaitForChild("DataService")
+	)
+
 local Workspace =
 	game:GetService("Workspace")
 
@@ -528,10 +535,8 @@ end
 getPlotCustomerRateMultiplier = function(
 	plot: Model
 ): number
-
 	local bestStandMultiplier =
 		1
-
 
 	for _, stand in
 		getLemonadeStands(
@@ -545,7 +550,6 @@ getPlotCustomerRateMultiplier = function(
 			continue
 		end
 
-
 		bestStandMultiplier =
 			math.max(
 				bestStandMultiplier,
@@ -556,12 +560,10 @@ getPlotCustomerRateMultiplier = function(
 			)
 	end
 
-
 	local reputationMultiplier =
 		plot:GetAttribute(
 			"ReputationCustomerRateMultiplier"
 		)
-
 
 	if typeof(reputationMultiplier)
 			~= "number"
@@ -571,11 +573,42 @@ getPlotCustomerRateMultiplier = function(
 			1
 	end
 
+	local monetizationMultiplier =
+		1
+
+	local ownerUserId =
+		plot:GetAttribute(
+			"OwnerUserId"
+		)
+
+	if typeof(ownerUserId)
+		== "number" then
+
+		local owner =
+			Players:GetPlayerByUserId(
+				ownerUserId
+			)
+
+		if owner then
+			local multiplier =
+				owner:GetAttribute(
+					"CustomerMonetizationMultiplier"
+				)
+
+			if typeof(multiplier)
+					== "number"
+				and multiplier >= 1 then
+
+				monetizationMultiplier =
+					multiplier
+			end
+		end
+	end
 
 	return bestStandMultiplier
 		* reputationMultiplier
+		* monetizationMultiplier
 end
-
 
 local function getPlotCustomerCount(
 	plot: Model
@@ -2349,44 +2382,59 @@ local function rewardPlotOwner(
 	plot: Model,
 	stand: Model
 ): boolean
-
 	local player =
 		getPlayerFromPlot(
 			plot
 		)
 
-
 	if not player then
 		return false
 	end
-
 
 	local cash =
 		getCashValue(
 			player
 		)
 
-
 	if not cash then
 		return false
 	end
 
-
-	local saleValue =
+	local baseSaleValue =
 		getLemonadeSaleValue(
 			stand
 		)
 
+	local cashMultiplier =
+		player:GetAttribute(
+			"CashMultiplier"
+		)
+
+	if typeof(cashMultiplier)
+			~= "number"
+		or cashMultiplier < 1 then
+
+		cashMultiplier =
+			1
+	end
+
+	local finalSaleValue =
+		math.max(
+			0,
+			math.floor(
+				baseSaleValue
+					* cashMultiplier
+					+ 0.5
+			)
+		)
 
 	cash.Value +=
-		saleValue
-
+		finalSaleValue
 
 	local totalSales =
 		stand:GetAttribute(
 			"TotalSales"
 		)
-
 
 	if typeof(totalSales)
 		~= "number" then
@@ -2395,12 +2443,10 @@ local function rewardPlotOwner(
 			0
 	end
 
-
 	local lifetimeEarnings =
 		stand:GetAttribute(
 			"LifetimeEarnings"
 		)
-
 
 	if typeof(lifetimeEarnings)
 		~= "number" then
@@ -2408,7 +2454,6 @@ local function rewardPlotOwner(
 		lifetimeEarnings =
 			0
 	end
-
 
 	stand:SetAttribute(
 		"TotalSales",
@@ -2421,7 +2466,6 @@ local function rewardPlotOwner(
 		) + 1
 	)
 
-
 	stand:SetAttribute(
 		"LifetimeEarnings",
 
@@ -2430,24 +2474,47 @@ local function rewardPlotOwner(
 			math.floor(
 				lifetimeEarnings
 			)
-		) + saleValue
+		) + finalSaleValue
 	)
 
+	-- Keep literal TotalSales accurate.
+	-- Reputation Boost adds separate bonus progress.
+	local reputationMultiplier =
+		player:GetAttribute(
+			"ReputationSaleMultiplier"
+		)
+
+	if typeof(reputationMultiplier)
+			== "number"
+		and reputationMultiplier > 1 then
+
+		local bonusSales =
+			math.max(
+				0,
+				math.floor(
+					reputationMultiplier - 1
+				)
+			)
+
+		if bonusSales > 0 then
+			DataService.AddReputationBonusSales(
+				player,
+				bonusSales
+			)
+		end
+	end
 
 	showCashPopup(
 		stand,
-		saleValue
+		finalSaleValue
 	)
-
 
 	playSaleSound(
 		stand
 	)
 
-
 	return true
 end
-
 
 --==================================================
 -- EXIT MOVEMENT
