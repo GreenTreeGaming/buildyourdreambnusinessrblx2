@@ -87,7 +87,7 @@ local POSITIVE_REVIEWS = {
 	"I love this business!",
 	"Really good service!",
 	"That was worth the wait!",
-	"The lemonade was amazing!",
+	"The product was amazing!",
 	"I had a great experience!",
 	"This place keeps getting better!",
 }
@@ -98,7 +98,7 @@ local AVERAGE_REVIEWS = {
 	"The service was okay.",
 	"Not bad at all.",
 	"I'd probably come back.",
-	"The lemonade was pretty good.",
+	"The product was pretty good.",
 	"Good experience overall.",
 }
 
@@ -244,7 +244,7 @@ end
 
 local function getBusinessType(
 	stand: Model
-): string
+): string?
 
 	local businessType =
 		stand:GetAttribute(
@@ -253,24 +253,27 @@ local function getBusinessType(
 
 
 	if typeof(businessType) == "string"
-		and businessType ~= "" then
+		and BusinessConfig[businessType] then
 
 		return businessType
 	end
 
 
-	if string.match(
-		stand.Name,
-		"^LemonadeStand"
-	) then
+	for businessName in BusinessConfig do
 
-		return "LemonadeStand"
+		if stand.Name == businessName
+			or string.match(
+				stand.Name,
+				`^{businessName}_`
+			) then
+
+			return businessName
+		end
 	end
 
 
-	return stand.Name
+	return nil
 end
-
 
 local function getReview(
 	rating: number
