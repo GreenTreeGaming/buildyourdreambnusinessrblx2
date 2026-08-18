@@ -3,58 +3,64 @@ local BusinessConfig = {
 		DisplayName = "Lemonade Stand",
 
 		FirstStandFree = true,
-		AdditionalStandCost = 750,
+
+		-- Faster early expansion.
+		AdditionalStandCost = 500,
+
 		MaximumPlaced = 15,
 
-		BaseSaleValue = 2,
+		-- Faster early income.
+		BaseSaleValue = 3,
+
 		BaseServingCooldown = 5,
 
 		-- Controls the physical appearance of the stand.
 		StandLevels = {
-	[1] = {
-		TemplateName = "LemonadeStand",
-		UpgradeCost = 50,
+			[1] = {
+				TemplateName = "LemonadeStand",
+				UpgradeCost = 40,
 
-		CustomerAttraction = 1.00,
-		CustomerRateMultiplier = 1.00,
-	},
+				CustomerAttraction = 1.00,
+				CustomerRateMultiplier = 1.00,
+			},
 
-	[2] = {
-		TemplateName = "LemonadeStand2",
-		UpgradeCost = 250,
+			[2] = {
+				TemplateName = "LemonadeStand2",
+				UpgradeCost = 200,
 
-		CustomerAttraction = 1.15,
-		CustomerRateMultiplier = 1.10,
-	},
+				CustomerAttraction = 1.15,
+				CustomerRateMultiplier = 1.10,
+			},
 
-	[3] = {
-		TemplateName = "LemonadeStand3",
-		UpgradeCost = 1000,
+			[3] = {
+				TemplateName = "LemonadeStand3",
+				UpgradeCost = 750,
 
-		CustomerAttraction = 1.35,
-		CustomerRateMultiplier = 1.25,
-	},
+				CustomerAttraction = 1.35,
+				CustomerRateMultiplier = 1.25,
+			},
 
-	[4] = {
-		TemplateName = "LemonadeStand4",
-		UpgradeCost = 4000,
+			[4] = {
+				TemplateName = "LemonadeStand4",
+				UpgradeCost = 3000,
 
-		CustomerAttraction = 1.60,
-		CustomerRateMultiplier = 1.45,
-	},
+				CustomerAttraction = 1.60,
+				CustomerRateMultiplier = 1.45,
+			},
 
-	[5] = {
-		TemplateName = "LemonadeStand5",
-		UpgradeCost = nil,
+			[5] = {
+				TemplateName = "LemonadeStand5",
+				UpgradeCost = nil,
 
-		CustomerAttraction = 1.90,
-		CustomerRateMultiplier = 1.70,
-	},
-},
+				CustomerAttraction = 1.90,
+				CustomerRateMultiplier = 1.70,
+			},
+		},
 
 		Upgrades = {
 			ServingSpeed = {
 				DisplayName = "Faster Service",
+
 				Description =
 					"Reduce how long each customer waits at the counter.",
 
@@ -66,67 +72,77 @@ local BusinessConfig = {
 						Cost = 0,
 						Cooldown = 5,
 					},
+
 					{
 						Level = 1,
 						Cost = 25,
 						Cooldown = 4.25,
 					},
+
 					{
 						Level = 2,
-						Cost = 75,
+						Cost = 65,
 						Cooldown = 3.5,
 					},
+
 					{
 						Level = 3,
-						Cost = 175,
+						Cost = 150,
 						Cooldown = 2.75,
 					},
+
 					{
 						Level = 4,
-						Cost = 400,
+						Cost = 325,
 						Cooldown = 2,
 					},
+
 					{
 						Level = 5,
-						Cost = 900,
+						Cost = 700,
 						Cooldown = 1.25,
 					},
 				},
 			},
 
 			QueueCapacity = {
-	DisplayName = "Longer Queue",
-	Description =
-		"Allow more customers to wait at this stand.",
+				DisplayName = "Longer Queue",
 
-	ValueType = "QueueCapacity",
+				Description =
+					"Allow more customers to wait at this stand.",
 
-	Levels = {
-		{
-			Level = 0,
-			Cost = 0,
-			Capacity = 1,
-		},
-		{
-			Level = 1,
-			Cost = 75,
-			Capacity = 2,
-		},
-		{
-			Level = 2,
-			Cost = 225,
-			Capacity = 3,
-		},
-		{
-			Level = 3,
-			Cost = 600,
-			Capacity = 4,
-		},
-	},
-},
+				ValueType = "QueueCapacity",
+
+				Levels = {
+					{
+						Level = 0,
+						Cost = 0,
+						Capacity = 1,
+					},
+
+					{
+						Level = 1,
+						Cost = 60,
+						Capacity = 2,
+					},
+
+					{
+						Level = 2,
+						Cost = 175,
+						Capacity = 3,
+					},
+
+					{
+						Level = 3,
+						Cost = 450,
+						Capacity = 4,
+					},
+				},
+			},
 
 			SaleValue = {
 				DisplayName = "Better Lemonade",
+
 				Description =
 					"Improve the recipe and earn more from every sale.",
 
@@ -136,32 +152,37 @@ local BusinessConfig = {
 					{
 						Level = 0,
 						Cost = 0,
-						SaleValue = 2,
-					},
-					{
-						Level = 1,
-						Cost = 50,
 						SaleValue = 3,
 					},
+
+					{
+						Level = 1,
+						Cost = 40,
+						SaleValue = 4,
+					},
+
 					{
 						Level = 2,
-						Cost = 150,
-						SaleValue = 5,
+						Cost = 125,
+						SaleValue = 6,
 					},
+
 					{
 						Level = 3,
-						Cost = 400,
-						SaleValue = 8,
+						Cost = 325,
+						SaleValue = 9,
 					},
+
 					{
 						Level = 4,
-						Cost = 1000,
-						SaleValue = 12,
+						Cost = 800,
+						SaleValue = 13,
 					},
+
 					{
 						Level = 5,
-						Cost = 2500,
-						SaleValue = 18,
+						Cost = 1900,
+						SaleValue = 19,
 					},
 				},
 			},

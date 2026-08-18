@@ -83,7 +83,7 @@ QuestConfig.Quests = {
 			1,
 
 		RewardCash =
-			25,
+			40,
 	},
 
 
@@ -101,7 +101,7 @@ QuestConfig.Quests = {
 			10,
 
 		RewardCash =
-			100,
+			125,
 	},
 
 

@@ -980,35 +980,107 @@ card.BuyText.Active =
 card.BuyText.Selectable =
 	false
 
+--
+-- Gameplay upgrade values should fill the available
+-- space and remain easy to read.
+--
 card.CurrentAmount.TextWrapped =
-	true
-
-card.CurrentAmount.TextScaled =
 	false
 
-card.CurrentAmount.TextSize =
-	12
+card.CurrentAmount.TextScaled =
+	true
 
 card.CurrentAmount.TextYAlignment =
 	Enum.TextYAlignment.Center
 
 
 card.AfterAmount.TextWrapped =
-	true
-
-card.AfterAmount.TextScaled =
 	false
 
-card.AfterAmount.TextSize =
-	12
+card.AfterAmount.TextScaled =
+	true
 
 card.AfterAmount.TextYAlignment =
 	Enum.TextYAlignment.Center
 
-
 return card
 end
 
+local function configureGameplayValueBox(
+	title: TextLabel,
+	amount: TextLabel
+)
+	--
+	-- Keep the heading in the top part of the box.
+	--
+	title.Position =
+		UDim2.new(
+			0.05,
+			0,
+			0.08,
+			0
+		)
+
+	title.Size =
+		UDim2.new(
+			0.90,
+			0,
+			0.28,
+			0
+		)
+
+	title.TextScaled =
+		true
+
+	title.TextWrapped =
+		false
+
+
+	--
+	-- Give the actual value most of the box.
+	--
+	amount.Position =
+		UDim2.new(
+			0.05,
+			0,
+			0.38,
+			0
+		)
+
+	amount.Size =
+		UDim2.new(
+			0.90,
+			0,
+			0.52,
+			0
+		)
+
+	amount.TextScaled =
+		true
+
+	amount.TextWrapped =
+		false
+
+	amount.TextXAlignment =
+		Enum.TextXAlignment.Center
+
+	amount.TextYAlignment =
+		Enum.TextYAlignment.Center
+
+
+	--
+	-- Remove anything that caps how large
+	-- TextScaled is allowed to become.
+	--
+	for _, child in amount:GetChildren() do
+		if child:IsA(
+			"UITextSizeConstraint"
+		) then
+
+			child:Destroy()
+		end
+	end
+end
 
 local function createCard(
 	name: string,
@@ -1064,6 +1136,31 @@ cards.StandAppearance.Root.Size =
 		155
 	)
 
+
+--
+-- Stand Appearance displays several lines of
+-- information at once, so leave TextScaled disabled.
+--
+cards.StandAppearance.CurrentAmount.TextScaled =
+	false
+
+cards.StandAppearance.CurrentAmount.TextWrapped =
+	true
+
+cards.StandAppearance.CurrentAmount.TextSize =
+	12
+
+
+cards.StandAppearance.AfterAmount.TextScaled =
+	false
+
+cards.StandAppearance.AfterAmount.TextWrapped =
+	true
+
+cards.StandAppearance.AfterAmount.TextSize =
+	12
+
+
 cards.QueueCapacity =
 	createCard(
 		"QueueCapacity",
@@ -1081,6 +1178,26 @@ cards.ServingSpeed =
 		"ServingSpeed",
 		4
 	)
+
+
+local gameplayCards = {
+	cards.QueueCapacity,
+	cards.SaleValue,
+	cards.ServingSpeed,
+}
+
+
+for _, card in gameplayCards do
+	configureGameplayValueBox(
+		card.CurrentTitle,
+		card.CurrentAmount
+	)
+
+	configureGameplayValueBox(
+		card.AfterTitle,
+		card.AfterAmount
+	)
+end
 
 
 --==================================================

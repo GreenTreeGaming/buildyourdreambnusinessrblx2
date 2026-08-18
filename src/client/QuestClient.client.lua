@@ -72,6 +72,11 @@ local openButton =
 		"OpenButton"
 	) :: TextButton
 
+local updateFrame =
+	openButton:WaitForChild(
+		"Update"
+	) :: Frame
+
 
 local openButtonImage =
 	openButton:WaitForChild(
@@ -138,6 +143,8 @@ main.Visible =
 template.Visible =
 	false
 
+updateFrame.Visible =
+	false
 
 --==================================================
 -- REMOVE RUNTIME CLONES
@@ -179,6 +186,13 @@ type QuestCard = {
 local cards: {
 	[string]: QuestCard
 } = {}
+
+local previousCompletionState: {
+	[string]: boolean
+} = {}
+
+local hasReceivedInitialState =
+	false
 
 
 --==================================================
@@ -275,6 +289,12 @@ local function openDrawer()
 	if menuOpen then
 		return
 	end
+
+
+	-- The player has opened the quest menu,
+	-- so the new-completion notification has been seen.
+	updateFrame.Visible =
+		false
 
 
 	menuOpen =
@@ -898,6 +918,10 @@ local function applyState(
 	} = {}
 
 
+	local newlyCompletedQuest =
+		false
+
+
 	for index, quest in state do
 		if typeof(quest)
 				~= "table"
@@ -912,6 +936,40 @@ local function applyState(
 			quest.Id
 		] =
 			true
+
+
+		local isCompleted =
+			quest.Completed == true
+
+
+		local previousCompleted =
+			previousCompletionState[
+				quest.Id
+			]
+
+
+		--
+		-- Only show the notification if this quest
+		-- changed from incomplete -> complete.
+		--
+		-- We intentionally ignore completed quests
+		-- from the initial state load so players do
+		-- not get a fake "new quest" notification
+		-- when they first join.
+		--
+		if hasReceivedInitialState
+			and isCompleted
+			and previousCompleted == false then
+
+			newlyCompletedQuest =
+				true
+		end
+
+
+		previousCompletionState[
+			quest.Id
+		] =
+			isCompleted
 
 
 		local card =
@@ -941,12 +999,27 @@ local function applyState(
 
 
 	--
-	-- This is what removes the claimed quest card
-	-- when the server replaces it with the next quest.
+	-- Remove completion history for quests that
+	-- disappeared after being claimed/replaced.
 	--
-	for questId, card in
-		cards
-	do
+	for questId in previousCompletionState do
+		if not seen[
+			questId
+		] then
+
+			previousCompletionState[
+				questId
+			] =
+				nil
+		end
+	end
+
+
+	--
+	-- This removes the claimed quest card when
+	-- the server replaces it with the next quest.
+	--
+	for questId, card in cards do
 		if not seen[
 			questId
 		] then
@@ -960,8 +1033,24 @@ local function applyState(
 				nil
 		end
 	end
-end
 
+
+	--
+	-- Don't display the notification while the
+	-- quest drawer is already open. The player can
+	-- already see that the quest is complete.
+	--
+	if newlyCompletedQuest
+		and not menuOpen then
+
+		updateFrame.Visible =
+			true
+	end
+
+
+	hasReceivedInitialState =
+		true
+end
 
 --==================================================
 -- INITIAL STATE
