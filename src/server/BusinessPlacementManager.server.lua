@@ -986,10 +986,12 @@ stand:SetAttribute(
 			placementCFrame
 		)
 
-		plot:SetAttribute(
-			"StarterBusinessPlaced",
-			true
-		)
+		if businessName == "LemonadeStand" then
+	plot:SetAttribute(
+		"StarterBusinessPlaced",
+		true
+	)
+end
 
 		local newCount =
 	#currentBusinesses + 1
