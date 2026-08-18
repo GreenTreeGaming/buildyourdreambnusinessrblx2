@@ -93,12 +93,15 @@ local UITheme =
 			:WaitForChild("UITheme")
 	)
 
+local BusinessConfig =
+	require(
+		ReplicatedStorage
+			:WaitForChild("Shared")
+			:WaitForChild("BusinessConfig")
+	)
+
 local Colors =
 	UITheme.Colors
-
-
-local BUSINESS_NAME =
-	"LemonadeStand"
 
 local MANAGEMENT_DISTANCE =
 	22
@@ -129,26 +132,6 @@ local REMOVE_START_OFFSET =
 --==================================================
 -- EDIT PROPERTIES MODE EVENTS
 --==================================================
-
-local editPropertiesModeEvent =
-	playerGui:WaitForChild(
-		"EditPropertiesModeChanged"
-	) :: BindableEvent
-
-
-local selectBusinessEvent =
-	playerGui:WaitForChild(
-		"SelectBusinessForManagement"
-	) :: BindableEvent
-
-
-local propertyEditMode =
-	false
-
-
-local propertySelectedBusinessId:
-	string? =
-	nil
 
 
 local removeOriginalPosition =
@@ -660,42 +643,49 @@ local function getCharacterRoot():
 end
 
 
-local function isLemonadeStand(
-	instance: Instance
-): boolean
-	if not instance:IsA(
-		"Model"
-	) then
-
-		return false
-	end
-
+local function getBusinessType(
+	instance: Model
+): string?
 
 	local businessType =
 		instance:GetAttribute(
 			"BusinessType"
 		)
 
-	if businessType
-		== BUSINESS_NAME then
+	if typeof(businessType) == "string"
+		and BusinessConfig[businessType] then
 
-		return true
+		return businessType
 	end
 
+	for businessName in BusinessConfig do
 
-	if instance.Name
-		== BUSINESS_NAME then
+		if instance.Name == businessName
+			or string.match(
+				instance.Name,
+				`^{businessName}_`
+			) then
 
-		return true
+			return businessName
+		end
 	end
 
-
-	return string.match(
-		instance.Name,
-		"^LemonadeStand_"
-	) ~= nil
+	return nil
 end
 
+
+local function isSupportedBusiness(
+	instance: Instance
+): boolean
+
+	if not instance:IsA("Model") then
+		return false
+	end
+
+	return getBusinessType(
+		instance
+	) ~= nil
+end
 
 local function getClosestOwnedStand():
 	Model?
@@ -745,9 +735,9 @@ local function getClosestOwnedStand():
 		end
 
 
-		if not isLemonadeStand(
-			child
-		) then
+		if not isSupportedBusiness(
+	child
+) then
 
 			continue
 		end
@@ -935,96 +925,6 @@ local function getBusinessId(
 
 
 	return stand.Name
-end
-
-local function findOwnedBusinessById(
-	businessId: string
-): Model?
-
-	local plot =
-		getOwnedPlot()
-
-
-	if not plot then
-		return nil
-	end
-
-
-	local placedBusinesses =
-		plot:FindFirstChild(
-			"PlacedBusinesses"
-		)
-
-
-	if not placedBusinesses then
-		return nil
-	end
-
-
-	for _, child in
-		placedBusinesses:GetChildren() do
-
-		if not child:IsA(
-			"Model"
-		) then
-
-			continue
-		end
-
-
-		if child:GetAttribute(
-			"OwnerUserId"
-		) ~= player.UserId then
-
-			continue
-		end
-
-
-		if getBusinessId(
-			child
-		) == businessId then
-
-			return child
-		end
-	end
-
-
-	return nil
-end
-
-
-local function getPropertySelectedStand():
-	Model?
-
-	if not propertyEditMode then
-		return nil
-	end
-
-
-	if not propertySelectedBusinessId then
-		return nil
-	end
-
-
-	return findOwnedBusinessById(
-		propertySelectedBusinessId
-	)
-end
-
-
-local function isCurrentManagementStand(
-	stand: Model
-): boolean
-
-	if propertyEditMode then
-
-		return getPropertySelectedStand()
-			== stand
-	end
-
-
-	return getClosestOwnedStand()
-		== stand
 end
 
 local function findOwnedBusinessById(
@@ -2108,8 +2008,22 @@ end
 		) :: TextButton
 
 
-	businessNameLabel.Text =
-		"Lemonade Stand"
+	local businessType =
+	getBusinessType(
+		stand
+	)
+
+local businessConfig =
+	businessType
+	and BusinessConfig[
+		businessType
+	]
+
+businessNameLabel.Text =
+	businessConfig
+	and businessConfig.DisplayName
+	or businessType
+	or "Business"
 
 
 	if subtitleLabel.Text == "" then
@@ -2139,7 +2053,7 @@ end
 ) then
 
 				showToast(
-					"Your lemonade stand could not be found.",
+					"Your business could not be found.",
 					true
 				)
 
@@ -2181,7 +2095,7 @@ end
 ) then
 
 				showToast(
-					"Your lemonade stand could not be found.",
+					"Your business could not be found.",
 					true
 				)
 
@@ -2246,7 +2160,7 @@ end
 ) then
 
 				showToast(
-					"Your lemonade stand could not be found.",
+					"Your business could not be found.",
 					true
 				)
 
@@ -2375,7 +2289,7 @@ interactionResultRemote.OnClientEvent:Connect(
 				typeof(message)
 					== "string"
 					and message
-					or "Lemonade stand removed."
+					or "Business removed."
 			)
 
 			return
@@ -2480,94 +2394,6 @@ selectBusinessEvent.Event:Connect(
 		end
 
 
-		if stand == nil then
-
-			propertySelectedBusinessId =
-				nil
-
-
-			destroyManagementUI()
-
-
-			return
-		end
-
-
-		if not stand:IsA(
-			"Model"
-		) then
-
-			return
-		end
-
-
-		if stand:GetAttribute(
-			"OwnerUserId"
-		) ~= player.UserId then
-
-			return
-		end
-
-
-		propertySelectedBusinessId =
-			getBusinessId(
-				stand
-			)
-
-
-		createManagementUI(
-			stand
-		)
-
-
-		if managementGui then
-
-			managementGui.MaxDistance =
-				10000
-		end
-
-
-		setManagementVisible(
-			true
-		)
-	end
-)
-
---==================================================
--- EDIT PROPERTIES MODE
---==================================================
-
-editPropertiesModeEvent.Event:Connect(
-	function(
-		enabled: boolean
-	)
-
-		propertyEditMode =
-			enabled == true
-
-
-		propertySelectedBusinessId =
-			nil
-
-
-		hideRemoveConfirmation()
-
-
-		destroyManagementUI()
-	end
-)
-
-
-selectBusinessEvent.Event:Connect(
-	function(
-		stand: Model?
-	)
-
-		if not propertyEditMode then
-			return
-		end
-
-
 		-- Clicking empty land.
 		if stand == nil then
 
@@ -2607,14 +2433,6 @@ selectBusinessEvent.Event:Connect(
 		createManagementUI(
 			stand
 		)
-
-
-		if managementGui then
-
-			managementGui.MaxDistance =
-				100000
-		end
-
 
 		setManagementVisible(
 			true

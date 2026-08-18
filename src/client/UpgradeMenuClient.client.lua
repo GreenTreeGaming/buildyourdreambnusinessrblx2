@@ -58,10 +58,6 @@ local BusinessConfig =
 	)
 
 
-local BUSINESS_NAME =
-	"LemonadeStand"
-
-
 local GAMEPLAY_UPGRADE_ORDER = {
 	"QueueCapacity",
 	"SaleValue",
@@ -263,20 +259,102 @@ if oldUpgradeGui then
 	oldUpgradeGui:Destroy()
 end
 
+--==================================================
+-- STATE
+--==================================================
+
+local menuOpen =
+	false
+
+local selectedBusinessId:
+	string? =
+	nil
+
+local selectedStand:
+	Model? =
+	nil
+
+local requestPending:
+	string? =
+	nil
+
+local cards: {
+	[string]: UpgradeCard
+} = {}
+
+local statusVersion =
+	0
+
+
+local function getBusinessType(
+	stand: Model
+): string?
+
+	local businessType =
+		stand:GetAttribute(
+			"BusinessType"
+		)
+
+	if typeof(businessType) == "string"
+		and BusinessConfig[businessType] then
+
+		return businessType
+	end
+
+	for businessName in BusinessConfig do
+
+		if stand.Name == businessName
+			or string.match(
+				stand.Name,
+				`^{businessName}_`
+			) then
+
+			return businessName
+		end
+	end
+
+	return nil
+end
+
+
+local function getBusinessConfigForStand(
+	stand: Model?
+)
+	if not stand then
+		return nil
+	end
+
+	local businessType =
+		getBusinessType(
+			stand
+		)
+
+	if not businessType then
+		return nil
+	end
+
+	return BusinessConfig[
+		businessType
+	]
+end
+
 local function getAppearanceLevelConfig(
 	level: number
 ): {[any]: any}?
-	local lemonadeConfig =
-		BusinessConfig.LemonadeStand
 
-	if typeof(lemonadeConfig)
+	local businessConfig =
+		getBusinessConfigForStand(
+			selectedStand
+		)
+
+	if typeof(businessConfig)
 		~= "table" then
 
 		return nil
 	end
 
 	local standLevels =
-		lemonadeConfig.StandLevels
+		businessConfig.StandLevels
 
 	if typeof(standLevels)
 		~= "table" then
@@ -285,7 +363,9 @@ local function getAppearanceLevelConfig(
 	end
 
 	local config =
-		standLevels[level]
+		standLevels[
+			level
+		]
 
 	if typeof(config)
 		~= "table" then
@@ -464,33 +544,6 @@ setHiddenPose()
 
 
 --==================================================
--- STATE
---==================================================
-
-local menuOpen =
-	false
-
-local selectedBusinessId:
-	string? =
-	nil
-
-local selectedStand:
-	Model? =
-	nil
-
-local requestPending:
-	string? =
-	nil
-
-local cards: {
-	[string]: UpgradeCard
-} = {}
-
-local statusVersion =
-	0
-
-
---==================================================
 -- OPEN UPGRADE MENU EVENT
 --==================================================
 
@@ -590,7 +643,7 @@ local function getOwnedPlot():
 end
 
 
-local function isLemonadeStand(
+local function isSupportedBusiness(
 	instance: Instance
 ): boolean
 
@@ -601,28 +654,10 @@ local function isLemonadeStand(
 		return false
 	end
 
-
-	if instance:GetAttribute(
-		"BusinessType"
-	) == BUSINESS_NAME then
-
-		return true
-	end
-
-
-	if instance.Name
-		== BUSINESS_NAME then
-
-		return true
-	end
-
-
-	return string.match(
-		instance.Name,
-		"^LemonadeStand_"
+	return getBusinessType(
+		instance
 	) ~= nil
 end
-
 
 local function getStandBusinessId(
 	stand: Model
@@ -678,9 +713,9 @@ local function findOwnedStandByBusinessId(
 		end
 
 
-		if not isLemonadeStand(
-			child
-		) then
+		if not isSupportedBusiness(
+	child
+) then
 
 			continue
 		end
@@ -1286,16 +1321,18 @@ end
 -- CONFIG
 --==================================================
 
-local function getLemonadeConfig()
-	return BusinessConfig.LemonadeStand
-end
+local function getSelectedBusinessConfig()
 
+	return getBusinessConfigForStand(
+		selectedStand
+	)
+end
 
 local function getGameplayConfig(
 	upgradeName: string
 )
 	local businessConfig =
-		getLemonadeConfig()
+	getSelectedBusinessConfig()
 
 
 	if typeof(businessConfig)
@@ -1351,7 +1388,7 @@ local function getMaximumAppearanceLevel():
 	number
 
 	local config =
-		getLemonadeConfig()
+	getSelectedBusinessConfig()
 
 
 	if typeof(config)
@@ -1392,7 +1429,7 @@ local function getAppearanceConfig(
 	level: number
 )
 	local config =
-		getLemonadeConfig()
+	getSelectedBusinessConfig()
 
 
 	if typeof(config)
@@ -1441,13 +1478,28 @@ local function updateStatistics()
 		return
 	end
 
+	local businessConfig =
+	getSelectedBusinessConfig()
+
+
+local defaultSaleValue =
+	businessConfig
+	and businessConfig.BaseSaleValue
+	or 0
+
+
+local defaultCooldown =
+	businessConfig
+	and businessConfig.BaseServingCooldown
+	or 5
+
 
 	local saleValue =
-		getNumericAttribute(
-			selectedStand,
-			"SaleValue",
-			2
-		)
+	getNumericAttribute(
+		selectedStand,
+		"SaleValue",
+		defaultSaleValue
+	)
 
 	local waiting =
 		getNumericAttribute(
@@ -1464,11 +1516,11 @@ local function updateStatistics()
 		)
 
 	local serviceTime =
-		getNumericAttribute(
-			selectedStand,
-			"PurchaseCooldown",
-			5
-		)
+	getNumericAttribute(
+		selectedStand,
+		"PurchaseCooldown",
+		defaultCooldown
+	)
 
 	local totalSales =
 		getNumericAttribute(
@@ -2302,8 +2354,8 @@ local function openMenuForStand(
 	) then
 
 		warn(
-			`Could not find lemonade stand "{businessId}".`
-		)
+	`Could not find business "{businessId}".`
+)
 
 		return
 	end
@@ -2320,8 +2372,27 @@ local function openMenuForStand(
 		)
 
 
-	mainTitle.Text =
-		`Manage Lemonade Stand #{standNumber}`
+	local businessType =
+	selectedStand
+	and getBusinessType(
+		selectedStand
+	)
+
+local businessConfig =
+	businessType
+	and BusinessConfig[
+		businessType
+	]
+
+local displayName =
+	businessConfig
+	and businessConfig.DisplayName
+	or businessType
+	or "Business"
+
+
+mainTitle.Text =
+	`Manage {displayName} #{standNumber}`
 
 	resetSubtitle()
 

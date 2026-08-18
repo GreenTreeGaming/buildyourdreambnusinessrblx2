@@ -21,7 +21,13 @@ local cancelEditRemote =
 local businessAvailabilityEvent =
 	ServerStorage:FindFirstChild("BusinessAvailabilityChanged")
 
-local BUSINESS_NAME = "LemonadeStand"
+local BusinessConfig =
+	require(
+		ReplicatedStorage
+			:WaitForChild("Shared")
+			:WaitForChild("BusinessConfig")
+	)
+
 local REMOVE_CONFIRMATION_TIMEOUT = 15
 
 type EditState = {
@@ -211,6 +217,36 @@ local function sendFailure(
 	)
 end
 
+local function getBusinessType(
+	stand: Model
+): string?
+
+	local businessType =
+		stand:GetAttribute(
+			"BusinessType"
+		)
+
+	if typeof(businessType) == "string"
+		and BusinessConfig[businessType] then
+
+		return businessType
+	end
+
+	for businessName in BusinessConfig do
+
+		if stand.Name == businessName
+			or string.match(
+				stand.Name,
+				`^{businessName}_`
+			) then
+
+			return businessName
+		end
+	end
+
+	return nil
+end
+
 local function beginEditing(
 	player: Player,
 	businessId: string
@@ -249,7 +285,7 @@ local function beginEditing(
 		sendFailure(
 			player,
 			"EditFailed",
-			"Your lemonade stand could not be found."
+			"Your business could not be found."
 		)
 
 		return
@@ -263,7 +299,7 @@ local function beginEditing(
 		sendFailure(
 			player,
 			"EditFailed",
-			"You do not own this lemonade stand."
+			"You do not own this business."
 		)
 
 		return
@@ -275,7 +311,7 @@ local function beginEditing(
 		sendFailure(
 			player,
 			"EditFailed",
-			"This lemonade stand is already being edited."
+			"This business is already being edited."
 		)
 
 		return
@@ -345,7 +381,7 @@ local function beginRemoveConfirmation(
 		sendFailure(
 			player,
 			"RemoveFailed",
-			"Your lemonade stand could not be found."
+			"Your business could not be found."
 		)
 
 		return
@@ -359,7 +395,7 @@ local function beginRemoveConfirmation(
 		sendFailure(
 			player,
 			"RemoveFailed",
-			"You do not own this lemonade stand."
+			"You do not own this business."
 		)
 
 		return
@@ -421,7 +457,7 @@ local function confirmRemoval(
 		sendFailure(
 			player,
 			"RemoveFailed",
-			"The selected lemonade stand changed."
+			"The selected business changed."
 		)
 
 		return
@@ -438,7 +474,7 @@ local function confirmRemoval(
 		sendFailure(
 			player,
 			"RemoveFailed",
-			"The lemonade stand could not be found."
+			"The business could not be found."
 		)
 
 		return
@@ -451,6 +487,22 @@ local function confirmRemoval(
 
 	task.wait()
 
+	local removedBusinessType =
+	getBusinessType(
+		stand
+	)
+
+local removedBusinessConfig =
+	removedBusinessType
+	and BusinessConfig[
+		removedBusinessType
+	]
+
+local removedDisplayName =
+	removedBusinessConfig
+	and removedBusinessConfig.DisplayName
+	or "Business"
+
 	if stand.Parent then
 		stand:Destroy()
 	end
@@ -458,47 +510,51 @@ local function confirmRemoval(
 	local placedBusinesses =
 		getPlacedBusinesses(plot)
 
-	local hasRemainingStand = false
+	local hasRemainingStarterBusiness =
+	false
 
-	if placedBusinesses then
-		for _, child in
-			placedBusinesses:GetChildren() do
+if placedBusinesses then
 
-			if not child:IsA("Model") then
-				continue
-			end
+	for _, child in
+		placedBusinesses:GetChildren() do
 
-			local businessType =
-				child:GetAttribute(
-					"BusinessType"
-				)
+		if not child:IsA(
+			"Model"
+		) then
 
-			if businessType == BUSINESS_NAME
-				or child.Name == BUSINESS_NAME
-				or string.match(
-					child.Name,
-					"^LemonadeStand_"
-				) then
+			continue
+		end
 
-				hasRemainingStand = true
-				break
-			end
+		local businessType =
+			getBusinessType(
+				child
+			)
+
+		if businessType
+			== "LemonadeStand" then
+
+			hasRemainingStarterBusiness =
+				true
+
+			break
 		end
 	end
+end
 
-	plot:SetAttribute(
-		"StarterBusinessPlaced",
-		hasRemainingStand
-	)
+
+plot:SetAttribute(
+	"StarterBusinessPlaced",
+	hasRemainingStarterBusiness
+)
 
 	clearPlayerInteractionState(player)
 
 	interactionResultRemote:FireClient(
-		player,
-		"Removed",
-		"Lemonade stand removed.",
-		businessId
-	)
+	player,
+	"Removed",
+	`${removedDisplayName} removed.`,
+	businessId
+)
 end
 
 local function cancelEditing(player: Player)
@@ -534,7 +590,7 @@ requestEditRemote.OnServerEvent:Connect(function(
 		interactionResultRemote:FireClient(
 			player,
 			"EditFailed",
-			"The lemonade stand could not be identified."
+			"The business could not be identified."
 		)
 
 		return

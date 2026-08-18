@@ -106,6 +106,13 @@ local UITheme =
 			:WaitForChild("UITheme")
 	)
 
+local BusinessConfig =
+	require(
+		ReplicatedStorage
+			:WaitForChild("Shared")
+			:WaitForChild("BusinessConfig")
+	)
+
 local Colors =
 	UITheme.Colors
 
@@ -113,9 +120,6 @@ local Colors =
 --==================================================
 -- CONSTANTS
 --==================================================
-
-local BUSINESS_NAME =
-	"LemonadeStand"
 
 local MANAGEMENT_DISTANCE =
 	22
@@ -547,7 +551,38 @@ local function getCharacterRoot():
 end
 
 
-local function isLemonadeStand(
+local function getBusinessType(
+	instance: Model
+): string?
+
+	local businessType =
+		instance:GetAttribute(
+			"BusinessType"
+		)
+
+	if typeof(businessType) == "string"
+		and BusinessConfig[businessType] then
+
+		return businessType
+	end
+
+	for businessName in BusinessConfig do
+
+		if instance.Name == businessName
+			or string.match(
+				instance.Name,
+				`^{businessName}_`
+			) then
+
+			return businessName
+		end
+	end
+
+	return nil
+end
+
+
+local function isSupportedBusiness(
 	instance: Instance
 ): boolean
 
@@ -558,33 +593,10 @@ local function isLemonadeStand(
 		return false
 	end
 
-
-	local businessType =
-		instance:GetAttribute(
-			"BusinessType"
-		)
-
-
-	if businessType
-		== BUSINESS_NAME then
-
-		return true
-	end
-
-
-	if instance.Name
-		== BUSINESS_NAME then
-
-		return true
-	end
-
-
-	return string.match(
-		instance.Name,
-		"^LemonadeStand_"
+	return getBusinessType(
+		instance
 	) ~= nil
 end
-
 
 local function getClosestOwnedStand():
 	Model?
@@ -634,9 +646,9 @@ local function getClosestOwnedStand():
 		end
 
 
-		if not isLemonadeStand(
-			child
-		) then
+		if not isSupportedBusiness(
+	child
+) then
 
 			continue
 		end
@@ -1879,8 +1891,22 @@ local function createManagementUI(
 		) :: TextButton
 
 
-	businessNameLabel.Text =
-		"Lemonade Stand"
+	local businessType =
+	getBusinessType(
+		stand
+	)
+
+local businessConfig =
+	businessType
+	and BusinessConfig[
+		businessType
+	]
+
+businessNameLabel.Text =
+	businessConfig
+	and businessConfig.DisplayName
+	or businessType
+	or "Business"
 
 
 	if subtitleLabel.Text
@@ -1914,7 +1940,7 @@ local function createManagementUI(
 				~= getClosestOwnedStand() then
 
 				showToast(
-					"Your lemonade stand could not be found.",
+					"Your business could not be found.",
 					true
 				)
 
@@ -1958,7 +1984,7 @@ local function createManagementUI(
 				~= getClosestOwnedStand() then
 
 				showToast(
-					"Your lemonade stand could not be found.",
+					"Your business could not be found.",
 					true
 				)
 
@@ -2025,7 +2051,7 @@ local function createManagementUI(
 				~= getClosestOwnedStand() then
 
 				showToast(
-					"Your lemonade stand could not be found.",
+					"Your business could not be found.",
 					true
 				)
 
@@ -2154,7 +2180,7 @@ interactionResultRemote.OnClientEvent:Connect(
 				typeof(message)
 					== "string"
 					and message
-					or "Lemonade stand removed."
+					or "Business removed."
 			)
 
 			return

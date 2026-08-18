@@ -93,6 +93,7 @@ local DEFAULT_PROFILE = {
 
 	UnlockedBusinesses = {
 		LemonadeStand = true,
+		HotdogStand = true,
 	},
 }
 
@@ -916,17 +917,21 @@ local function getBusinessType(
 		)
 
 	if typeof(businessType) == "string"
-		and businessType ~= "" then
+		and BusinessConfig[businessType] then
 
 		return businessType
 	end
 
-	if string.match(
-		business.Name,
-		"^LemonadeStand"
-	) then
+	for businessName in BusinessConfig do
 
-		return "LemonadeStand"
+		if business.Name == businessName
+			or string.match(
+				business.Name,
+				`^{businessName}_`
+			) then
+
+			return businessName
+		end
 	end
 
 	return business.Name
@@ -1516,6 +1521,9 @@ function DataService.RestorePlot(
 
 	local restoredCount = 0
 
+	local restoredStarterBusiness =
+	false
+
 	for _, savedBusiness in
 		profile.PlacedBusinesses do
 
@@ -1693,12 +1701,19 @@ function DataService.RestorePlot(
 		stand:PivotTo(targetCFrame)
 
 		restoredCount += 1
+
+if savedBusiness.Type
+	== "LemonadeStand" then
+
+	restoredStarterBusiness =
+		true
+end
 	end
 
 	plot:SetAttribute(
-		"StarterBusinessPlaced",
-		restoredCount > 0
-	)
+	"StarterBusinessPlaced",
+	restoredStarterBusiness
+)
 
 	print(
 		`Restored {restoredCount} business(es) for {player.Name}.`
