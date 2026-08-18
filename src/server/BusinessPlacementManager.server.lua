@@ -1008,7 +1008,7 @@ if standCost == 0 then
 		`${displayName} placed!`
 else
 	message =
-		`${displayName} placed for $${standCost}!`
+		`${displayName} placed for ${standCost}!`
 end
 
 		placeBusinessRemote:FireClient(

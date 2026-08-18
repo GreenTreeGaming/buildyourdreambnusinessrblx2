@@ -795,7 +795,7 @@ local function processPurchase(
 
 
 			print(
-				`${displayName} sale completed for $${saleValue}.`
+				`${displayName} sale completed for ${saleValue}.`
 			)
 		end
 	)

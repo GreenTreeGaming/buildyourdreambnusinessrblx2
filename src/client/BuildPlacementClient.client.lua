@@ -528,7 +528,7 @@ local function getBusinessButtonText(
 		or 0
 
 
-	return `{displayName} - $${FormatNumber.Compact(price)}`
+	return `{displayName} - ${FormatNumber.Compact(price)}`
 end
 
 local function updateBusinessButtonTexts()
@@ -2988,28 +2988,42 @@ local function populateBusinessList()
 
 
 	table.sort(
-		names,
-		function(
-			first: string,
-			second: string
-		): boolean
+	names,
+	function(
+		first: string,
+		second: string
+	): boolean
 
-			local firstConfig =
-				BusinessConfig[first]
+		local firstConfig =
+			BusinessConfig[first]
 
-			local secondConfig =
-				BusinessConfig[second]
+		local secondConfig =
+			BusinessConfig[second]
 
 
+		local firstPrice =
+			firstConfig.AdditionalStandCost
+			or 0
+
+		local secondPrice =
+			secondConfig.AdditionalStandCost
+			or 0
+
+
+		if firstPrice == secondPrice then
 			return string.lower(
 				firstConfig.DisplayName
-				or first
+					or first
 			) < string.lower(
 				secondConfig.DisplayName
-				or second
+					or second
 			)
 		end
-	)
+
+
+		return firstPrice < secondPrice
+	end
+)
 
 
 	for index, businessName in
