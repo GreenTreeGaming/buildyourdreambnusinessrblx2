@@ -62,21 +62,6 @@ local Fonts =
 	UITheme.Fonts
 
 
-local BUSINESS_NAME =
-	"LemonadeStand"
-
-
-local lemonadeStandConfig =
-	BusinessConfig.LemonadeStand
-
-
-local DEFAULT_LEMONADE_COOLDOWN =
-	lemonadeStandConfig.BaseServingCooldown
-
-local DEFAULT_LEMONADE_SALE_VALUE =
-	lemonadeStandConfig.BaseSaleValue
-
-
 local CUSTOMER_COLLISION_GROUP =
 	"Customers"
 
@@ -314,7 +299,41 @@ local function getPlotSpawnInterval(
 end
 
 
-local function isLemonadeStand(
+local function getBusinessType(
+	instance: Model
+): string?
+
+	local businessType =
+		instance:GetAttribute(
+			"BusinessType"
+		)
+
+
+	if typeof(businessType) == "string"
+		and BusinessConfig[businessType] then
+
+		return businessType
+	end
+
+
+	for businessName in BusinessConfig do
+
+		if instance.Name == businessName
+			or string.match(
+				instance.Name,
+				`^{businessName}_`
+			) then
+
+			return businessName
+		end
+	end
+
+
+	return nil
+end
+
+
+local function isSupportedBusiness(
 	instance: Instance
 ): boolean
 
@@ -323,32 +342,10 @@ local function isLemonadeStand(
 	end
 
 
-	local businessType =
-		instance:GetAttribute(
-			"BusinessType"
-		)
-
-
-	if businessType
-		== BUSINESS_NAME then
-
-		return true
-	end
-
-
-	if instance.Name
-		== BUSINESS_NAME then
-
-		return true
-	end
-
-
-	return string.match(
-		instance.Name,
-		"^LemonadeStand_"
+	return getBusinessType(
+		instance
 	) ~= nil
 end
-
 
 local function getPlacedBusinesses(
 	plot: Model
@@ -371,7 +368,7 @@ local function getPlacedBusinesses(
 end
 
 
-local function getLemonadeStands(
+local function getSupportedBusinesses(
 	plot: Model
 ): {Model}
 
@@ -386,26 +383,26 @@ local function getLemonadeStands(
 	end
 
 
-	local stands: {Model} =
+	local businesses: {Model} =
 		{}
 
 
 	for _, child in
 		placedBusinesses:GetChildren() do
 
-		if isLemonadeStand(
+		if isSupportedBusiness(
 			child
 		) then
 
 			table.insert(
-				stands,
+				businesses,
 				child :: Model
 			)
 		end
 	end
 
 
-	return stands
+	return businesses
 end
 
 local function getStandAppearanceLevel(
@@ -436,8 +433,30 @@ local function getStandLevelConfig(
 	stand: Model
 ): {[any]: any}?
 
+	local businessType =
+		getBusinessType(
+			stand
+		)
+
+
+	if not businessType then
+		return nil
+	end
+
+
+	local config =
+		BusinessConfig[
+			businessType
+		]
+
+
+	if type(config) ~= "table" then
+		return nil
+	end
+
+
 	local standLevels =
-		lemonadeStandConfig.StandLevels
+		config.StandLevels
 
 
 	if type(standLevels)
@@ -468,7 +487,6 @@ local function getStandLevelConfig(
 
 	return levelConfig
 end
-
 
 local function getStandCustomerAttraction(
 	stand: Model
@@ -539,9 +557,9 @@ getPlotCustomerRateMultiplier = function(
 		1
 
 	for _, stand in
-		getLemonadeStands(
-			plot
-		) do
+	getSupportedBusinesses(
+		plot
+	) do
 
 		if not standIsAvailable(
 			stand
@@ -821,12 +839,12 @@ standIsAvailable = function(
 	end
 
 
-	if not isLemonadeStand(
-		stand
-	) then
+	if not isSupportedBusiness(
+	stand
+) then
 
-		return false
-	end
+	return false
+end
 
 
 	if stand:GetAttribute(
@@ -849,7 +867,7 @@ standIsAvailable = function(
 end
 
 
-local function getLemonadeCooldown(
+local function getBusinessCooldown(
 	stand: Model
 ): number
 
@@ -867,11 +885,33 @@ local function getLemonadeCooldown(
 	end
 
 
-	return DEFAULT_LEMONADE_COOLDOWN
+	local businessType =
+		getBusinessType(
+			stand
+		)
+
+
+	local config =
+		businessType
+		and BusinessConfig[
+			businessType
+		]
+
+
+	if config
+		and typeof(
+			config.BaseServingCooldown
+		) == "number"
+		and config.BaseServingCooldown > 0 then
+
+		return config.BaseServingCooldown
+	end
+
+
+	return 5
 end
 
-
-local function getLemonadeSaleValue(
+local function getBusinessSaleValue(
 	stand: Model
 ): number
 
@@ -891,9 +931,33 @@ local function getLemonadeSaleValue(
 	end
 
 
-	return DEFAULT_LEMONADE_SALE_VALUE
-end
+	local businessType =
+		getBusinessType(
+			stand
+		)
 
+
+	local config =
+		businessType
+		and BusinessConfig[
+			businessType
+		]
+
+
+	if config
+		and typeof(
+			config.BaseSaleValue
+		) == "number"
+		and config.BaseSaleValue >= 0 then
+
+		return math.floor(
+			config.BaseSaleValue
+		)
+	end
+
+
+	return 0
+end
 
 --==================================================
 -- QUEUE POSITIONS
@@ -1206,9 +1270,9 @@ local function chooseStandForCustomer(
 
 
 	for _, stand in
-		getLemonadeStands(
-			plot
-		) do
+	getSupportedBusinesses(
+		plot
+	) do
 
 		sanitizeStandMarkers(
 			stand
@@ -2401,9 +2465,9 @@ local function rewardPlotOwner(
 	end
 
 	local baseSaleValue =
-		getLemonadeSaleValue(
-			stand
-		)
+	getBusinessSaleValue(
+		stand
+	)
 
 	local cashMultiplier =
 		player:GetAttribute(
@@ -3340,9 +3404,9 @@ local function processQueue(
 
 
 		local transactionTime =
-			getLemonadeCooldown(
-				stand
-			)
+	getBusinessCooldown(
+		stand
+	)
 
 
 		firstEntry.customer:SetAttribute(

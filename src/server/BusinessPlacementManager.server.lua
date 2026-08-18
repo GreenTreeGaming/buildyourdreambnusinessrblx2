@@ -27,19 +27,8 @@ local placeBusinessRemote =
 local plotsFolder =
 	Workspace:WaitForChild("Plots")
 
-local BUSINESS_NAME = "LemonadeStand"
-
 local MAX_PLACEMENT_DISTANCE = 250
 local EDGE_PADDING = 0.5
-
-local lemonadeConfig =
-	BusinessConfig.LemonadeStand
-
-local MAXIMUM_STANDS =
-	lemonadeConfig.MaximumPlaced or 3
-
-local ADDITIONAL_STAND_COST =
-	lemonadeConfig.AdditionalStandCost or 750
 
 local placementRequests: {
 	[Player]: number
@@ -76,6 +65,40 @@ local function getPlacedBusinesses(
 	return nil
 end
 
+local function getBusinessConfig(
+	businessName: string
+): {[any]: any}?
+
+	local config =
+		BusinessConfig[
+			businessName
+		]
+
+	if type(config) ~= "table" then
+		return nil
+	end
+
+	return config
+end
+
+
+local function getBusinessDisplayName(
+	businessName: string
+): string
+
+	local config =
+		getBusinessConfig(
+			businessName
+		)
+
+	if not config then
+		return businessName
+	end
+
+	return config.DisplayName
+		or businessName
+end
+
 local function getBusinessType(
 	business: Model
 ): string
@@ -88,20 +111,26 @@ local function getBusinessType(
 		return businessType
 	end
 
-	if string.match(
-		business.Name,
-		"^LemonadeStand"
-	) then
+	for businessName in BusinessConfig do
 
-		return BUSINESS_NAME
+		if business.Name == businessName
+			or string.match(
+				business.Name,
+				`^{businessName}_`
+			) then
+
+			return businessName
+		end
 	end
 
 	return business.Name
 end
 
-local function getLemonadeStands(
-	plot: Model
+local function getBusinessesOfType(
+	plot: Model,
+	businessName: string
 ): {Model}
+
 	local folder =
 		getPlacedBusinesses(plot)
 
@@ -109,21 +138,26 @@ local function getLemonadeStands(
 		return {}
 	end
 
-	local stands = {}
+	local businesses = {}
 
-	for _, child in folder:GetChildren() do
+	for _, child in
+		folder:GetChildren() do
+
 		if not child:IsA("Model") then
 			continue
 		end
 
 		if getBusinessType(child)
-			== BUSINESS_NAME then
+			== businessName then
 
-			table.insert(stands, child)
+			table.insert(
+				businesses,
+				child
+			)
 		end
 	end
 
-	return stands
+	return businesses
 end
 
 local function getCashValue(
@@ -483,9 +517,15 @@ local function canPlaceBusiness(
 	placementCFrame: CFrame,
 	editedStand: Model?
 ): (boolean, string)
-	if businessName ~= BUSINESS_NAME then
-		return false, "Unknown business."
-	end
+	local config =
+	getBusinessConfig(
+		businessName
+	)
+
+if not config then
+	return false,
+		"Unknown business."
+end
 
 	local ground =
 		plot:FindFirstChild("Ground")
@@ -505,16 +545,28 @@ local function canPlaceBusiness(
 			"The plot is missing PlacedBusinesses."
 	end
 
-	local currentStands =
-		getLemonadeStands(plot)
+	local currentBusinesses =
+	getBusinessesOfType(
+		plot,
+		businessName
+	)
 
-	if not editedStand
-		and #currentStands
-			>= MAXIMUM_STANDS then
+local maximumPlaced =
+	config.MaximumPlaced
+	or 1
 
-		return false,
-			`You can only place {MAXIMUM_STANDS} Lemonade Stands.`
-	end
+if not editedStand
+	and #currentBusinesses
+		>= maximumPlaced then
+
+	local displayName =
+		getBusinessDisplayName(
+			businessName
+		)
+
+	return false,
+		`You can only place {maximumPlaced} {displayName}s.`
+end
 
 	local template: Model?
 
@@ -542,7 +594,7 @@ end
 
 	if not template.PrimaryPart then
 		return false,
-			"The LemonadeStand needs a PrimaryPart."
+			`{businessName} needs a PrimaryPart.`
 	end
 
 	local character = player.Character
@@ -683,75 +735,104 @@ placeBusinessRemote.OnServerEvent:Connect(
 		end
 
 		if editState then
-			local stand =
-				editState.stand
+	local stand =
+		editState.stand
 
-			if getBusinessType(stand)
-	~= businessName then
+
+	if not stand
+		or not stand.Parent
+		or editState.plot ~= plot then
+
+		placeBusinessRemote:FireClient(
+			player,
+			false,
+			"The business could not be moved."
+		)
+
+		return
+	end
+
+
+	if getBusinessType(stand)
+		~= businessName then
+
+		placeBusinessRemote:FireClient(
+			player,
+			false,
+			"The selected business does not match."
+		)
+
+		return
+	end
+
+
+	stand:PivotTo(
+		placementCFrame
+	)
+
+	stand:SetAttribute(
+		"StandUnavailable",
+		false
+	)
+
+	stand:SetAttribute(
+		"IsBeingEdited",
+		false
+	)
+
+	restorePrompts(
+		stand
+	)
+
+	editStates[player] = nil
+
+	player:SetAttribute(
+		"EditingBusiness",
+		nil
+	)
 
 	placeBusinessRemote:FireClient(
 		player,
-		false,
-		"The selected business does not match."
+		true,
+		`${getBusinessDisplayName(businessName)} moved!`
 	)
 
 	return
 end
 
-			if not stand
-				or not stand.Parent
-				or editState.plot ~= plot then
+		local config =
+	getBusinessConfig(
+		businessName
+	)
 
-				placeBusinessRemote:FireClient(
-					player,
-					false,
-					"The Lemonade Stand could not be moved."
-				)
+if not config then
+	placeBusinessRemote:FireClient(
+		player,
+		false,
+		"Unknown business."
+	)
 
-				return
-			end
+	return
+end
 
-			stand:PivotTo(
-				placementCFrame
-			)
 
-			stand:SetAttribute(
-				"StandUnavailable",
-				false
-			)
+local currentBusinesses =
+	getBusinessesOfType(
+		plot,
+		businessName
+	)
 
-			stand:SetAttribute(
-				"IsBeingEdited",
-				false
-			)
 
-			disablePrompts(
-	stand
-)
+local standCost =
+	config.AdditionalStandCost
+	or 0
 
-			editStates[player] = nil
 
-			player:SetAttribute(
-				"EditingBusiness",
-				nil
-			)
+if config.FirstStandFree == true
+	and #currentBusinesses == 0 then
 
-			placeBusinessRemote:FireClient(
-				player,
-				true,
-				"Lemonade Stand moved!"
-			)
-
-			return
-		end
-
-		local currentStands =
-			getLemonadeStands(plot)
-
-		local standCost =
-			#currentStands == 0
-			and 0
-			or ADDITIONAL_STAND_COST
+	standCost = 0
+end
 
 		local cash = getCashValue(player)
 
@@ -888,14 +969,14 @@ stand:SetAttribute(
 		)
 
 		stand:SetAttribute(
-			"PurchaseCooldown",
-			lemonadeConfig.BaseServingCooldown
-		)
+	"PurchaseCooldown",
+	config.BaseServingCooldown
+)
 
-		stand:SetAttribute(
-			"SaleValue",
-			lemonadeConfig.BaseSaleValue
-		)
+stand:SetAttribute(
+	"SaleValue",
+	config.BaseSaleValue
+)
 
 		setModelPlacedState(stand)
 
@@ -911,25 +992,30 @@ stand:SetAttribute(
 		)
 
 		local newCount =
-			#currentStands + 1
+	#currentBusinesses + 1
 
-		local message
+		local displayName =
+	getBusinessDisplayName(
+		businessName
+	)
 
-		if standCost == 0 then
-			message =
-				"Lemonade Stand placed!"
-		else
-			message =
-				`Lemonade Stand placed for ${standCost}!`
-		end
+local message
+
+if standCost == 0 then
+	message =
+		`${displayName} placed!`
+else
+	message =
+		`${displayName} placed for $${standCost}!`
+end
 
 		placeBusinessRemote:FireClient(
-			player,
-			true,
-			message,
-			newCount,
-			MAXIMUM_STANDS
-		)
+	player,
+	true,
+	message,
+	newCount,
+	config.MaximumPlaced or 1
+)
 	end
 )
 

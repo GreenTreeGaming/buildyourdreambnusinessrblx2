@@ -13,6 +13,13 @@ local UpgradeService = require(
 		:WaitForChild("UpgradeService")
 )
 
+local BusinessConfig =
+	require(
+		ReplicatedStorage
+			:WaitForChild("Shared")
+			:WaitForChild("BusinessConfig")
+	)
+
 local plotsFolder =
 	Workspace:WaitForChild("Plots")
 
@@ -98,28 +105,52 @@ local getUpgradeStateRemote =
 		"GetUpgradeState"
 	)
 
-local function isLemonadeStand(
-	instance: Instance
-): boolean
-	if not instance:IsA("Model") then
-		return false
-	end
+local function getBusinessType(
+	instance: Model
+): string?
 
 	local businessType =
 		instance:GetAttribute(
 			"BusinessType"
 		)
 
-	if businessType == "LemonadeStand" then
-		return true
+
+	if typeof(businessType) == "string"
+		and BusinessConfig[businessType] then
+
+		return businessType
 	end
 
-	return instance.Name
-			== "LemonadeStand"
-		or string.match(
-			instance.Name,
-			"^LemonadeStand_"
-		) ~= nil
+
+	for businessName in BusinessConfig do
+
+		if instance.Name == businessName
+			or string.match(
+				instance.Name,
+				`^{businessName}_`
+			) then
+
+			return businessName
+		end
+	end
+
+
+	return nil
+end
+
+
+local function isSupportedBusiness(
+	instance: Instance
+): boolean
+
+	if not instance:IsA("Model") then
+		return false
+	end
+
+
+	return getBusinessType(
+		instance
+	) ~= nil
 end
 
 local function getPlayerFromPlot(
@@ -145,9 +176,9 @@ local function applyUpgradesToStand(
 	plot: Model,
 	stand: Instance
 )
-	if not isLemonadeStand(stand) then
-		return
-	end
+	if not isSupportedBusiness(stand) then
+	return
+end
 
 	local standModel: Model =
 		stand :: Model

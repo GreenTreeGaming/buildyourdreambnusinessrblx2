@@ -37,10 +37,6 @@ local plotsFolder =
 	)
 
 
-local BUSINESS_NAME =
-	"LemonadeStand"
-
-
 local REQUEST_COOLDOWN =
 	0.5
 
@@ -324,25 +320,64 @@ local function getCurrentLevel(
 	return value
 end
 
+local function getBusinessType(
+	stand: Model
+): string?
+
+	local businessType =
+		stand:GetAttribute(
+			"BusinessType"
+		)
+
+	if typeof(businessType) == "string"
+		and BusinessConfig[businessType] then
+
+		return businessType
+	end
+
+	for businessName in BusinessConfig do
+
+		if stand.Name == businessName
+			or string.match(
+				stand.Name,
+				`^{businessName}_`
+			) then
+
+			return businessName
+		end
+	end
+
+	return nil
+end
+
 
 local function getStandLevelConfig(
+	stand: Model,
 	level: number
 ): {[string]: any}?
 
-	local lemonadeConfig =
-		BusinessConfig.LemonadeStand
+	local businessType =
+		getBusinessType(
+			stand
+		)
 
+	if not businessType then
+		return nil
+	end
 
-	if typeof(lemonadeConfig)
+	local businessConfig =
+		BusinessConfig[
+			businessType
+		]
+
+	if typeof(businessConfig)
 		~= "table" then
 
 		return nil
 	end
 
-
 	local standLevels =
-		lemonadeConfig.StandLevels
-
+		businessConfig.StandLevels
 
 	if typeof(standLevels)
 		~= "table" then
@@ -350,12 +385,10 @@ local function getStandLevelConfig(
 		return nil
 	end
 
-
 	local levelConfig =
 		standLevels[
 			level
 		]
-
 
 	if typeof(levelConfig)
 		~= "table" then
@@ -363,10 +396,8 @@ local function getStandLevelConfig(
 		return nil
 	end
 
-
 	return levelConfig
 end
-
 
 local function playerOwnsStand(
 	player: Player,
@@ -552,31 +583,14 @@ local function validateUpgradeTemplate(
 end
 
 
-local function isLemonadeStand(
+local function isSupportedBusiness(
 	stand: Model
 ): boolean
 
-	local businessType =
-		stand:GetAttribute(
-			"BusinessType"
-		)
-
-
-	if businessType
-		== BUSINESS_NAME then
-
-		return true
-	end
-
-
-	return stand.Name
-			== BUSINESS_NAME
-		or string.match(
-			stand.Name,
-			"^LemonadeStand_"
-		) ~= nil
+	return getBusinessType(
+		stand
+	) ~= nil
 end
-
 
 --==================================================
 -- CONSTRUCTION ANIMATION
@@ -1575,7 +1589,7 @@ local function performUpgrade(
 		sendResult(
 			player,
 			false,
-			"The selected lemonade stand is invalid."
+			"The selected business is invalid."
 		)
 
 
@@ -1605,9 +1619,9 @@ local function performUpgrade(
 	end
 
 
-	if not isLemonadeStand(
-		stand
-	) then
+	if not isSupportedBusiness(
+	stand
+) then
 
 		finish()
 
@@ -1615,7 +1629,7 @@ local function performUpgrade(
 		sendResult(
 			player,
 			false,
-			"The selected business is not a lemonade stand."
+			"The selected business cannot be upgraded."
 		)
 
 
@@ -1635,7 +1649,7 @@ local function performUpgrade(
 		sendResult(
 			player,
 			false,
-			"You do not own this lemonade stand."
+			"You do not own this business."
 		)
 
 
@@ -1704,9 +1718,10 @@ local function performUpgrade(
 
 
 	local currentConfig =
-		getStandLevelConfig(
-			currentLevel
-		)
+	getStandLevelConfig(
+		stand,
+		currentLevel
+	)
 
 
 	if not currentConfig then
@@ -1730,9 +1745,10 @@ local function performUpgrade(
 
 
 	local nextConfig =
-		getStandLevelConfig(
-			nextLevel
-		)
+	getStandLevelConfig(
+		stand,
+		nextLevel
+	)
 
 
 	if not nextConfig then
@@ -1743,7 +1759,7 @@ local function performUpgrade(
 		sendResult(
 			player,
 			false,
-			"Your lemonade stand is already at the maximum level.",
+			"This business is already at the maximum appearance level.",
 			currentLevel
 		)
 
@@ -1938,16 +1954,39 @@ local function performUpgrade(
 
 	-- Prevent customers and prompts from interacting
 	-- during the very short replacement animation.
-	stand:SetAttribute(
-		"StandUnavailable",
-		true
-	)
-
-
-	disablePrompts(
+	local businessType =
+	getBusinessType(
 		stand
 	)
 
+if not businessType then
+
+	finish()
+
+	sendResult(
+		player,
+		false,
+		"The business type could not be determined."
+	)
+
+	return
+end
+
+
+-- Prevent customers and prompts from interacting
+-- during the very short replacement animation.
+stand:SetAttribute(
+	"StandUnavailable",
+	true
+)
+
+disablePrompts(
+	stand
+)
+
+
+local upgradedStand =
+	template:Clone()
 
 	local upgradedStand =
 		template:Clone()
@@ -1973,9 +2012,9 @@ local function performUpgrade(
 
 
 			upgradedStand:SetAttribute(
-				"BusinessType",
-				BUSINESS_NAME
-			)
+	"BusinessType",
+	businessType
+)
 
 
 			upgradedStand:SetAttribute(
@@ -2101,7 +2140,7 @@ local function performUpgrade(
 		sendResult(
 			player,
 			false,
-			"The lemonade stand upgrade failed."
+			"The business appearance upgrade failed."
 		)
 
 
@@ -2122,12 +2161,23 @@ local function performUpgrade(
 	finish()
 
 
-	sendResult(
-		player,
-		true,
-		`Lemonade stand upgraded to Level {nextLevel}!`,
-		nextLevel
-	)
+	local businessConfig =
+	BusinessConfig[
+		businessType
+	]
+
+local displayName =
+	businessConfig
+	and businessConfig.DisplayName
+	or businessType
+
+
+sendResult(
+	player,
+	true,
+	`${displayName} upgraded to Level {nextLevel}!`,
+	nextLevel
+)
 end
 
 

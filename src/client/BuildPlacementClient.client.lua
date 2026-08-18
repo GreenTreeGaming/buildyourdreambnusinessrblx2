@@ -117,15 +117,6 @@ local GRID_SELECTED_COLOR =
 	Color3.fromRGB(90, 255, 120)
 
 
-local lemonadeConfig =
-	BusinessConfig.LemonadeStand
-
-
-local MAXIMUM_STANDS =
-	lemonadeConfig.MaximumPlaced
-	or 3
-
-
 local ROTATION_INCREMENT =
 	90
 
@@ -425,8 +416,10 @@ local function getBusinessType(
 	return business.Name
 end
 
+local function getBusinessesOfType(
+	businessName: string
+): { Model }
 
-local function getLemonadeStands(): { Model }
 	if not ownedPlot then
 		return {}
 	end
@@ -443,7 +436,7 @@ local function getLemonadeStands(): { Model }
 	end
 
 
-	local stands = {}
+	local businesses = {}
 
 
 	for _, child in
@@ -455,53 +448,88 @@ local function getLemonadeStands(): { Model }
 
 
 		if getBusinessType(child)
-			== DEFAULT_BUSINESS_NAME then
+			== businessName then
 
 			table.insert(
-				stands,
+				businesses,
 				child
 			)
 		end
 	end
 
 
-	return stands
+	return businesses
 end
 
 
-local function getStandCount(): number
-	return #getLemonadeStands()
+local function getBusinessCount(
+	businessName: string
+): number
+
+	return #getBusinessesOfType(
+		businessName
+	)
 end
+
+
+local function canPlaceAnyBusiness(): boolean
+	for businessName, config in
+		BusinessConfig do
+
+		if typeof(businessName) ~= "string"
+			or type(config) ~= "table" then
+
+			continue
+		end
+
+
+		local maximumPlaced =
+			config.MaximumPlaced
+			or math.huge
+
+
+		if getBusinessCount(
+			businessName
+		) < maximumPlaced then
+
+			return true
+		end
+	end
+
+
+	return false
+end
+
 local function getBusinessButtonText(
 	businessName: string,
 	config: {[any]: any}
 ): string
+
 	local displayName =
 		config.DisplayName
 		or businessName
 
-	if businessName
-		~= DEFAULT_BUSINESS_NAME then
 
-		return displayName
-	end
+	local businessCount =
+		getBusinessCount(
+			businessName
+		)
 
-	local standCount =
-		getStandCount()
 
-	if config.FirstStandFree
-		and standCount == 0 then
+	if config.FirstStandFree == true
+		and businessCount == 0 then
 
 		return `{displayName} - FREE`
 	end
+
 
 	local price =
 		config.AdditionalStandCost
 		or 0
 
-	return `{displayName} - ${FormatNumber.Compact(price)}`
-end
 
+	return `{displayName} - $${FormatNumber.Compact(price)}`
+end
 
 local function updateBusinessButtonTexts()
 	for businessName, button in
@@ -554,40 +582,33 @@ local function findStandByBusinessId(
 
 
 	for _, child in
-		placedBusinesses:GetChildren() do
+	placedBusinesses:GetChildren() do
 
-		if not child:IsA("Model") then
-			continue
-		end
-
-
-		if getBusinessType(child)
-			~= DEFAULT_BUSINESS_NAME then
-
-			continue
-		end
-
-
-		if child:GetAttribute(
-			"OwnerUserId"
-		) ~= player.UserId then
-
-			continue
-		end
-
-
-		local childBusinessId =
-			child:GetAttribute(
-				"BusinessId"
-			)
-
-
-		if childBusinessId == businessId
-			or child.Name == businessId then
-
-			return child
-		end
+	if not child:IsA("Model") then
+		continue
 	end
+
+
+	if child:GetAttribute(
+		"OwnerUserId"
+	) ~= player.UserId then
+
+		continue
+	end
+
+
+	local childBusinessId =
+		child:GetAttribute(
+			"BusinessId"
+		)
+
+
+	if childBusinessId == businessId
+		or child.Name == businessId then
+
+		return child
+	end
+end
 
 
 	return nil
@@ -2537,30 +2558,6 @@ local function startPlacement(
 	end
 
 
-	local requestedBusiness =
-		businessName
-		or DEFAULT_BUSINESS_NAME
-
-
-	-- The current server is still lemonade-only.
-	if requestedBusiness
-		~= DEFAULT_BUSINESS_NAME then
-
-		showTemporaryNotice(
-			"This business cannot be placed yet.",
-			2
-		)
-
-		showAddButton()
-
-		return
-	end
-
-
-	selectedBusinessName =
-		requestedBusiness
-
-
 	ownedPlot =
 		getOwnedPlot()
 
@@ -2582,13 +2579,21 @@ local function startPlacement(
 		nil
 
 
+	local requestedBusiness =
+		businessName
+		or DEFAULT_BUSINESS_NAME
+
+
+	-- When editing, determine the business type
+	-- from the actual existing stand.
 	if editingExisting then
+
 		if typeof(businessId)
 			~= "string"
 			or businessId == "" then
 
 			showTemporaryNotice(
-				"The selected lemonade stand could not be identified.",
+				"The selected business could not be identified.",
 				2
 			)
 
@@ -2602,35 +2607,84 @@ local function startPlacement(
 			findStandByBusinessId(
 				businessId
 			)
+
+
+		if not existingStand then
+
+			showTemporaryNotice(
+				"Your business could not be found.",
+				2
+			)
+
+			cancelEditRemote:FireServer()
+
+			return
+		end
+
+
+		requestedBusiness =
+			getBusinessType(
+				existingStand
+			)
 	end
 
 
-	if not editingExisting
-		and getStandCount()
-			>= MAXIMUM_STANDS then
+	local businessConfig =
+		BusinessConfig[
+			requestedBusiness
+		]
+
+
+	if not businessConfig then
 
 		showTemporaryNotice(
-			`You can only place {MAXIMUM_STANDS} Lemonade Stands.`,
+			"This business is not configured.",
 			2
 		)
 
-		showAddButton()
+		if editingExisting then
+			cancelEditRemote:FireServer()
+		else
+			showAddButton()
+		end
 
 		return
 	end
 
 
-	if editingExisting
-		and not existingStand then
+	selectedBusinessName =
+		requestedBusiness
 
-		showTemporaryNotice(
-			"Your lemonade stand could not be found.",
-			2
-		)
 
-		cancelEditRemote:FireServer()
+	if not editingExisting then
 
-		return
+		local maximumPlaced =
+			businessConfig.MaximumPlaced
+			or math.huge
+
+
+		local currentCount =
+			getBusinessCount(
+				selectedBusinessName
+			)
+
+
+		if currentCount >= maximumPlaced then
+
+			local displayName =
+				businessConfig.DisplayName
+				or selectedBusinessName
+
+
+			showTemporaryNotice(
+				`You can only place {maximumPlaced} {displayName}s.`,
+				2
+			)
+
+			showAddButton()
+
+			return
+		end
 	end
 
 
@@ -2640,9 +2694,12 @@ local function startPlacement(
 
 
 	if editingExisting then
+
 		previewSource =
 			existingStand
+
 	else
+
 		local baseTemplate =
 			businessModels:FindFirstChild(
 				selectedBusinessName
@@ -2661,6 +2718,7 @@ local function startPlacement(
 
 
 	if not previewSource then
+
 		warn(
 			`The {selectedBusinessName} preview source could not be found.`
 		)
@@ -2678,6 +2736,7 @@ local function startPlacement(
 
 
 	if not previewSource.PrimaryPart then
+
 		warn(
 			`${previewSource:GetFullName()} needs PlacementOrigin set as its PrimaryPart.`
 		)
@@ -2716,6 +2775,7 @@ local function startPlacement(
 
 
 	if editingExisting then
+
 		originalStand =
 			existingStand
 
@@ -2735,23 +2795,26 @@ local function startPlacement(
 				)
 			)
 
+
 		for _, descendant in
-	previewModel:GetDescendants() do
+			previewModel:GetDescendants() do
 
-	if descendant:IsA(
-		"BasePart"
-	) and descendant.CanCollide then
+			if descendant:IsA(
+				"BasePart"
+			) then
 
-		descendant.CanCollide =
-			false
-	end
-end
+				descendant.CanCollide =
+					false
+			end
+		end
 
 
 		previewModel:PivotTo(
 			existingStand:GetPivot()
 		)
+
 	else
+
 		originalStand =
 			nil
 
@@ -2769,9 +2832,10 @@ end
 	placementValid =
 		false
 
+
 	createPlacementGrid()
 
-addOccupiedGridAreas()
+	addOccupiedGridAreas()
 
 
 	setBuildMenuVisible(
@@ -2855,11 +2919,23 @@ local function requestCurrentPlacement()
 	)
 
 
-	setPlacementNotice(
-		isEditingExistingStand
-			and "Moving lemonade stand..."
-			or "Building lemonade stand..."
-	)
+	local config =
+	BusinessConfig[
+		selectedBusinessName
+	]
+
+
+local displayName =
+	config
+	and config.DisplayName
+	or "Business"
+
+
+setPlacementNotice(
+	isEditingExistingStand
+		and `Moving {displayName}...`
+		or `Building {displayName}...`
+)
 end
 
 
@@ -3306,8 +3382,7 @@ placeBusinessRemote.OnClientEvent:Connect(
 
 			task.defer(function()
 				setBuildMenuVisible(
-					getStandCount()
-						< MAXIMUM_STANDS
+					canPlaceAnyBusiness()
 				)
 			end)
 
@@ -3318,7 +3393,7 @@ placeBusinessRemote.OnClientEvent:Connect(
 			noticeText.Text =
 				message ~= ""
 					and message
-					or "Lemonade stand placed!"
+					or "Business placed!"
 
 
 			noticeWhilePlacing.Position =
@@ -3435,7 +3510,7 @@ interactionResultRemote.OnClientEvent:Connect(
 				or businessId == "" then
 
 				showTemporaryNotice(
-					"The selected lemonade stand could not be identified.",
+					"The selected business could not be identified.",
 					2
 				)
 
@@ -3453,10 +3528,10 @@ interactionResultRemote.OnClientEvent:Connect(
 
 
 			startPlacement(
-				true,
-				businessId,
-				DEFAULT_BUSINESS_NAME
-			)
+	true,
+	businessId,
+	nil
+)
 
 
 			return
@@ -3475,8 +3550,7 @@ interactionResultRemote.OnClientEvent:Connect(
 
 			task.defer(function()
 				setBuildMenuVisible(
-					getStandCount()
-						< MAXIMUM_STANDS
+					canPlaceAnyBusiness()
 				)
 			end)
 
@@ -3513,8 +3587,7 @@ interactionResultRemote.OnClientEvent:Connect(
 
 
 			setBuildMenuVisible(
-				getStandCount()
-					< MAXIMUM_STANDS
+				canPlaceAnyBusiness()
 			)
 		end
 	end
@@ -3562,8 +3635,7 @@ ownedPlot =
 
 if ownedPlot then
 	setBuildMenuVisible(
-		getStandCount()
-			< MAXIMUM_STANDS
+		canPlaceAnyBusiness()
 	)
 else
 	setBuildMenuVisible(
@@ -3587,8 +3659,7 @@ task.spawn(function()
 			and not isEditingExistingStand then
 
 			setBuildMenuVisible(
-				getStandCount()
-					< MAXIMUM_STANDS
+				canPlaceAnyBusiness()
 			)
 		else
 			setBuildMenuVisible(

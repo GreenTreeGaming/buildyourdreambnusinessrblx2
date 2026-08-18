@@ -16,9 +16,6 @@ local BusinessConfig = require(
 		:WaitForChild("BusinessConfig")
 )
 
-local BUSINESS_NAME =
-	"LemonadeStand"
-
 type UpgradeResult = {
 	Success: boolean,
 	Message: string,
@@ -72,28 +69,32 @@ end
 
 local function getBusinessType(
 	stand: Model
-): string
+): string?
+
 	local businessType =
 		stand:GetAttribute(
 			"BusinessType"
 		)
 
 	if typeof(businessType) == "string"
-		and businessType ~= "" then
+		and BusinessConfig[businessType] then
 
 		return businessType
 	end
 
-	if stand.Name == BUSINESS_NAME
-		or string.match(
-			stand.Name,
-			"^LemonadeStand_"
-		) then
+	for businessName in BusinessConfig do
 
-		return BUSINESS_NAME
+		if stand.Name == businessName
+			or string.match(
+				stand.Name,
+				`^{businessName}_`
+			) then
+
+			return businessName
+		end
 	end
 
-	return stand.Name
+	return nil
 end
 
 local function getUpgradeConfig(
@@ -232,11 +233,16 @@ local function getOwnedStand(
 		return nil
 	end
 
-	if getBusinessType(stand)
-		~= BUSINESS_NAME then
+	local businessName =
+	getBusinessType(
+		stand
+	)
 
-		return nil
-	end
+if not businessName
+	or not BusinessConfig[businessName] then
+
+	return nil
+end
 
 	return stand
 end
@@ -258,11 +264,14 @@ function UpgradeService.ApplyStandUpgrades(
 		return false
 	end
 
-	if getBusinessType(stand)
-		~= BUSINESS_NAME then
+	local businessName =
+	getBusinessType(
+		stand
+	)
 
-		return false
-	end
+if not businessName then
+	return false
+end
 
 	local businessId =
 		stand:GetAttribute(
@@ -276,7 +285,16 @@ function UpgradeService.ApplyStandUpgrades(
 	end
 
 	local businessConfig =
-		BusinessConfig.LemonadeStand
+	BusinessConfig[
+		businessName
+	]
+
+if not businessConfig
+	or type(businessConfig.Upgrades)
+		~= "table" then
+
+	return false
+end
 
 	local servingConfig =
 		businessConfig.Upgrades.ServingSpeed
@@ -286,6 +304,13 @@ function UpgradeService.ApplyStandUpgrades(
 
 	local queueCapacityConfig =
 		businessConfig.Upgrades.QueueCapacity
+
+	if not servingConfig
+	or not saleValueConfig
+	or not queueCapacityConfig then
+
+	return false
+end
 
 	local servingLevel =
 		DataService.GetBusinessUpgradeLevel(
@@ -425,7 +450,7 @@ function UpgradeService.GetUpgradeState(
 	if not stand then
 		return createResult(
 			false,
-			"The selected lemonade stand could not be found."
+			"The selected business could not be found."
 		)
 	end
 
@@ -545,7 +570,7 @@ function UpgradeService.PurchaseUpgrade(
 		return finish(
 			createResult(
 				false,
-				"The selected lemonade stand could not be found."
+				"The selected business could not be found."
 			)
 		)
 	end
