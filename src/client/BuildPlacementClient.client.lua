@@ -23,6 +23,13 @@ local FormatNumber =
 			:WaitForChild("FormatNumber")
 	)
 
+local Notification =
+	require(
+		ReplicatedStorage
+			:WaitForChild("Shared")
+			:WaitForChild("Notification")
+	)
+
 
 local player =
 	Players.LocalPlayer
@@ -1251,47 +1258,6 @@ local function setPlacementNotice(
 	noticeText.Text =
 		message
 end
-
-
-local function showTemporaryNotice(
-	message: string,
-	duration: number
-)
-	noticeVersion += 1
-
-
-	local version =
-		noticeVersion
-
-
-	noticeText.Text =
-		message
-
-	noticeWhilePlacing.Visible =
-		true
-
-
-	task.delay(
-		duration,
-		function()
-			if noticeVersion
-				~= version then
-
-				return
-			end
-
-
-			if isPlacementActive then
-				noticeText.Text =
-					getDefaultPlacementNotice()
-			else
-				noticeWhilePlacing.Visible =
-					false
-			end
-		end
-	)
-end
-
 
 --==================================================
 -- PREVIEW APPEARANCE
@@ -2563,10 +2529,9 @@ local function startPlacement(
 
 
 	if not ownedPlot then
-		showTemporaryNotice(
-			"Waiting for your plot...",
-			2
-		)
+		Notification.Info(
+	"Waiting for your plot..."
+)
 
 		showAddButton()
 
@@ -2592,10 +2557,9 @@ local function startPlacement(
 			~= "string"
 			or businessId == "" then
 
-			showTemporaryNotice(
-				"The selected business could not be identified.",
-				2
-			)
+			Notification.Error(
+	"The selected business could not be identified."
+)
 
 			cancelEditRemote:FireServer()
 
@@ -2611,10 +2575,9 @@ local function startPlacement(
 
 		if not existingStand then
 
-			showTemporaryNotice(
-				"Your business could not be found.",
-				2
-			)
+			Notification.Error(
+	"Your business could not be found."
+)
 
 			cancelEditRemote:FireServer()
 
@@ -2637,10 +2600,9 @@ local function startPlacement(
 
 	if not businessConfig then
 
-		showTemporaryNotice(
-			"This business is not configured.",
-			2
-		)
+		Notification.Error(
+	"This business is not configured."
+)
 
 		if editingExisting then
 			cancelEditRemote:FireServer()
@@ -2676,10 +2638,9 @@ local function startPlacement(
 				or selectedBusinessName
 
 
-			showTemporaryNotice(
-				`You can only place {maximumPlaced} {displayName}s.`,
-				2
-			)
+			Notification.Warning(
+	`You can only place {maximumPlaced} {displayName}s.`
+)
 
 			showAddButton()
 
@@ -2900,10 +2861,12 @@ local function requestCurrentPlacement()
 	if not placementValid
 		or not currentPlacementCFrame then
 
-		showTemporaryNotice(
-			"The business must be inside your plot and cannot overlap another business.",
-			1.75
-		)
+		Notification.Warning(
+	"Keep the business inside your plot and away from other businesses.",
+	{
+		Title = "Can't Place Here",
+	}
+)
 
 		return
 	end
@@ -3387,7 +3350,10 @@ placeBusinessRemote.OnClientEvent:Connect(
 
 
 		if success then
-			finishPlacementMode()
+	local wasEditing =
+		isEditingExistingStand
+
+	finishPlacementMode()
 
 
 			ownedPlot =
@@ -3401,100 +3367,38 @@ placeBusinessRemote.OnClientEvent:Connect(
 			end)
 
 
-			noticeVersion += 1
-
-
-			noticeText.Text =
-				message ~= ""
-					and message
-					or "Business placed!"
-
-
-			noticeWhilePlacing.Position =
-				noticeHiddenPosition
-
-			noticeWhilePlacing.Visible =
-				true
-
-
-			local tween =
-				TweenService:Create(
-					noticeWhilePlacing,
-					TweenInfo.new(
-						0.18,
-						Enum.EasingStyle.Back,
-						Enum.EasingDirection.Out
-					),
-					{
-						Position =
-							noticeOpenPosition,
-					}
-				)
-
-
-			tween:Play()
-
-
-			task.delay(
-				1.5,
-				function()
-					if isPlacementActive then
-						return
-					end
-
-
-					local exitTween =
-						TweenService:Create(
-							noticeWhilePlacing,
-							TweenInfo.new(
-								0.12,
-								Enum.EasingStyle.Quad,
-								Enum.EasingDirection.In
-							),
-							{
-								Position =
-									noticeHiddenPosition,
-							}
-						)
-
-
-					exitTween:Play()
-
-
-					exitTween.Completed:Once(function()
-						if not isPlacementActive then
-							noticeWhilePlacing.Visible =
-								false
-
-							noticeWhilePlacing.Position =
-								noticeOpenPosition
-						end
-					end)
-				end
-			)
+			Notification.Success(
+	message ~= ""
+		and message
+		or (
+			wasEditing
+				and "Business moved successfully!"
+				or "Business placed!"
+		),
+	{
+		Title =
+			wasEditing
+				and "Moved!"
+				or "Placed!",
+	}
+)
 
 
 			return
 		end
 
 
-		setPlacementNotice(
-			message ~= ""
-				and message
-				or "The stand could not be placed."
-		)
+		Notification.Error(
+	message ~= ""
+		and message
+		or "The stand could not be placed."
+)
 
-
-		task.delay(
-			1.75,
-			function()
-				if isPlacementActive then
-					setPlacementNotice(
-						getDefaultPlacementNotice()
-					)
-				end
-			end
-		)
+if isPlacementActive then
+	setPlacementNotice(
+		getDefaultPlacementNotice()
+	)
+end
 	end
 )
 
@@ -3523,10 +3427,9 @@ interactionResultRemote.OnClientEvent:Connect(
 				~= "string"
 				or businessId == "" then
 
-				showTemporaryNotice(
-					"The selected business could not be identified.",
-					2
-				)
+				Notification.Error(
+	"The selected business could not be identified."
+)
 
 				cancelEditRemote:FireServer()
 
@@ -3577,13 +3480,12 @@ interactionResultRemote.OnClientEvent:Connect(
 			== "RemoveFailed" then
 
 			if typeof(message)
-				== "string" then
+	== "string" then
 
-				showTemporaryNotice(
-					message,
-					2
-				)
-			end
+	Notification.Error(
+		message
+	)
+end
 
 
 			return

@@ -13,6 +13,13 @@ local UserInputService =
 local Workspace =
 	game:GetService("Workspace")
 
+local Notification =
+	require(
+		ReplicatedStorage
+			:WaitForChild("Shared")
+			:WaitForChild("Notification")
+	)
+
 
 local player =
 	Players.LocalPlayer
@@ -396,174 +403,6 @@ local removeRequestPending =
 local pendingRemoveBusinessId:
 	string? =
 	nil
-
-
---==================================================
--- TOAST
---==================================================
-
-local toastGui:
-	ScreenGui? =
-	nil
-
-local toastLabel:
-	TextLabel? =
-	nil
-
-local toastVersion =
-	0
-
-
-local function createToast()
-	local existing =
-		playerGui:FindFirstChild(
-			"BusinessManagementToast"
-		)
-
-	if existing then
-		existing:Destroy()
-	end
-
-
-	local gui =
-		Instance.new(
-			"ScreenGui"
-		)
-
-	gui.Name =
-		"BusinessManagementToast"
-
-	gui.ResetOnSpawn =
-		false
-
-	gui.IgnoreGuiInset =
-		true
-
-	gui.DisplayOrder =
-		150
-
-	gui.Parent =
-		playerGui
-
-
-	local label =
-		Instance.new(
-			"TextLabel"
-		)
-
-	label.Name =
-		"Toast"
-
-	label.AnchorPoint =
-		Vector2.new(
-			0.5,
-			0
-		)
-
-	label.Position =
-		UDim2.new(
-			0.5,
-			0,
-			0,
-			18
-		)
-
-	label.Size =
-		UDim2.fromOffset(
-			560,
-			50
-		)
-
-	label.BackgroundColor3 =
-		Colors.Surface
-
-	label.BackgroundTransparency =
-		0.04
-
-	label.BorderSizePixel =
-		0
-
-	label.TextScaled =
-		true
-
-	label.TextWrapped =
-		true
-
-	label.Visible =
-		false
-
-	label.Parent =
-		gui
-
-
-	UITheme.AddCorner(
-		label,
-		0.15
-	)
-
-	UITheme.AddStroke(
-		label,
-		Colors.Stroke,
-		1.5,
-		0.2
-	)
-
-
-	toastGui =
-		gui
-
-	toastLabel =
-		label
-end
-
-
-local function showToast(
-	message: string,
-	isError: boolean?
-)
-	if not toastLabel then
-		return
-	end
-
-
-	toastVersion += 1
-
-	local version =
-		toastVersion
-
-
-	toastLabel.Text =
-		message
-
-	toastLabel.TextColor3 =
-		isError
-		and Colors.Danger
-		or Colors.Success
-
-	toastLabel.Visible =
-		true
-
-
-	task.delay(
-		3,
-		function()
-			if version
-				~= toastVersion then
-
-				return
-			end
-
-			if toastLabel then
-				toastLabel.Visible =
-					false
-			end
-		end
-	)
-end
-
-
-createToast()
-
 
 --==================================================
 -- PLOT HELPERS
@@ -2052,10 +1891,9 @@ businessNameLabel.Text =
 	stand
 ) then
 
-				showToast(
-					"Your business could not be found.",
-					true
-				)
+				Notification.Error(
+	"Your business could not be found."
+)
 
 				return
 			end
@@ -2094,10 +1932,9 @@ businessNameLabel.Text =
 	stand
 ) then
 
-				showToast(
-					"Your business could not be found.",
-					true
-				)
+				Notification.Error(
+	"Your business could not be found."
+)
 
 				return
 			end
@@ -2107,10 +1944,9 @@ businessNameLabel.Text =
 				"IsBeingEdited"
 			) == true then
 
-				showToast(
-					"Finish moving this stand first.",
-					true
-				)
+				Notification.Warning(
+	"Finish moving this stand first."
+)
 
 				return
 			end
@@ -2120,10 +1956,9 @@ businessNameLabel.Text =
 				"StandUnavailable"
 			) == true then
 
-				showToast(
-					"This stand is currently unavailable.",
-					true
-				)
+				Notification.Warning(
+	"This stand is currently unavailable."
+)
 
 				return
 			end
@@ -2159,10 +1994,9 @@ businessNameLabel.Text =
 	stand
 ) then
 
-				showToast(
-					"Your business could not be found.",
-					true
-				)
+				Notification.Error(
+	"Your business could not be found."
+)
 
 				return
 			end
@@ -2285,7 +2119,7 @@ interactionResultRemote.OnClientEvent:Connect(
 			destroyManagementUI()
 
 
-			showToast(
+			Notification.Success(
 				typeof(message)
 					== "string"
 					and message
@@ -2302,13 +2136,11 @@ interactionResultRemote.OnClientEvent:Connect(
 			hideRemoveConfirmation()
 
 
-			showToast(
+			Notification.Error(
 				typeof(message)
 					== "string"
 					and message
-					or "The stand could not be removed.",
-
-				true
+					or "The stand could not be removed."
 			)
 
 			return
@@ -2332,18 +2164,17 @@ interactionResultRemote.OnClientEvent:Connect(
 			)
 
 
-			showToast(
+			Notification.Error(
 				typeof(message)
 					== "string"
 					and message
-					or "The stand could not be edited.",
-
-				true
+					or "The stand could not be edited."
 			)
+
+			return
 		end
 	end
 )
-
 
 --==================================================
 -- CHARACTER CLEANUP

@@ -26,6 +26,13 @@ local plotsFolder =
 local remotes =
 	ReplicatedStorage:WaitForChild("Remotes")
 
+local Notification =
+	require(
+		ReplicatedStorage
+			:WaitForChild("Shared")
+			:WaitForChild("Notification")
+	)
+
 
 local purchaseUpgradeRemote =
 	remotes:WaitForChild("PurchaseUpgrade")
@@ -281,9 +288,6 @@ local requestPending:
 local cards: {
 	[string]: UpgradeCard
 } = {}
-
-local statusVersion =
-	0
 
 
 local function getBusinessType(
@@ -884,49 +888,24 @@ local function resetSubtitle()
 end
 
 
-local function showStatus(
+local function showUpgradeNotification(
 	message: string,
 	isError: boolean?
 )
-	statusVersion +=
-		1
-
-	local version =
-		statusVersion
-
-
 	if message == "" then
-		resetSubtitle()
-
 		return
 	end
 
-
 	if isError then
-		mainSubtitle.Text =
-			"⚠ " .. message
-	else
-		mainSubtitle.Text =
+		Notification.Error(
 			message
+		)
+	else
+		Notification.Success(
+			message
+		)
 	end
-
-
-	task.delay(
-		2.5,
-		function()
-			if statusVersion
-				~= version then
-
-				return
-			end
-
-			if menuOpen then
-				resetSubtitle()
-			end
-		end
-	)
 end
-
 
 --==================================================
 -- CARD REFERENCES
@@ -2615,16 +2594,16 @@ upgradeResultRemote.OnClientEvent:Connect(
 			nil
 
 
-		showStatus(
-			result.Message
-				or (
-					result.Success
-					and "Upgrade purchased!"
-					or "Upgrade failed."
-				),
+		showUpgradeNotification(
+	result.Message
+		or (
+			result.Success
+				and "Upgrade purchased!"
+				or "Upgrade failed."
+		),
 
-			not result.Success
-		)
+	not result.Success
+)
 
 
 		updateStatistics()
@@ -2656,10 +2635,10 @@ appearanceUpgradeResultRemote
 				nil
 
 
-			showStatus(
-				message,
-				not success
-			)
+			showUpgradeNotification(
+	message,
+	not success
+)
 
 
 			if not success then
@@ -2699,10 +2678,10 @@ appearanceUpgradeResultRemote
 
 
 					if menuOpen then
-						showStatus(
-							"The upgraded stand could not be found.",
-							true
-						)
+						showUpgradeNotification(
+	"The upgraded stand could not be found.",
+	true
+)
 
 						closeMenu()
 					end
