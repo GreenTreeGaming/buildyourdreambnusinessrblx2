@@ -549,8 +549,7 @@ local function addTemporaryCashMarker(
 		true
 
 
-	badge.Font =
-		Enum.Font.GothamBold
+	badge.FontFace = Font.new("rbxassetid://12188570269")
 
 
 	badge.ZIndex =

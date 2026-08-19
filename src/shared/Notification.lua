@@ -5,344 +5,265 @@ local TweenService =
 	game:GetService("TweenService")
 
 
-local player =
-	Players.LocalPlayer
-
-if not player then
-	error(
-		"Notification can only be required from the client."
-	)
-end
-
-
-local playerGui =
-	player:WaitForChild("PlayerGui")
-
-
 local Notification = {}
 
 
-type NotificationType =
-	"Success"
-	| "Warning"
-	| "Error"
-	| "Info"
-
-
-type NotificationOptions = {
-	Title: string?,
-	Duration: number?,
-}
-
-
-type NotificationStyle = {
-	Title: string,
-	Icon: string,
-
-	Color: Color3,
-	DarkColor: Color3,
-
-	Duration: number,
-}
-
-
-local FONT =
-	Enum.Font.MPlusRounded1c
-
+--==================================================
+-- CONFIG
+--==================================================
 
 local MAX_NOTIFICATIONS =
 	4
 
-local ENTER_TIME =
-	0.28
+local DEFAULT_DURATION =
+	3.5
 
-local EXIT_TIME =
-	0.2
+local CARD_WIDTH =
+	430
+
+local CARD_HEIGHT =
+	72
+
+local CARD_GAP =
+	10
 
 
-local CARD_BACKGROUND =
+local BACKGROUND_COLOR =
 	Color3.fromRGB(
-		24,
+		28,
 		30,
-		43
-	)
-
-local CARD_BACKGROUND_BOTTOM =
-	Color3.fromRGB(
-		17,
-		22,
-		33
+		36
 	)
 
 local TEXT_COLOR =
 	Color3.fromRGB(
-		255,
-		255,
-		255
+		245,
+		245,
+		248
 	)
 
 local SUBTEXT_COLOR =
 	Color3.fromRGB(
-		207,
-		215,
-		229
+		190,
+		193,
+		202
 	)
 
 
-local STYLES: {
-	[NotificationType]: NotificationStyle
-} = {
-
+local STYLES = {
 	Success = {
-		Title = "Success",
-		Icon = "✓",
-
 		Color =
 			Color3.fromRGB(
-				72,
-				222,
-				133
+				74,
+				210,
+				125
 			),
 
-		DarkColor =
-			Color3.fromRGB(
-				32,
-				159,
-				87
-			),
-
-		Duration = 3,
+		Icon = "✓",
+		Title = "Success",
 	},
 
 	Warning = {
-		Title = "Warning",
-		Icon = "!",
-
 		Color =
 			Color3.fromRGB(
 				255,
-				194,
-				74
+				190,
+				65
 			),
 
-		DarkColor =
-			Color3.fromRGB(
-				213,
-				133,
-				34
-			),
-
-		Duration = 3.5,
+		Icon = "!",
+		Title = "Warning",
 	},
 
 	Error = {
-		Title = "Error",
-		Icon = "×",
-
 		Color =
 			Color3.fromRGB(
-				255,
-				92,
-				111
+				245,
+				82,
+				82
 			),
 
-		DarkColor =
-			Color3.fromRGB(
-				194,
-				46,
-				68
-			),
-
-		Duration = 4,
+		Icon = "×",
+		Title = "Error",
 	},
 
 	Info = {
-		Title = "Notice",
-		Icon = "i",
-
 		Color =
 			Color3.fromRGB(
-				82,
-				169,
+				90,
+				165,
 				255
 			),
 
-		DarkColor =
-			Color3.fromRGB(
-				47,
-				108,
-				207
-			),
-
-		Duration = 3,
+		Icon = "i",
+		Title = "Info",
 	},
 }
 
 
-local activeCards: {
-	CanvasGroup
-} = {}
+--==================================================
+-- STATE
+--==================================================
+
+local activeNotifications = {}
+
+local nextId =
+	0
 
 
-local recentNotifications: {
-	[string]: number
-} = {}
+--==================================================
+-- GUI
+--==================================================
+
+local function getGui():
+	ScreenGui
+
+	local player =
+		Players.LocalPlayer
+
+	if not player then
+		error(
+			"Notification can only be used from the client."
+		)
+	end
 
 
-local screenGui =
-	playerGui:FindFirstChild(
-		"Notifications"
-	)
+	local playerGui =
+		player:WaitForChild(
+			"PlayerGui"
+		)
 
 
-if screenGui
-	and not screenGui:IsA(
-		"ScreenGui"
-	) then
-
-	screenGui:Destroy()
-
-	screenGui =
-		nil
-end
+	local existing =
+		playerGui:FindFirstChild(
+			"Notifications"
+		)
 
 
-if not screenGui then
+	if existing
+		and existing:IsA(
+			"ScreenGui"
+		) then
 
-	screenGui =
+		return existing
+	end
+
+
+	if existing then
+		existing:Destroy()
+	end
+
+
+	local gui =
 		Instance.new(
 			"ScreenGui"
 		)
 
-	screenGui.Name =
+	gui.Name =
 		"Notifications"
 
-	screenGui.ResetOnSpawn =
+	gui.ResetOnSpawn =
 		false
 
-	screenGui.IgnoreGuiInset =
-		false
+	gui.IgnoreGuiInset =
+		true
 
-	-- Keep notifications above the rest of the game's UI.
-	screenGui.DisplayOrder =
+	gui.DisplayOrder =
 		10000
 
-	screenGui.ZIndexBehavior =
+	gui.ZIndexBehavior =
 		Enum.ZIndexBehavior.Global
 
-	screenGui.Parent =
+	gui.Parent =
 		playerGui
+
+
+	local holder =
+		Instance.new(
+			"Frame"
+		)
+
+	holder.Name =
+		"Holder"
+
+	holder.AnchorPoint =
+		Vector2.new(
+			0.5,
+			0
+		)
+
+	holder.Position =
+		UDim2.new(
+			0.5,
+			0,
+			0,
+			20
+		)
+
+	holder.Size =
+		UDim2.new(
+			0,
+			CARD_WIDTH,
+			1,
+			-20
+		)
+
+	holder.BackgroundTransparency =
+		1
+
+	holder.Parent =
+		gui
+
+
+	local layout =
+		Instance.new(
+			"UIListLayout"
+		)
+
+	layout.Padding =
+		UDim.new(
+			0,
+			CARD_GAP
+		)
+
+	layout.HorizontalAlignment =
+		Enum.HorizontalAlignment.Center
+
+	layout.VerticalAlignment =
+		Enum.VerticalAlignment.Top
+
+	layout.SortOrder =
+		Enum.SortOrder.LayoutOrder
+
+	layout.Parent =
+		holder
+
+
+	return gui
 end
 
 
-screenGui =
-	screenGui :: ScreenGui
+local function getHolder():
+	Frame
+
+	local gui =
+		getGui()
 
 
-local existingContainer =
-	screenGui:FindFirstChild(
-		"Container"
-	)
-
-
-if existingContainer then
-	existingContainer:Destroy()
+	return gui:WaitForChild(
+		"Holder"
+	) :: Frame
 end
 
 
-local container =
-	Instance.new(
-		"Frame"
-	)
-
-container.Name =
-	"Container"
-
-container.AnchorPoint =
-	Vector2.new(
-		0.5,
-		0
-	)
-
-container.Position =
-	UDim2.new(
-		0.5,
-		0,
-		0,
-		18
-	)
-
-container.Size =
-	UDim2.new(
-		1,
-		-28,
-		0,
-		0
-	)
-
-container.AutomaticSize =
-	Enum.AutomaticSize.Y
-
-container.BackgroundTransparency =
-	1
-
-container.BorderSizePixel =
-	0
-
-container.ZIndex =
-	1000
-
-container.Parent =
-	screenGui
-
-
-local sizeConstraint =
-	Instance.new(
-		"UISizeConstraint"
-	)
-
-sizeConstraint.MaxSize =
-	Vector2.new(
-		540,
-		10000
-	)
-
-sizeConstraint.Parent =
-	container
-
-
-local listLayout =
-	Instance.new(
-		"UIListLayout"
-	)
-
-listLayout.FillDirection =
-	Enum.FillDirection.Vertical
-
-listLayout.HorizontalAlignment =
-	Enum.HorizontalAlignment.Center
-
-listLayout.VerticalAlignment =
-	Enum.VerticalAlignment.Top
-
-listLayout.SortOrder =
-	Enum.SortOrder.LayoutOrder
-
-listLayout.Padding =
-	UDim.new(
-		0,
-		9
-	)
-
-listLayout.Parent =
-	container
-
+--==================================================
+-- HELPERS
+--==================================================
 
 local function addCorner(
-	object: GuiObject,
+	instance: GuiObject,
 	radius: number
-): UICorner
-
+)
 	local corner =
 		Instance.new(
 			"UICorner"
@@ -355,201 +276,118 @@ local function addCorner(
 		)
 
 	corner.Parent =
-		object
-
-	return corner
+		instance
 end
 
 
-local function addStroke(
-	object: GuiObject,
-	color: Color3,
-	thickness: number,
-	transparency: number
-): UIStroke
-
-	local stroke =
-		Instance.new(
-			"UIStroke"
-		)
-
-	stroke.Color =
-		color
-
-	stroke.Thickness =
-		thickness
-
-	stroke.Transparency =
-		transparency
-
-	stroke.ApplyStrokeMode =
-		Enum.ApplyStrokeMode.Border
-
-	stroke.Parent =
-		object
-
-	return stroke
-end
-
-
-local function addGradient(
-	object: GuiObject,
-	topColor: Color3,
-	bottomColor: Color3
-): UIGradient
-
-	local gradient =
-		Instance.new(
-			"UIGradient"
-		)
-
-	gradient.Color =
-		ColorSequence.new({
-			ColorSequenceKeypoint.new(
-				0,
-				topColor
-			),
-
-			ColorSequenceKeypoint.new(
-				1,
-				bottomColor
-			),
-		})
-
-	gradient.Rotation =
-		90
-
-	gradient.Parent =
-		object
-
-	return gradient
-end
-
-
-local function removeActiveCard(
-	card: CanvasGroup
+local function removeFromActive(
+	card: Frame
 )
-	local index =
-		table.find(
-			activeCards,
-			card
-		)
+	for index, notification in
+		activeNotifications do
 
-	if index then
-		table.remove(
-			activeCards,
-			index
-		)
+		if notification == card then
+
+			table.remove(
+				activeNotifications,
+				index
+			)
+
+			return
+		end
 	end
 end
 
 
-local function dismissCard(
-	card: CanvasGroup
+--==================================================
+-- CLOSE
+--==================================================
+
+local function closeNotification(
+	card: Frame
 )
 	if card:GetAttribute(
-		"Dismissing"
+		"Closing"
 	) == true then
 
 		return
 	end
 
 
-	if not card.Parent then
-		return
-	end
-
-
 	card:SetAttribute(
-		"Dismissing",
+		"Closing",
 		true
 	)
 
 
-	removeActiveCard(
+	removeFromActive(
 		card
 	)
 
 
+	local canvasGroup =
+		card:FindFirstChild(
+			"Canvas"
+		)
+
+
 	local scale =
 		card:FindFirstChild(
-			"AnimationScale"
+			"Scale"
 		)
 
 
-	local content =
-		card:FindFirstChild(
-			"Content"
+	if not canvasGroup
+		or not canvasGroup:IsA(
+			"CanvasGroup"
 		)
+		or not scale
+		or not scale:IsA(
+			"UIScale"
+		) then
+
+		card:Destroy()
+
+		return
+	end
 
 
 	local fadeTween =
 		TweenService:Create(
-			card,
+			canvasGroup,
 
 			TweenInfo.new(
-				EXIT_TIME,
+				0.18,
 				Enum.EasingStyle.Quad,
 				Enum.EasingDirection.In
 			),
 
 			{
-				GroupTransparency = 1,
+				GroupTransparency =
+					1,
 			}
 		)
 
 
-	local scaleTween: Tween? =
-		nil
-
-
-	if scale
-		and scale:IsA(
-			"UIScale"
-		) then
-
-		scaleTween =
-			TweenService:Create(
-				scale,
-
-				TweenInfo.new(
-					EXIT_TIME,
-					Enum.EasingStyle.Quad,
-					Enum.EasingDirection.In
-				),
-
-				{
-					Scale = 0.94,
-				}
-			)
-
-		scaleTween:Play()
-	end
-
-
-	if content
-		and content:IsA(
-			"GuiObject"
-		) then
-
+	local scaleTween =
 		TweenService:Create(
-			content,
+			scale,
 
 			TweenInfo.new(
-				EXIT_TIME,
+				0.18,
 				Enum.EasingStyle.Quad,
 				Enum.EasingDirection.In
 			),
 
 			{
-				Position =
-					UDim2.fromOffset(
-						0,
-						-8
-					),
+				Scale =
+					0.94,
 			}
-		):Play()
-	end
+		)
+
+
+	fadeTween:Play()
+	scaleTween:Play()
 
 
 	fadeTween.Completed:Once(
@@ -560,66 +398,53 @@ local function dismissCard(
 			end
 		end
 	)
-
-
-	fadeTween:Play()
 end
 
 
-local function enforceLimit()
-	while #activeCards
-		> MAX_NOTIFICATIONS do
-
-		local oldest =
-			activeCards[1]
-
-		if not oldest then
-			break
-		end
-
-		dismissCard(
-			oldest
-		)
-	end
-end
-
+--==================================================
+-- CREATE CARD
+--==================================================
 
 local function createCard(
-	notificationType: NotificationType,
+	notificationType: string,
 	message: string,
-	options: NotificationOptions?
-): CanvasGroup
+	options
+): Frame
 
 	local style =
 		STYLES[
 			notificationType
 		]
+		or STYLES.Info
 
 
-	local titleText =
-		options
-		and options.Title
-		or style.Title
+	nextId +=
+		1
+
+
+	local holder =
+		getHolder()
 
 
 	local card =
 		Instance.new(
-			"CanvasGroup"
+			"Frame"
 		)
 
 	card.Name =
-		`{notificationType}Notification`
+		"Notification"
+
+	card.LayoutOrder =
+		nextId
 
 	card.Size =
-		UDim2.new(
-			1,
-			0,
-			0,
-			82
+		UDim2.fromOffset(
+			CARD_WIDTH,
+			CARD_HEIGHT
 		)
 
 	card.BackgroundColor3 =
-		CARD_BACKGROUND
+		BACKGROUND_COLOR
 
 	card.BackgroundTransparency =
 		0.02
@@ -627,14 +452,11 @@ local function createCard(
 	card.BorderSizePixel =
 		0
 
-	card.GroupTransparency =
-		1
-
-	card.ZIndex =
-		1001
+	card.ClipsDescendants =
+		true
 
 	card.Parent =
-		container
+		holder
 
 
 	addCorner(
@@ -643,36 +465,54 @@ local function createCard(
 	)
 
 
-	addStroke(
-		card,
-		style.Color,
-		1.5,
-		0.38
-	)
-
-
-	addGradient(
-		card,
-		CARD_BACKGROUND,
-		CARD_BACKGROUND_BOTTOM
-	)
-
-
-	local scale =
+	local stroke =
 		Instance.new(
-			"UIScale"
+			"UIStroke"
 		)
 
-	scale.Name =
-		"AnimationScale"
+	stroke.Color =
+		Color3.fromRGB(
+			55,
+			58,
+			68
+		)
 
-	scale.Scale =
-		0.92
+	stroke.Thickness =
+		1
 
-	scale.Parent =
+	stroke.Transparency =
+		0.2
+
+	stroke.Parent =
 		card
 
 
+	-- CanvasGroup controls fade.
+	local canvas =
+		Instance.new(
+			"CanvasGroup"
+		)
+
+	canvas.Name =
+		"Canvas"
+
+	canvas.Size =
+		UDim2.fromScale(
+			1,
+			1
+		)
+
+	canvas.BackgroundTransparency =
+		1
+
+	canvas.GroupTransparency =
+		1
+
+	canvas.Parent =
+		card
+
+
+	-- Small colored bar.
 	local accent =
 		Instance.new(
 			"Frame"
@@ -681,26 +521,12 @@ local function createCard(
 	accent.Name =
 		"Accent"
 
-	accent.AnchorPoint =
-		Vector2.new(
-			0,
-			0.5
-		)
-
-	accent.Position =
-		UDim2.new(
-			0,
-			0,
-			0.5,
-			0
-		)
-
 	accent.Size =
 		UDim2.new(
 			0,
-			6,
+			5,
 			1,
-			-18
+			0
 		)
 
 	accent.BackgroundColor3 =
@@ -709,107 +535,11 @@ local function createCard(
 	accent.BorderSizePixel =
 		0
 
-	accent.ZIndex =
-		1003
-
 	accent.Parent =
-		card
+		canvas
 
 
-	addCorner(
-		accent,
-		6
-	)
-
-
-	local content =
-		Instance.new(
-			"Frame"
-		)
-
-	content.Name =
-		"Content"
-
-	content.Position =
-		UDim2.fromOffset(
-			0,
-			-10
-		)
-
-	content.Size =
-		UDim2.fromScale(
-			1,
-			1
-		)
-
-	content.BackgroundTransparency =
-		1
-
-	content.ZIndex =
-		1002
-
-	content.Parent =
-		card
-
-
-	local iconBackground =
-		Instance.new(
-			"Frame"
-		)
-
-	iconBackground.Name =
-		"IconBackground"
-
-	iconBackground.AnchorPoint =
-		Vector2.new(
-			0,
-			0.5
-		)
-
-	iconBackground.Position =
-		UDim2.new(
-			0,
-			18,
-			0.5,
-			0
-		)
-
-	iconBackground.Size =
-		UDim2.fromOffset(
-			42,
-			42
-		)
-
-	iconBackground.BackgroundColor3 =
-		style.Color
-
-	iconBackground.BackgroundTransparency =
-		0.84
-
-	iconBackground.BorderSizePixel =
-		0
-
-	iconBackground.ZIndex =
-		1004
-
-	iconBackground.Parent =
-		content
-
-
-	addCorner(
-		iconBackground,
-		21
-	)
-
-
-	addStroke(
-		iconBackground,
-		style.Color,
-		1.5,
-		0.42
-	)
-
-
+	-- Icon.
 	local icon =
 		Instance.new(
 			"TextLabel"
@@ -818,17 +548,34 @@ local function createCard(
 	icon.Name =
 		"Icon"
 
-	icon.Size =
-		UDim2.fromScale(
-			1,
-			1
+	icon.AnchorPoint =
+		Vector2.new(
+			0,
+			0.5
 		)
 
-	icon.BackgroundTransparency =
-		1
+	icon.Position =
+		UDim2.new(
+			0,
+			18,
+			0.5,
+			0
+		)
 
-	icon.Font =
-		FONT
+	icon.Size =
+		UDim2.fromOffset(
+			30,
+			30
+		)
+
+	icon.BackgroundColor3 =
+		style.Color
+
+	icon.BackgroundTransparency =
+		0.85
+
+	icon.BorderSizePixel =
+		0
 
 	icon.Text =
 		style.Icon
@@ -839,11 +586,19 @@ local function createCard(
 	icon.TextScaled =
 		true
 
-	icon.ZIndex =
-		1005
+	icon.FontFace =
+		Font.new(
+			"rbxassetid://12188570269"
+		)
 
 	icon.Parent =
-		iconBackground
+		canvas
+
+
+	addCorner(
+		icon,
+		9
+	)
 
 
 	local iconConstraint =
@@ -852,72 +607,16 @@ local function createCard(
 		)
 
 	iconConstraint.MinTextSize =
-		16
+		12
 
 	iconConstraint.MaxTextSize =
-		26
+		19
 
 	iconConstraint.Parent =
 		icon
 
 
-	local closeButton =
-		Instance.new(
-			"TextButton"
-		)
-
-	closeButton.Name =
-		"Close"
-
-	closeButton.AnchorPoint =
-		Vector2.new(
-			1,
-			0.5
-		)
-
-	closeButton.Position =
-		UDim2.new(
-			1,
-			-13,
-			0.5,
-			0
-		)
-
-	closeButton.Size =
-		UDim2.fromOffset(
-			30,
-			30
-		)
-
-	closeButton.BackgroundTransparency =
-		1
-
-	closeButton.AutoButtonColor =
-		false
-
-	closeButton.Font =
-		FONT
-
-	closeButton.Text =
-		"×"
-
-	closeButton.TextColor3 =
-		Color3.fromRGB(
-			169,
-			181,
-			201
-		)
-
-	closeButton.TextSize =
-		24
-
-	closeButton.ZIndex =
-		1006
-
-	closeButton.Parent =
-		content
-
-
+	-- Title.
 	local title =
 		Instance.new(
 			"TextLabel"
@@ -929,33 +628,28 @@ local function createCard(
 	title.Position =
 		UDim2.new(
 			0,
-			73,
+			60,
 			0,
-			14
+			13
 		)
 
 	title.Size =
 		UDim2.new(
 			1,
-			-120,
+			-105,
 			0,
-			23
+			21
 		)
 
 	title.BackgroundTransparency =
 		1
 
-	title.Font =
-		FONT
-
 	title.Text =
-		titleText
+		options.Title
+			or style.Title
 
 	title.TextColor3 =
-		style.Color
-
-	title.TextSize =
-		18
+		TEXT_COLOR
 
 	title.TextXAlignment =
 		Enum.TextXAlignment.Left
@@ -963,16 +657,20 @@ local function createCard(
 	title.TextYAlignment =
 		Enum.TextYAlignment.Center
 
-	title.TextTruncate =
-		Enum.TextTruncate.AtEnd
+	title.TextSize =
+		17
 
-	title.ZIndex =
-		1005
+	title.FontFace =
+		Font.new(
+			"rbxassetid://12188570269",
+			Enum.FontWeight.Bold
+		)
 
 	title.Parent =
-		content
+		canvas
 
 
+	-- Message.
 	local messageLabel =
 		Instance.new(
 			"TextLabel"
@@ -984,24 +682,21 @@ local function createCard(
 	messageLabel.Position =
 		UDim2.new(
 			0,
-			73,
+			60,
 			0,
-			37
+			35
 		)
 
 	messageLabel.Size =
 		UDim2.new(
 			1,
-			-120,
+			-82,
 			0,
-			29
+			25
 		)
 
 	messageLabel.BackgroundTransparency =
 		1
-
-	messageLabel.Font =
-		FONT
 
 	messageLabel.Text =
 		message
@@ -1009,25 +704,95 @@ local function createCard(
 	messageLabel.TextColor3 =
 		SUBTEXT_COLOR
 
-	messageLabel.TextSize =
-		14
-
-	messageLabel.TextWrapped =
-		true
-
 	messageLabel.TextXAlignment =
 		Enum.TextXAlignment.Left
 
 	messageLabel.TextYAlignment =
 		Enum.TextYAlignment.Top
 
-	messageLabel.ZIndex =
-		1005
+	messageLabel.TextWrapped =
+		true
+
+	messageLabel.TextSize =
+		14
+
+	messageLabel.FontFace =
+		Font.new(
+			"rbxassetid://12188570269"
+		)
 
 	messageLabel.Parent =
-		content
+		canvas
 
 
+	-- Close button.
+	local closeButton =
+		Instance.new(
+			"TextButton"
+		)
+
+	closeButton.Name =
+		"Close"
+
+	closeButton.AnchorPoint =
+		Vector2.new(
+			1,
+			0
+		)
+
+	closeButton.Position =
+		UDim2.new(
+			1,
+			-10,
+			0,
+			9
+		)
+
+	closeButton.Size =
+		UDim2.fromOffset(
+			26,
+			26
+		)
+
+	closeButton.BackgroundTransparency =
+		1
+
+	closeButton.Text =
+		"×"
+
+	closeButton.TextColor3 =
+		Color3.fromRGB(
+			150,
+			153,
+			163
+		)
+
+	closeButton.TextSize =
+		20
+
+	closeButton.FontFace =
+		Font.new(
+			"rbxassetid://12188570269"
+		)
+
+	closeButton.AutoButtonColor =
+		false
+
+	closeButton.Parent =
+		canvas
+
+
+	closeButton.Activated:Connect(
+		function()
+
+			closeNotification(
+				card
+			)
+		end
+	)
+
+
+	-- Timer bar.
 	local progressBackground =
 		Instance.new(
 			"Frame"
@@ -1045,43 +810,31 @@ local function createCard(
 	progressBackground.Position =
 		UDim2.new(
 			0,
-			15,
+			5,
 			1,
-			-7
+			0
 		)
 
 	progressBackground.Size =
 		UDim2.new(
 			1,
-			-30,
+			-5,
 			0,
 			3
 		)
 
 	progressBackground.BackgroundColor3 =
 		Color3.fromRGB(
-			56,
-			65,
-			81
+			45,
+			47,
+			55
 		)
-
-	progressBackground.BackgroundTransparency =
-		0.4
 
 	progressBackground.BorderSizePixel =
 		0
 
-	progressBackground.ZIndex =
-		1003
-
 	progressBackground.Parent =
-		card
-
-
-	addCorner(
-		progressBackground,
-		3
-	)
+		canvas
 
 
 	local progress =
@@ -1104,132 +857,39 @@ local function createCard(
 	progress.BorderSizePixel =
 		0
 
-	progress.ZIndex =
-		1004
-
 	progress.Parent =
 		progressBackground
 
 
-	addCorner(
-		progress,
-		3
-	)
-
-
-	closeButton.Activated:Connect(
-		function()
-			dismissCard(
-				card
-			)
-		end
-	)
-
-
-	return card
-end
-
-
-function Notification.Show(
-	notificationType: NotificationType,
-	message: string,
-	options: NotificationOptions?
-)
-	if typeof(message)
-		~= "string"
-		or message == "" then
-
-		return
-	end
-
-
-	local style =
-		STYLES[
-			notificationType
-		]
-
-
-	if not style then
-		warn(
-			`Unknown notification type: {notificationType}`
-		)
-
-		return
-	end
-
-
-	--
-	-- Prevent accidental duplicate notifications when multiple
-	-- UI systems happen to receive the same server result.
-	--
-	local duplicateKey =
-		`{notificationType}:{message}`
-
-
-	local now =
-		os.clock()
-
-
-	local previous =
-		recentNotifications[
-			duplicateKey
-		]
-
-
-	if previous
-		and now - previous
-			< 0.4 then
-
-		return
-	end
-
-
-	recentNotifications[
-		duplicateKey
-	] =
-		now
-
-
-	local card =
-		createCard(
-			notificationType,
-			message,
-			options
-		)
-
-
-	table.insert(
-		activeCards,
-		card
-	)
-
-
-	enforceLimit()
-
-
+	-- Scale used for open/close.
 	local scale =
-		card:FindFirstChild(
-			"AnimationScale"
-		) :: UIScale
+		Instance.new(
+			"UIScale"
+		)
+
+	scale.Name =
+		"Scale"
+
+	scale.Scale =
+		0.94
+
+	scale.Parent =
+		card
 
 
-	local content =
-		card:FindFirstChild(
-			"Content"
-		) :: Frame
-
-
+	-- Open animation.
 	TweenService:Create(
-		card,
+		canvas,
 
 		TweenInfo.new(
-			ENTER_TIME,
+			0.2,
 			Enum.EasingStyle.Quad,
 			Enum.EasingDirection.Out
 		),
 
 		{
-			GroupTransparency = 0,
+			GroupTransparency =
+				0,
 		}
 	):Play()
 
@@ -1238,62 +898,86 @@ function Notification.Show(
 		scale,
 
 		TweenInfo.new(
-			ENTER_TIME,
+			0.24,
 			Enum.EasingStyle.Back,
 			Enum.EasingDirection.Out
 		),
 
 		{
-			Scale = 1,
-		}
-	):Play()
-
-
-	TweenService:Create(
-		content,
-
-		TweenInfo.new(
-			ENTER_TIME,
-			Enum.EasingStyle.Quart,
-			Enum.EasingDirection.Out
-		),
-
-		{
-			Position =
-				UDim2.fromOffset(
-					0,
-					0
-				),
-		}
-	):Play()
-
-
-	local duration =
-		style.Duration
-
-
-	if options
-		and typeof(
-			options.Duration
-		) == "number" then
-
-		duration =
-			math.clamp(
-				options.Duration,
+			Scale =
 				1,
-				15
-			)
+		}
+	):Play()
+
+
+	return card,
+		progress
+end
+
+
+--==================================================
+-- SHOW
+--==================================================
+
+function Notification.Show(
+	notificationType: string,
+	message: string,
+	options
+)
+
+	if typeof(message) ~= "string"
+		or message == "" then
+
+		return
 	end
 
 
-	local progress =
+	options =
+		options
+		or {}
+
+
+	while #activeNotifications
+		>= MAX_NOTIFICATIONS do
+
+		local oldest =
+			activeNotifications[1]
+
+
+		if not oldest then
+			break
+		end
+
+
+		closeNotification(
+			oldest
+		)
+	end
+
+
+	local card,
+		progress =
+		createCard(
+			notificationType,
+			message,
+			options
+		)
+
+
+	table.insert(
+		activeNotifications,
 		card
-			:WaitForChild(
-				"ProgressBackground"
-			)
-			:WaitForChild(
-				"Progress"
-			) :: Frame
+	)
+
+
+	local duration =
+		options.Duration
+		or DEFAULT_DURATION
+
+
+	if duration <= 0 then
+		return
+	end
 
 
 	TweenService:Create(
@@ -1319,11 +1003,11 @@ function Notification.Show(
 
 	task.delay(
 		duration,
-
 		function()
 
 			if card.Parent then
-				dismissCard(
+
+				closeNotification(
 					card
 				)
 			end
@@ -1332,10 +1016,15 @@ function Notification.Show(
 end
 
 
+--==================================================
+-- SHORTCUTS
+--==================================================
+
 function Notification.Success(
 	message: string,
-	options: NotificationOptions?
+	options
 )
+
 	Notification.Show(
 		"Success",
 		message,
@@ -1346,8 +1035,9 @@ end
 
 function Notification.Warning(
 	message: string,
-	options: NotificationOptions?
+	options
 )
+
 	Notification.Show(
 		"Warning",
 		message,
@@ -1358,8 +1048,9 @@ end
 
 function Notification.Error(
 	message: string,
-	options: NotificationOptions?
+	options
 )
+
 	Notification.Show(
 		"Error",
 		message,
@@ -1370,8 +1061,9 @@ end
 
 function Notification.Info(
 	message: string,
-	options: NotificationOptions?
+	options
 )
+
 	Notification.Show(
 		"Info",
 		message,

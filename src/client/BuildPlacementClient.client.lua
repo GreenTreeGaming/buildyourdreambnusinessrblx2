@@ -108,6 +108,28 @@ local DEFAULT_BUSINESS_NAME =
 local placementGridFolder: Folder? =
 	nil
 
+local futureFootprintModel: Model? =
+	nil
+
+local futureFootprintFill: Part? =
+	nil
+
+local futureFootprintLabel:
+	BillboardGui? =
+	nil
+
+local futureFootprintEdges: { Part } =
+	{}
+
+local futureFootprintClear =
+	true
+
+local futureFootprintSize =
+	Vector3.zero
+
+local futureFootprintAvailable =
+	false
+
 local GRID_LINE_HEIGHT =
 	0.035
 
@@ -122,6 +144,45 @@ local GRID_OCCUPIED_COLOR =
 
 local GRID_SELECTED_COLOR =
 	Color3.fromRGB(90, 255, 120)
+
+local FUTURE_CLEAR_COLOR =
+	Color3.fromRGB(
+		255,
+		190,
+		58
+	)
+
+local FUTURE_BLOCKED_COLOR =
+	Color3.fromRGB(
+		255,
+		82,
+		82
+	)
+
+local FUTURE_LABEL_BACKGROUND =
+	Color3.fromRGB(
+		24,
+		27,
+		34
+	)
+
+local FUTURE_FOOTPRINT_HEIGHT =
+	0.035
+
+local FUTURE_EDGE_HEIGHT =
+	0.075
+
+local FUTURE_EDGE_THICKNESS =
+	0.11
+
+local FUTURE_FILL_TRANSPARENCY =
+	0.88
+
+local FUTURE_EDGE_TRANSPARENCY =
+	0.12
+
+local FUTURE_PULSE_SPEED =
+	3.2
 
 
 local ROTATION_INCREMENT =
@@ -411,12 +472,15 @@ local function getBusinessType(
 	end
 
 
-	if string.match(
-		business.Name,
-		"^LemonadeStand"
-	) then
+	for businessName in BusinessConfig do
+		if business.Name == businessName
+			or string.match(
+				business.Name,
+				`^{businessName}`
+			) then
 
-		return DEFAULT_BUSINESS_NAME
+			return businessName
+		end
 	end
 
 
@@ -535,7 +599,7 @@ local function getBusinessButtonText(
 		or 0
 
 
-	return `{displayName} - ${FormatNumber.Compact(price)}`
+	return `{displayName} - {FormatNumber.Currency(price)}`
 end
 
 local function updateBusinessButtonTexts()
@@ -1234,29 +1298,1206 @@ end
 --==================================================
 -- NOTICE TEXT
 --==================================================
-
-local noticeVersion =
-	0
-
-
 local function getDefaultPlacementNotice(): string
 	if IS_TOUCH_DEVICE then
-		return "Move the business, then tap Place."
+		return "Move then tap Place  •  Gold outline = space for max upgrade"
 	end
 
 
-	return "Click to place  •  R rotate  •  Esc cancel"
+	return "Click to place  •  R rotate  •  Gold outline = max upgrade space"
 end
 
 
 local function setPlacementNotice(
 	message: string
 )
-	noticeVersion += 1
-
-
 	noticeText.Text =
 		message
+end
+
+--==================================================
+-- FUTURE UPGRADE FOOTPRINT
+--==================================================
+
+--
+-- Forward declaration.
+--
+-- The future-footprint helpers are defined before the
+-- normal placement-math section, but they need the same
+-- rectangle-overlap function. Without this declaration,
+-- Luau treats the earlier reference as a global and it
+-- becomes nil at runtime.
+--
+local rectanglesOverlapXZ:
+	(
+		CFrame,
+		Vector3,
+		CFrame,
+		Vector3
+	) -> boolean
+
+
+local function destroyFutureFootprint()
+	if futureFootprintModel then
+		futureFootprintModel:Destroy()
+
+		futureFootprintModel =
+			nil
+	end
+
+
+	futureFootprintFill =
+		nil
+
+	futureFootprintLabel =
+		nil
+
+	futureFootprintEdges =
+		{}
+
+
+	futureFootprintSize =
+		Vector3.zero
+
+	futureFootprintAvailable =
+		false
+
+	futureFootprintClear =
+		true
+end
+
+local function getLargestAvailableStandTemplate(
+	businessName: string
+): Model?
+
+	local config =
+		BusinessConfig[
+			businessName
+		]
+
+
+	if type(config) ~= "table"
+		or type(config.StandLevels)
+			~= "table" then
+
+		return nil
+	end
+
+
+	local highestLevel =
+		-math.huge
+
+	local bestTemplate:
+		Model? =
+		nil
+
+
+	for level, levelConfig in
+		config.StandLevels do
+
+		if typeof(level) ~= "number"
+			or type(levelConfig)
+				~= "table" then
+
+			continue
+		end
+
+
+		local templateName =
+			levelConfig.TemplateName
+
+
+		if typeof(templateName)
+			~= "string" then
+
+			continue
+		end
+
+
+		local template =
+			businessModels:FindFirstChild(
+				templateName
+			)
+
+
+		if template
+			and template:IsA(
+				"Model"
+			)
+			and level > highestLevel then
+
+			local bounds =
+				template:FindFirstChild(
+					"PlacementBounds",
+					true
+				)
+
+
+			if bounds
+				and bounds:IsA(
+					"BasePart"
+				) then
+
+				highestLevel =
+					level
+
+				bestTemplate =
+					template
+			end
+		end
+	end
+
+
+	return bestTemplate
+end
+
+local function getFutureFootprintDefinition(
+	businessName: string
+): Vector3?
+
+	local template =
+		getLargestAvailableStandTemplate(
+			businessName
+		)
+
+	if not template then
+		return nil
+	end
+
+
+	local bounds =
+		template:FindFirstChild(
+			"PlacementBounds",
+			true
+		)
+
+	if not bounds
+		or not bounds:IsA(
+			"BasePart"
+		) then
+
+		return nil
+	end
+
+
+	--
+	-- We ONLY care about how much X/Z space
+	-- the fully-upgraded business requires.
+	--
+	-- We intentionally do NOT use the upgraded
+	-- model's pivot/offset because different
+	-- appearance models may have different pivots.
+	--
+	return bounds.Size
+end
+
+local function createFutureEdge(
+	parent: Model,
+	name: string
+): Part
+
+	local edge =
+		Instance.new(
+			"Part"
+		)
+
+
+	edge.Name =
+		name
+
+	edge.Anchored =
+		true
+
+	edge.CanCollide =
+		false
+
+	edge.CanTouch =
+		false
+
+	edge.CanQuery =
+		false
+
+	edge.CastShadow =
+		false
+
+	edge.Material =
+		Enum.Material.Neon
+
+	edge.Color =
+		FUTURE_CLEAR_COLOR
+
+	edge.Transparency =
+		FUTURE_EDGE_TRANSPARENCY
+
+	edge.Parent =
+		parent
+
+
+	table.insert(
+		futureFootprintEdges,
+		edge
+	)
+
+
+	return edge
+end
+
+
+local function createFutureFootprintLabel(
+	part: BasePart
+): BillboardGui
+
+	local billboard =
+		Instance.new(
+			"BillboardGui"
+		)
+
+
+	billboard.Name =
+		"FutureUpgradeLabel"
+
+	billboard.Adornee =
+		part
+
+	billboard.AlwaysOnTop =
+		true
+
+	billboard.LightInfluence =
+		0
+
+	billboard.MaxDistance =
+		95
+
+	billboard.Size =
+		UDim2.fromOffset(
+			280,
+			64
+		)
+
+	billboard.StudsOffsetWorldSpace =
+		Vector3.new(
+			0,
+			1.35,
+			0
+		)
+
+	billboard.Parent =
+		part
+
+
+	local root =
+		Instance.new(
+			"Frame"
+		)
+
+
+	root.Name =
+		"Root"
+
+	root.Size =
+		UDim2.fromScale(
+			1,
+			1
+		)
+
+	root.BackgroundColor3 =
+		FUTURE_LABEL_BACKGROUND
+
+	root.BackgroundTransparency =
+		0.08
+
+	root.BorderSizePixel =
+		0
+
+	root.Parent =
+		billboard
+
+
+	local corner =
+		Instance.new(
+			"UICorner"
+		)
+
+
+	corner.CornerRadius =
+		UDim.new(
+			0,
+			12
+		)
+
+	corner.Parent =
+		root
+
+
+	local stroke =
+		Instance.new(
+			"UIStroke"
+		)
+
+
+	stroke.Name =
+		"StatusStroke"
+
+	stroke.Color =
+		FUTURE_CLEAR_COLOR
+
+	stroke.Thickness =
+		1.5
+
+	stroke.Transparency =
+		0.12
+
+	stroke.Parent =
+		root
+
+
+	local accent =
+		Instance.new(
+			"Frame"
+		)
+
+
+	accent.Name =
+		"Accent"
+
+	accent.Size =
+		UDim2.new(
+			0,
+			5,
+			1,
+			-14
+		)
+
+	accent.Position =
+		UDim2.fromOffset(
+			8,
+			7
+		)
+
+	accent.BackgroundColor3 =
+		FUTURE_CLEAR_COLOR
+
+	accent.BorderSizePixel =
+		0
+
+	accent.Parent =
+		root
+
+
+	local accentCorner =
+		Instance.new(
+			"UICorner"
+		)
+
+
+	accentCorner.CornerRadius =
+		UDim.new(
+			1,
+			0
+		)
+
+	accentCorner.Parent =
+		accent
+
+
+	local title =
+		Instance.new(
+			"TextLabel"
+		)
+
+
+	title.Name =
+		"Title"
+
+	title.BackgroundTransparency =
+		1
+
+	title.Position =
+		UDim2.fromOffset(
+			22,
+			7
+		)
+
+	title.Size =
+		UDim2.new(
+			1,
+			-32,
+			0,
+			24
+		)
+
+	title.FontFace =
+		Font.new(
+			"rbxassetid://12188570269",
+			Enum.FontWeight.Bold
+		)
+
+	title.Text =
+		"MAX UPGRADE SPACE"
+
+	title.TextColor3 =
+		FUTURE_CLEAR_COLOR
+
+	title.TextSize =
+		16
+
+	title.TextXAlignment =
+		Enum.TextXAlignment.Left
+
+	title.TextYAlignment =
+		Enum.TextYAlignment.Center
+
+	title.Parent =
+		root
+
+
+	local subtitle =
+		Instance.new(
+			"TextLabel"
+		)
+
+
+	subtitle.Name =
+		"Subtitle"
+
+	subtitle.BackgroundTransparency =
+		1
+
+	subtitle.Position =
+		UDim2.fromOffset(
+			22,
+			31
+		)
+
+	subtitle.Size =
+		UDim2.new(
+			1,
+			-32,
+			0,
+			23
+		)
+
+	subtitle.FontFace =
+		Font.new(
+			"rbxassetid://12188570269",
+			Enum.FontWeight.Medium
+		)
+
+	subtitle.Text =
+		"Leave this area open for future upgrades"
+
+	subtitle.TextColor3 =
+		Color3.fromRGB(
+			225,
+			228,
+			235
+		)
+
+	subtitle.TextSize =
+		12
+
+	subtitle.TextXAlignment =
+		Enum.TextXAlignment.Left
+
+	subtitle.TextYAlignment =
+		Enum.TextYAlignment.Center
+
+	subtitle.Parent =
+		root
+
+
+	return billboard
+end
+
+
+local function createFutureFootprint()
+	destroyFutureFootprint()
+
+
+	local size =
+	getFutureFootprintDefinition(
+		selectedBusinessName
+	)
+
+
+if not size then
+
+		return
+	end
+
+
+	--
+	-- If the largest stand uses essentially the same
+	-- footprint as the current preview, showing a second
+	-- outline only creates noise.
+	--
+	if previewModel then
+
+		local currentBounds =
+			previewModel:FindFirstChild(
+				"PlacementBounds",
+				true
+			)
+
+
+		if currentBounds
+			and currentBounds:IsA(
+				"BasePart"
+			)
+			and math.abs(
+				size.X
+					- currentBounds.Size.X
+			) < 0.1
+			and math.abs(
+				size.Z
+					- currentBounds.Size.Z
+			) < 0.1 then
+
+			return
+		end
+	end
+
+
+	futureFootprintSize =
+		size
+
+	futureFootprintAvailable =
+		true
+
+
+	local model =
+		Instance.new(
+			"Model"
+		)
+
+
+	model.Name =
+		"FutureUpgradeFootprint"
+
+	model.Parent =
+		Workspace
+
+
+	local fill =
+		Instance.new(
+			"Part"
+		)
+
+
+	fill.Name =
+		"Fill"
+
+	fill.Size =
+		Vector3.new(
+			math.max(
+				size.X,
+				0.1
+			),
+
+			FUTURE_FOOTPRINT_HEIGHT,
+
+			math.max(
+				size.Z,
+				0.1
+			)
+		)
+
+	fill.Anchored =
+		true
+
+	fill.CanCollide =
+		false
+
+	fill.CanTouch =
+		false
+
+	fill.CanQuery =
+		false
+
+	fill.CastShadow =
+		false
+
+	fill.Material =
+		Enum.Material.Neon
+
+	fill.Color =
+		FUTURE_CLEAR_COLOR
+
+	fill.Transparency =
+		FUTURE_FILL_TRANSPARENCY
+
+	fill.Parent =
+		model
+
+
+	createFutureEdge(
+		model,
+		"EdgeNorth"
+	)
+
+	createFutureEdge(
+		model,
+		"EdgeSouth"
+	)
+
+	createFutureEdge(
+		model,
+		"EdgeWest"
+	)
+
+	createFutureEdge(
+		model,
+		"EdgeEast"
+	)
+
+
+	futureFootprintModel =
+		model
+
+	futureFootprintFill =
+		fill
+
+	futureFootprintLabel =
+		createFutureFootprintLabel(
+			fill
+		)
+end
+
+
+local function isRectangleInsideGround(
+	boundsCFrame: CFrame,
+	boundsSize: Vector3,
+	ground: BasePart
+): boolean
+
+	local halfX =
+		boundsSize.X / 2
+
+	local halfZ =
+		boundsSize.Z / 2
+
+
+	local corners = {
+		Vector3.new(
+			-halfX,
+			0,
+			-halfZ
+		),
+
+		Vector3.new(
+			-halfX,
+			0,
+			halfZ
+		),
+
+		Vector3.new(
+			halfX,
+			0,
+			-halfZ
+		),
+
+		Vector3.new(
+			halfX,
+			0,
+			halfZ
+		),
+	}
+
+
+	for _, cornerOffset in corners do
+
+		local worldCorner =
+			boundsCFrame
+				:PointToWorldSpace(
+					cornerOffset
+				)
+
+
+		local groundSpace =
+			ground.CFrame
+				:PointToObjectSpace(
+					worldCorner
+				)
+
+
+		if math.abs(
+			groundSpace.X
+		) > ground.Size.X / 2
+			or math.abs(
+				groundSpace.Z
+			) > ground.Size.Z / 2 then
+
+			return false
+		end
+	end
+
+
+	return true
+end
+
+
+local function getExistingBusinessFutureBounds(
+	business: Model
+): (
+	CFrame?,
+	Vector3?
+)
+
+	local currentBounds =
+		business:FindFirstChild(
+			"PlacementBounds",
+			true
+		)
+
+
+	if not currentBounds
+		or not currentBounds:IsA(
+			"BasePart"
+		) then
+
+		return nil, nil
+	end
+
+
+	local businessName =
+		getBusinessType(
+			business
+		)
+
+
+	local futureSize =
+		getFutureFootprintDefinition(
+			businessName
+		)
+
+
+	if not futureSize then
+		return currentBounds.CFrame,
+			currentBounds.Size
+	end
+
+
+	--
+	-- Same rule as the preview:
+	-- keep the CURRENT stand's center/rotation
+	-- but reserve its maximum configured X/Z size.
+	--
+	return currentBounds.CFrame,
+		Vector3.new(
+			futureSize.X,
+			currentBounds.Size.Y,
+			futureSize.Z
+		)
+end
+
+local function isFutureFootprintOverlappingBusiness(
+	boundsCFrame: CFrame,
+	boundsSize: Vector3
+): boolean
+
+	if not ownedPlot then
+		return false
+	end
+
+
+	local placedBusinesses =
+		ownedPlot:FindFirstChild(
+			"PlacedBusinesses"
+		)
+
+
+	if not placedBusinesses then
+		return false
+	end
+
+
+	for _, business in
+		placedBusinesses:GetChildren()
+	do
+
+		if not business:IsA(
+			"Model"
+		)
+			or business
+				== originalStand then
+
+			continue
+		end
+
+
+		local existingCFrame,
+			existingSize =
+			getExistingBusinessFutureBounds(
+				business
+			)
+
+
+		if not existingCFrame
+			or not existingSize then
+
+			continue
+		end
+
+
+		if rectanglesOverlapXZ(
+			boundsCFrame,
+			boundsSize,
+			existingCFrame,
+			existingSize
+		) then
+
+			return true
+		end
+	end
+
+
+	return false
+end
+
+
+local function updateFutureFootprintVisual(
+	visualCFrame: CFrame,
+	clear: boolean
+)
+	if not futureFootprintFill then
+		return
+	end
+
+
+	local color =
+		clear
+			and FUTURE_CLEAR_COLOR
+			or FUTURE_BLOCKED_COLOR
+
+
+	local pulse =
+		(
+			math.sin(
+				os.clock()
+					* FUTURE_PULSE_SPEED
+			) + 1
+		) * 0.5
+
+
+	futureFootprintFill.CFrame =
+		visualCFrame
+
+	futureFootprintFill.Color =
+		color
+
+	futureFootprintFill.Transparency =
+		FUTURE_FILL_TRANSPARENCY
+			- pulse * 0.035
+
+
+	local halfX =
+		futureFootprintSize.X / 2
+
+	local halfZ =
+		futureFootprintSize.Z / 2
+
+
+	local north =
+		futureFootprintEdges[1]
+
+	local south =
+		futureFootprintEdges[2]
+
+	local west =
+		futureFootprintEdges[3]
+
+	local east =
+		futureFootprintEdges[4]
+
+
+	if north then
+		north.Size =
+			Vector3.new(
+				futureFootprintSize.X
+					+ FUTURE_EDGE_THICKNESS,
+				FUTURE_EDGE_HEIGHT,
+				FUTURE_EDGE_THICKNESS
+			)
+
+		north.CFrame =
+			visualCFrame
+				* CFrame.new(
+					0,
+					FUTURE_EDGE_HEIGHT / 2,
+					-halfZ
+				)
+	end
+
+
+	if south then
+		south.Size =
+			Vector3.new(
+				futureFootprintSize.X
+					+ FUTURE_EDGE_THICKNESS,
+				FUTURE_EDGE_HEIGHT,
+				FUTURE_EDGE_THICKNESS
+			)
+
+		south.CFrame =
+			visualCFrame
+				* CFrame.new(
+					0,
+					FUTURE_EDGE_HEIGHT / 2,
+					halfZ
+				)
+	end
+
+
+	if west then
+		west.Size =
+			Vector3.new(
+				FUTURE_EDGE_THICKNESS,
+				FUTURE_EDGE_HEIGHT,
+				futureFootprintSize.Z
+					+ FUTURE_EDGE_THICKNESS
+			)
+
+		west.CFrame =
+			visualCFrame
+				* CFrame.new(
+					-halfX,
+					FUTURE_EDGE_HEIGHT / 2,
+					0
+				)
+	end
+
+
+	if east then
+		east.Size =
+			Vector3.new(
+				FUTURE_EDGE_THICKNESS,
+				FUTURE_EDGE_HEIGHT,
+				futureFootprintSize.Z
+					+ FUTURE_EDGE_THICKNESS
+			)
+
+		east.CFrame =
+			visualCFrame
+				* CFrame.new(
+					halfX,
+					FUTURE_EDGE_HEIGHT / 2,
+					0
+				)
+	end
+
+
+	for _, edge in futureFootprintEdges do
+		edge.Color =
+			color
+
+		edge.Transparency =
+			FUTURE_EDGE_TRANSPARENCY
+				+ pulse * 0.07
+	end
+
+
+	if futureFootprintLabel then
+
+		local root =
+			futureFootprintLabel
+				:FindFirstChild(
+					"Root"
+				)
+
+
+		if root
+			and root:IsA(
+				"Frame"
+			) then
+
+			local stroke =
+				root:FindFirstChild(
+					"StatusStroke"
+				)
+
+			local accent =
+				root:FindFirstChild(
+					"Accent"
+				)
+
+			local title =
+				root:FindFirstChild(
+					"Title"
+				)
+
+			local subtitle =
+				root:FindFirstChild(
+					"Subtitle"
+				)
+
+
+			if stroke
+				and stroke:IsA(
+					"UIStroke"
+				) then
+
+				stroke.Color =
+					color
+			end
+
+
+			if accent
+				and accent:IsA(
+					"Frame"
+				) then
+
+				accent.BackgroundColor3 =
+					color
+			end
+
+
+			if title
+				and title:IsA(
+					"TextLabel"
+				) then
+
+				title.TextColor3 =
+					color
+
+				title.Text =
+					clear
+						and "MAX UPGRADE SPACE"
+						or "MAX UPGRADE SPACE BLOCKED"
+			end
+
+
+			if subtitle
+				and subtitle:IsA(
+					"TextLabel"
+				) then
+
+				subtitle.Text =
+					clear
+						and "Leave this area open for future upgrades"
+						or "Move farther away so future upgrades can fit"
+			end
+		end
+	end
+end
+
+
+local function updateFutureFootprint(
+	_placementCFrame: CFrame,
+	ground: BasePart
+)
+	if not futureFootprintFill
+		or not futureFootprintAvailable
+		or not previewModel then
+
+		futureFootprintClear =
+			true
+
+		return
+	end
+
+
+	local currentBounds =
+		previewModel:FindFirstChild(
+			"PlacementBounds",
+			true
+		)
+
+
+	if not currentBounds
+		or not currentBounds:IsA(
+			"BasePart"
+		) then
+
+		futureFootprintClear =
+			true
+
+		return
+	end
+
+
+	--
+	-- Current PlacementBounds gives us the exact
+	-- center and rotation of this stand.
+	--
+	local boundsCFrame =
+		currentBounds.CFrame
+
+
+	--
+	-- Maximum configured appearance supplies only
+	-- the X/Z footprint dimensions.
+	--
+	local boundsSize =
+		Vector3.new(
+			futureFootprintSize.X,
+			currentBounds.Size.Y,
+			futureFootprintSize.Z
+		)
+
+
+	local groundSpace =
+		ground.CFrame
+			:PointToObjectSpace(
+				boundsCFrame.Position
+			)
+
+
+	local relativeRotation =
+		ground.CFrame
+			:ToObjectSpace(
+				boundsCFrame
+			)
+
+
+	local _,
+		yRotation,
+		_ =
+		relativeRotation
+			:ToOrientation()
+
+
+	local visualCFrame =
+		ground.CFrame
+			* CFrame.new(
+				groundSpace.X,
+
+				ground.Size.Y / 2
+					+ FUTURE_FOOTPRINT_HEIGHT / 2
+					+ 0.025,
+
+				groundSpace.Z
+			)
+			* CFrame.Angles(
+				0,
+				yRotation,
+				0
+			)
+
+
+	local insideGround =
+		isRectangleInsideGround(
+			boundsCFrame,
+			boundsSize,
+			ground
+		)
+
+
+	local overlapping =
+		isFutureFootprintOverlappingBusiness(
+			boundsCFrame,
+			boundsSize
+		)
+
+
+	futureFootprintClear =
+		insideGround
+			and not overlapping
+
+
+	updateFutureFootprintVisual(
+		visualCFrame,
+		futureFootprintClear
+	)
 end
 
 --==================================================
@@ -1694,7 +2935,7 @@ local function isPreviewInsideGround(
 end
 
 
-local function rectanglesOverlapXZ(
+rectanglesOverlapXZ = function(
 	firstCFrame: CFrame,
 	firstSize: Vector3,
 	secondCFrame: CFrame,
@@ -2469,6 +3710,8 @@ end
 
 
 local function destroyPreview()
+	destroyFutureFootprint()
+
 	if previewModel then
 		previewModel:Destroy()
 
@@ -2730,6 +3973,8 @@ local function startPlacement(
 	previewModel.Parent =
 		Workspace
 
+	createFutureFootprint()
+
 
 	isEditingExistingStand =
 		editingExisting
@@ -2858,17 +4103,35 @@ local function requestCurrentPlacement()
 	end
 
 
-	if not placementValid
+		if not placementValid
 		or not currentPlacementCFrame then
 
 		Notification.Warning(
-	"Keep the business inside your plot and away from other businesses.",
-	{
-		Title = "Can't Place Here",
-	}
-)
+			"Keep the business inside your plot and away from other businesses.",
+			{
+				Title = "Can't Place Here",
+			}
+		)
 
 		return
+	end
+
+
+	--
+	-- The current stand fits, so placement is allowed.
+	-- However, warn the player if its maximum
+	-- appearance upgrade will not fit here later.
+	--
+	if futureFootprintAvailable
+		and not futureFootprintClear then
+
+		Notification.Warning(
+			"This fits now, but its max upgrade would be blocked here. Leave more room if you want to fully upgrade it later.",
+			{
+				Title =
+					"Future Upgrade Space",
+			}
+		)
 	end
 
 
@@ -3308,6 +4571,11 @@ end
 
 previewModel:PivotTo(
 	currentPlacementCFrame
+)
+
+updateFutureFootprint(
+	currentPlacementCFrame,
+	ground
 )
 
 
