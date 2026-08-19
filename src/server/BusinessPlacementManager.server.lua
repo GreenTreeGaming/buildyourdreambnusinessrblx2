@@ -794,7 +794,7 @@ placeBusinessRemote.OnServerEvent:Connect(
 	placeBusinessRemote:FireClient(
 		player,
 		true,
-		`${getBusinessDisplayName(businessName)} moved!`
+		`{getBusinessDisplayName(businessName)} moved!`
 	)
 
 	return
@@ -1005,10 +1005,10 @@ local message
 
 if standCost == 0 then
 	message =
-		`${displayName} placed!`
+		`{displayName} placed!`
 else
 	message =
-		`${displayName} placed for ${standCost}!`
+		`{displayName} placed for ${standCost}!`
 end
 
 		placeBusinessRemote:FireClient(

@@ -130,6 +130,7 @@ local futureFootprintSize =
 local futureFootprintAvailable =
 	false
 
+
 local GRID_LINE_HEIGHT =
 	0.035
 
@@ -183,6 +184,9 @@ local FUTURE_EDGE_TRANSPARENCY =
 
 local FUTURE_PULSE_SPEED =
 	3.2
+
+local FUTURE_EDGE_PADDING =
+	0.5
 
 
 local ROTATION_INCREMENT =
@@ -1298,6 +1302,7 @@ end
 --==================================================
 -- NOTICE TEXT
 --==================================================
+
 local function getDefaultPlacementNotice(): string
 	if IS_TOUCH_DEVICE then
 		return "Move then tap Place  •  Gold outline = space for max upgrade"
@@ -1453,42 +1458,143 @@ end
 
 local function getFutureFootprintDefinition(
 	businessName: string
-): Vector3?
+): (
+	Model?,
+	BasePart?,
+	BasePart?
+)
 
 	local template =
 		getLargestAvailableStandTemplate(
 			businessName
 		)
 
+
 	if not template then
-		return nil
+		return nil, nil, nil
 	end
 
 
-	local bounds =
+	local placementOrigin =
+		template:FindFirstChild(
+			"PlacementOrigin",
+			true
+		)
+
+
+	local placementBounds =
 		template:FindFirstChild(
 			"PlacementBounds",
 			true
 		)
 
-	if not bounds
-		or not bounds:IsA(
+
+	if not placementOrigin
+		or not placementOrigin:IsA(
+			"BasePart"
+		)
+		or not placementBounds
+		or not placementBounds:IsA(
 			"BasePart"
 		) then
 
-		return nil
+		return nil, nil, nil
 	end
 
 
-	--
-	-- We ONLY care about how much X/Z space
-	-- the fully-upgraded business requires.
-	--
-	-- We intentionally do NOT use the upgraded
-	-- model's pivot/offset because different
-	-- appearance models may have different pivots.
-	--
-	return bounds.Size
+	return template,
+		placementOrigin,
+		placementBounds
+end
+
+
+local function getAlignedFutureBounds(
+	businessName: string,
+	targetStand: Model
+): (
+	CFrame?,
+	Vector3?
+)
+
+	local _template,
+		sourceOrigin,
+		sourceBounds =
+		getFutureFootprintDefinition(
+			businessName
+		)
+
+
+	if not sourceOrigin
+		or not sourceBounds then
+
+		return nil, nil
+	end
+
+
+	local targetOrigin =
+		targetStand:FindFirstChild(
+			"PlacementOrigin",
+			true
+		)
+
+
+	if not targetOrigin
+		or not targetOrigin:IsA(
+			"BasePart"
+		) then
+
+		return nil, nil
+	end
+
+
+	local _,
+		sourceYaw,
+		_ =
+		sourceOrigin.CFrame
+			:ToOrientation()
+
+
+	local _,
+		targetYaw,
+		_ =
+		targetOrigin.CFrame
+			:ToOrientation()
+
+
+	local cleanSource =
+		CFrame.new(
+			sourceOrigin.Position
+		)
+		* CFrame.Angles(
+			0,
+			sourceYaw,
+			0
+		)
+
+
+	local cleanTarget =
+		CFrame.new(
+			targetOrigin.Position
+		)
+		* CFrame.Angles(
+			0,
+			targetYaw,
+			0
+		)
+
+
+	local transform =
+		cleanTarget
+			* cleanSource:Inverse()
+
+
+	local alignedBoundsCFrame =
+		transform
+			* sourceBounds.CFrame
+
+
+	return alignedBoundsCFrame,
+		sourceBounds.Size
 end
 
 local function createFutureEdge(
@@ -1814,47 +1920,45 @@ local function createFutureFootprint()
 	destroyFutureFootprint()
 
 
-	local size =
-	getFutureFootprintDefinition(
-		selectedBusinessName
-	)
-
-
-if not size then
-
+	if not previewModel then
 		return
 	end
 
 
-	--
-	-- If the largest stand uses essentially the same
-	-- footprint as the current preview, showing a second
-	-- outline only creates noise.
-	--
-	if previewModel then
-
-		local currentBounds =
-			previewModel:FindFirstChild(
-				"PlacementBounds",
-				true
-			)
+	local _boundsCFrame,
+		size =
+		getAlignedFutureBounds(
+			selectedBusinessName,
+			previewModel
+		)
 
 
-		if currentBounds
-			and currentBounds:IsA(
-				"BasePart"
-			)
-			and math.abs(
-				size.X
-					- currentBounds.Size.X
-			) < 0.1
-			and math.abs(
-				size.Z
-					- currentBounds.Size.Z
-			) < 0.1 then
+	if not size then
+		return
+	end
 
-			return
-		end
+
+	local currentBounds =
+		previewModel:FindFirstChild(
+			"PlacementBounds",
+			true
+		)
+
+
+	if currentBounds
+		and currentBounds:IsA(
+			"BasePart"
+		)
+		and math.abs(
+			size.X
+				- currentBounds.Size.X
+		) < 0.1
+		and math.abs(
+			size.Z
+				- currentBounds.Size.Z
+		) < 0.1 then
+
+		return
 	end
 
 
@@ -1963,7 +2067,6 @@ if not size then
 		)
 end
 
-
 local function isRectangleInsideGround(
 	boundsCFrame: CFrame,
 	boundsSize: Vector3,
@@ -2004,7 +2107,18 @@ local function isRectangleInsideGround(
 	}
 
 
-	for _, cornerOffset in corners do
+	local groundHalfX =
+		ground.Size.X / 2
+			- FUTURE_EDGE_PADDING
+
+
+	local groundHalfZ =
+		ground.Size.Z / 2
+			- FUTURE_EDGE_PADDING
+
+
+	for _, cornerOffset in
+		corners do
 
 		local worldCorner =
 			boundsCFrame
@@ -2022,10 +2136,10 @@ local function isRectangleInsideGround(
 
 		if math.abs(
 			groundSpace.X
-		) > ground.Size.X / 2
+		) > groundHalfX
 			or math.abs(
 				groundSpace.Z
-			) > ground.Size.Z / 2 then
+			) > groundHalfZ then
 
 			return false
 		end
@@ -2033,61 +2147,6 @@ local function isRectangleInsideGround(
 
 
 	return true
-end
-
-
-local function getExistingBusinessFutureBounds(
-	business: Model
-): (
-	CFrame?,
-	Vector3?
-)
-
-	local currentBounds =
-		business:FindFirstChild(
-			"PlacementBounds",
-			true
-		)
-
-
-	if not currentBounds
-		or not currentBounds:IsA(
-			"BasePart"
-		) then
-
-		return nil, nil
-	end
-
-
-	local businessName =
-		getBusinessType(
-			business
-		)
-
-
-	local futureSize =
-		getFutureFootprintDefinition(
-			businessName
-		)
-
-
-	if not futureSize then
-		return currentBounds.CFrame,
-			currentBounds.Size
-	end
-
-
-	--
-	-- Same rule as the preview:
-	-- keep the CURRENT stand's center/rotation
-	-- but reserve its maximum configured X/Z size.
-	--
-	return currentBounds.CFrame,
-		Vector3.new(
-			futureSize.X,
-			currentBounds.Size.Y,
-			futureSize.Z
-		)
 end
 
 local function isFutureFootprintOverlappingBusiness(
@@ -2125,15 +2184,17 @@ local function isFutureFootprintOverlappingBusiness(
 		end
 
 
-		local existingCFrame,
-			existingSize =
-			getExistingBusinessFutureBounds(
-				business
+		local existingBounds =
+			business:FindFirstChild(
+				"PlacementBounds",
+				true
 			)
 
 
-		if not existingCFrame
-			or not existingSize then
+		if not existingBounds
+			or not existingBounds:IsA(
+				"BasePart"
+			) then
 
 			continue
 		end
@@ -2142,8 +2203,9 @@ local function isFutureFootprintOverlappingBusiness(
 		if rectanglesOverlapXZ(
 			boundsCFrame,
 			boundsSize,
-			existingCFrame,
-			existingSize
+
+			existingBounds.CFrame,
+			existingBounds.Size
 		) then
 
 			return true
@@ -2153,7 +2215,6 @@ local function isFutureFootprintOverlappingBusiness(
 
 	return false
 end
-
 
 local function updateFutureFootprintVisual(
 	visualCFrame: CFrame,
@@ -2396,17 +2457,16 @@ local function updateFutureFootprint(
 	end
 
 
-	local currentBounds =
-		previewModel:FindFirstChild(
-			"PlacementBounds",
-			true
+	local boundsCFrame,
+		boundsSize =
+		getAlignedFutureBounds(
+			selectedBusinessName,
+			previewModel
 		)
 
 
-	if not currentBounds
-		or not currentBounds:IsA(
-			"BasePart"
-		) then
+	if not boundsCFrame
+		or not boundsSize then
 
 		futureFootprintClear =
 			true
@@ -2415,24 +2475,8 @@ local function updateFutureFootprint(
 	end
 
 
-	--
-	-- Current PlacementBounds gives us the exact
-	-- center and rotation of this stand.
-	--
-	local boundsCFrame =
-		currentBounds.CFrame
-
-
-	--
-	-- Maximum configured appearance supplies only
-	-- the X/Z footprint dimensions.
-	--
-	local boundsSize =
-		Vector3.new(
-			futureFootprintSize.X,
-			currentBounds.Size.Y,
-			futureFootprintSize.Z
-		)
+	futureFootprintSize =
+		boundsSize
 
 
 	local groundSpace =
@@ -2551,7 +2595,7 @@ local function createPlacementBox(
 		) then
 
 		warn(
-			`${model.Name} preview is missing PlacementBounds.`
+			`{model.Name} preview is missing PlacementBounds.`
 		)
 
 		return
@@ -3942,7 +3986,7 @@ local function startPlacement(
 	if not previewSource.PrimaryPart then
 
 		warn(
-			`${previewSource:GetFullName()} needs PlacementOrigin set as its PrimaryPart.`
+			`{previewSource:GetFullName()} needs PlacementOrigin set as its PrimaryPart.`
 		)
 
 
@@ -3962,7 +4006,7 @@ local function startPlacement(
 
 
 	previewModel.Name =
-		`${selectedBusinessName}Preview`
+		`{selectedBusinessName}Preview`
 
 
 	preparePreview(

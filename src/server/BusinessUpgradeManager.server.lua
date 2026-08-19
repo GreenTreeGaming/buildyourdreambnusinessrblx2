@@ -550,7 +550,7 @@ local function validateUpgradeTemplate(
 	if not template.PrimaryPart then
 
 		return false,
-			`${template.Name} does not have a PrimaryPart.`
+			`{template.Name} does not have a PrimaryPart.`
 	end
 
 
@@ -574,7 +574,7 @@ local function validateUpgradeTemplate(
 		) then
 
 			return false,
-				`${template.Name} is missing {instanceName}.`
+				`{template.Name} is missing {instanceName}.`
 		end
 	end
 
@@ -1353,7 +1353,7 @@ local function alignModelToStand(
 		or not sourceOrigin:IsA("BasePart") then
 
 		error(
-			`${model.Name} is missing PlacementOrigin.`
+			`{model.Name} is missing PlacementOrigin.`
 		)
 	end
 
@@ -1362,7 +1362,7 @@ local function alignModelToStand(
 		or not targetOrigin:IsA("BasePart") then
 
 		error(
-			`${targetStand.Name} is missing PlacementOrigin.`
+			`{targetStand.Name} is missing PlacementOrigin.`
 		)
 	end
 
@@ -1829,7 +1829,7 @@ local function performUpgrade(
 		sendResult(
 			player,
 			false,
-			`${templateName} could not be found in BusinessModels.`
+			`{templateName} could not be found in BusinessModels.`
 		)
 
 
@@ -2175,7 +2175,7 @@ local displayName =
 sendResult(
 	player,
 	true,
-	`${displayName} upgraded to Level {nextLevel}!`,
+	`{displayName} upgraded to Level {nextLevel}!`,
 	nextLevel
 )
 end

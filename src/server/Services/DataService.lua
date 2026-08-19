@@ -2021,7 +2021,7 @@ function DataService.GetBoostUntil(
 
 	local value =
 		monetization.Boosts[
-			`${boostName}Until`
+			`{boostName}Until`
 		]
 
 	return sanitizeTimestamp(value)
@@ -2056,7 +2056,7 @@ function DataService.SetBoostUntil(
 	end
 
 	monetization.Boosts[
-		`${boostName}Until`
+		`{boostName}Until`
 	] = sanitizeTimestamp(expiresAt)
 
 	return true
