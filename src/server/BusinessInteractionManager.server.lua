@@ -552,7 +552,7 @@ plot:SetAttribute(
 	interactionResultRemote:FireClient(
 	player,
 	"Removed",
-	`${removedDisplayName} removed.`,
+	`{removedDisplayName} removed.`,
 	businessId
 )
 end

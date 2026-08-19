@@ -205,16 +205,46 @@ local BusinessConfig = {
 
 	-- Add HotdogStand2, HotdogStand3, etc. here later.
 	StandLevels = {
-		[1] = {
-			TemplateName = "HotdogStand",
+	[1] = {
+		TemplateName = "HotdogStand",
+		UpgradeCost = 250,
 
-			-- No appearance upgrade yet.
-			UpgradeCost = nil,
-
-			CustomerAttraction = 1.00,
-			CustomerRateMultiplier = 1.00,
-		},
+		CustomerAttraction = 1.00,
+		CustomerRateMultiplier = 1.00,
 	},
+
+	[2] = {
+		TemplateName = "HotdogStand2",
+		UpgradeCost = 900,
+
+		CustomerAttraction = 1.15,
+		CustomerRateMultiplier = 1.10,
+	},
+
+	[3] = {
+		TemplateName = "HotdogStand3",
+		UpgradeCost = 3000,
+
+		CustomerAttraction = 1.35,
+		CustomerRateMultiplier = 1.25,
+	},
+
+	[4] = {
+		TemplateName = "HotdogStand4",
+		UpgradeCost = 9500,
+
+		CustomerAttraction = 1.60,
+		CustomerRateMultiplier = 1.45,
+	},
+
+	[5] = {
+		TemplateName = "HotdogStand5",
+		UpgradeCost = nil,
+
+		CustomerAttraction = 1.90,
+		CustomerRateMultiplier = 1.70,
+	},
+},
 
 	Upgrades = {
 		ServingSpeed = {
