@@ -13,6 +13,13 @@ local UserInputService =
 local Workspace =
 	game:GetService("Workspace")
 
+local Notification =
+	require(
+		ReplicatedStorage
+			:WaitForChild("Shared")
+			:WaitForChild("Notification")
+	)
+
 
 local player =
 	Players.LocalPlayer
@@ -309,169 +316,6 @@ removeScale =
 
 removeScale.Scale =
 	1
-
-
---==================================================
--- TOAST
---==================================================
-
-local toastLabel:
-	TextLabel? =
-	nil
-
-local toastVersion =
-	0
-
-
-local function createToast()
-	local old =
-		playerGui:FindFirstChild(
-			"BusinessManagementToast"
-		)
-
-	if old then
-		old:Destroy()
-	end
-
-
-	local screen =
-		Instance.new(
-			"ScreenGui"
-		)
-
-	screen.Name =
-		"BusinessManagementToast"
-
-	screen.IgnoreGuiInset =
-		true
-
-	screen.ResetOnSpawn =
-		false
-
-	screen.DisplayOrder =
-		150
-
-	screen.Parent =
-		playerGui
-
-
-	local label =
-		Instance.new(
-			"TextLabel"
-		)
-
-	label.Name =
-		"Toast"
-
-	label.AnchorPoint =
-		Vector2.new(
-			0.5,
-			0
-		)
-
-	label.Position =
-		UDim2.new(
-			0.5,
-			0,
-			0,
-			18
-		)
-
-	label.Size =
-		UDim2.fromOffset(
-			560,
-			50
-		)
-
-	label.BackgroundColor3 =
-		Colors.Surface
-
-	label.BackgroundTransparency =
-		0.04
-
-	label.BorderSizePixel =
-		0
-
-	label.TextScaled =
-		true
-
-	label.TextWrapped =
-		true
-
-	label.Visible =
-		false
-
-	label.Parent =
-		screen
-
-
-	UITheme.AddCorner(
-		label,
-		0.15
-	)
-
-	UITheme.AddStroke(
-		label,
-		Colors.Stroke,
-		1.5,
-		0.2
-	)
-
-
-	toastLabel =
-		label
-end
-
-
-local function showToast(
-	message: string,
-	isError: boolean?
-)
-	if not toastLabel then
-		return
-	end
-
-
-	toastVersion +=
-		1
-
-	local version =
-		toastVersion
-
-
-	toastLabel.Text =
-		message
-
-	toastLabel.TextColor3 =
-		isError
-		and Colors.Danger
-		or Colors.Success
-
-	toastLabel.Visible =
-		true
-
-
-	task.delay(
-		3,
-		function()
-			if version
-				~= toastVersion then
-
-				return
-			end
-
-
-			if toastLabel then
-				toastLabel.Visible =
-					false
-			end
-		end
-	)
-end
-
-
-createToast()
-
 
 --==================================================
 -- PLOT HELPERS
@@ -1939,10 +1783,9 @@ businessNameLabel.Text =
 			if stand
 				~= getClosestOwnedStand() then
 
-				showToast(
-					"Your business could not be found.",
-					true
-				)
+				Notification.Error(
+	"Your business could not be found."
+)
 
 				return
 			end
@@ -1983,10 +1826,9 @@ businessNameLabel.Text =
 			if stand
 				~= getClosestOwnedStand() then
 
-				showToast(
-					"Your business could not be found.",
-					true
-				)
+				Notification.Error(
+	"Your business could not be found."
+)
 
 				return
 			end
@@ -1996,10 +1838,9 @@ businessNameLabel.Text =
 				"IsBeingEdited"
 			) == true then
 
-				showToast(
-					"Finish moving this stand first.",
-					true
-				)
+				Notification.Warning(
+	"Finish moving this stand first."
+)
 
 				return
 			end
@@ -2009,10 +1850,9 @@ businessNameLabel.Text =
 				"StandUnavailable"
 			) == true then
 
-				showToast(
-					"This stand is currently unavailable.",
-					true
-				)
+				Notification.Warning(
+	"This stand is currently unavailable."
+)
 
 				return
 			end
@@ -2050,10 +1890,9 @@ businessNameLabel.Text =
 			if stand
 				~= getClosestOwnedStand() then
 
-				showToast(
-					"Your business could not be found.",
-					true
-				)
+				Notification.Error(
+	"Your business could not be found."
+)
 
 				return
 			end
@@ -2176,13 +2015,12 @@ interactionResultRemote.OnClientEvent:Connect(
 			destroyManagementUI()
 
 
-			showToast(
-				typeof(message)
-					== "string"
-					and message
-					or "Business removed."
-			)
-
+			Notification.Success(
+	typeof(message)
+		== "string"
+		and message
+		or "Business removed."
+)
 			return
 		end
 
@@ -2193,14 +2031,12 @@ interactionResultRemote.OnClientEvent:Connect(
 			hideRemoveConfirmation()
 
 
-			showToast(
-				typeof(message)
-					== "string"
-					and message
-					or "The stand could not be removed.",
-
-				true
-			)
+			Notification.Error(
+	typeof(message)
+		== "string"
+		and message
+		or "The stand could not be removed."
+)
 
 			return
 		end
@@ -2223,14 +2059,12 @@ interactionResultRemote.OnClientEvent:Connect(
 			)
 
 
-			showToast(
-				typeof(message)
-					== "string"
-					and message
-					or "The stand could not be edited.",
-
-				true
-			)
+			Notification.Error(
+	typeof(message)
+		== "string"
+		and message
+		or "The stand could not be edited."
+)
 		end
 	end
 )
