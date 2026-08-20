@@ -511,34 +511,6 @@ local function createCard(
 	canvas.Parent =
 		card
 
-
-	-- Small colored bar.
-	local accent =
-		Instance.new(
-			"Frame"
-		)
-
-	accent.Name =
-		"Accent"
-
-	accent.Size =
-		UDim2.new(
-			0,
-			5,
-			1,
-			0
-		)
-
-	accent.BackgroundColor3 =
-		style.Color
-
-	accent.BorderSizePixel =
-		0
-
-	accent.Parent =
-		canvas
-
-
 	-- Icon.
 	local icon =
 		Instance.new(

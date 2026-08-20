@@ -44,6 +44,13 @@ local cashAddButton =
 local closeButton =
 	main:WaitForChild("Close")
 
+local Notification =
+	require(
+		ReplicatedStorage
+			:WaitForChild("Shared")
+			:WaitForChild("Notification")
+	)
+
 closeButton.Active =
 	true
 
@@ -75,6 +82,44 @@ local devProductsFrame =
 	scrollingFrame:WaitForChild(
 		"DevProducts"
 	)
+
+local codesFrame =
+	scrollingFrame:WaitForChild(
+		"Codes"
+	)
+
+local codeTextBox =
+	codesFrame:WaitForChild(
+		"TextBox"
+	) :: TextBox
+
+local codeSubmitButton =
+	codesFrame:WaitForChild(
+		"Submit"
+	) :: TextButton
+
+
+local remotes =
+	ReplicatedStorage:WaitForChild(
+		"Remotes"
+	)
+
+local redeemCodeRemote =
+	remotes:WaitForChild(
+		"RedeemCode",
+		10
+	)
+
+if not redeemCodeRemote
+	or not redeemCodeRemote:IsA(
+		"RemoteFunction"
+	) then
+
+	error(
+		"[Shop] RedeemCode RemoteFunction was not created by the server."
+	)
+end
+
 
 --==================================================
 -- SHOP OPEN / CLOSE
@@ -724,6 +769,154 @@ local function setupDeveloperProduct(
 		end
 	)
 end
+
+--==================================================
+-- CODES
+--==================================================
+
+local codeRequestPending =
+	false
+
+
+local function setCodeSubmitEnabled(
+	enabled: boolean
+)
+	codeSubmitButton.Active =
+		enabled
+
+	codeSubmitButton.Selectable =
+		enabled
+
+	codeSubmitButton.AutoButtonColor =
+		enabled
+end
+
+
+local function submitCode()
+	if codeRequestPending then
+		return
+	end
+
+
+	local code =
+		codeTextBox.Text
+
+
+	if string.match(
+		code,
+		"^%s*$"
+	) then
+
+		Notification.Warning(
+			"Enter a code first."
+		)
+
+		return
+	end
+
+
+	codeRequestPending =
+		true
+
+	setCodeSubmitEnabled(
+		false
+	)
+
+
+	local success,
+		result =
+		pcall(function()
+
+			return redeemCodeRemote:
+				InvokeServer(
+					code
+				)
+		end)
+
+
+	codeRequestPending =
+		false
+
+	setCodeSubmitEnabled(
+		true
+	)
+
+
+	if not success then
+		warn(
+			`[Shop] Code redemption failed: {result}`
+		)
+
+		Notification.Error(
+			"Something went wrong. Try again."
+		)
+
+		return
+	end
+
+
+	if type(result) ~= "table" then
+		Notification.Error(
+			"Something went wrong. Try again."
+		)
+
+		return
+	end
+
+
+	local message =
+		if typeof(result.Message)
+				== "string"
+			then result.Message
+			else "Something went wrong."
+
+
+	if result.Success == true then
+
+		codeTextBox.Text =
+			""
+
+		Notification.Success(
+			message
+		)
+
+		return
+	end
+
+
+	if result.Status == "Expired"
+		or result.Status == "NotStarted"
+		or result.Status == "AlreadyRedeemed"
+		or result.Status == "RateLimited" then
+
+		Notification.Warning(
+			message
+		)
+
+		return
+	end
+
+
+	Notification.Error(
+		message
+	)
+end
+
+
+codeSubmitButton.Activated:
+	Connect(
+		submitCode
+	)
+
+
+codeTextBox.FocusLost:
+	Connect(function(
+		enterPressed: boolean
+	)
+		if enterPressed then
+			submitCode()
+		end
+	end)
 
 for key, config in
 	ShopConfig.GamePasses do

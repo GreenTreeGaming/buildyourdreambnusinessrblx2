@@ -32,7 +32,7 @@ local DATA_STORE_NAME = "PlayerData_v4"
 --
 -- Version 3 saves each placed business's physical model level.
 -- Version 4 adds plot-wide marketing progression.
-local CURRENT_DATA_VERSION = 6
+local CURRENT_DATA_VERSION = 7
 
 local MAX_RETRIES = 3
 local RETRY_DELAY_SECONDS = 2
@@ -55,7 +55,9 @@ local DEFAULT_PROFILE = {
 
 	Cash = 0,
 
-		Monetization = {
+	RedeemedCodes = {},
+
+	Monetization = {
 		Boosts = {
 			CustomerRushUntil = 0,
 			ReputationBoostUntil = 0,
@@ -64,8 +66,6 @@ local DEFAULT_PROFILE = {
 
 		ProcessedReceipts = {},
 
-		-- Extra reputation progress earned from
-		-- Reputation Boost without falsifying TotalSales.
 		ReputationBonusSales = 0,
 	},
 
@@ -2190,6 +2190,113 @@ function DataService.AddReputationBonusSales(
 		)
 
 	return true
+end
+
+function DataService.HasRedeemedCode(
+	player: Player,
+	code: string
+): boolean
+	local profile =
+		profiles[player]
+
+	if not profile then
+		return false
+	end
+
+	if type(profile.RedeemedCodes)
+		~= "table" then
+
+		profile.RedeemedCodes = {}
+	end
+
+	return profile.RedeemedCodes[code]
+		== true
+end
+
+
+function DataService.MarkCodeRedeemed(
+	player: Player,
+	code: string
+): boolean
+	local profile =
+		profiles[player]
+
+	if not profile then
+		return false
+	end
+
+	if type(profile.RedeemedCodes)
+		~= "table" then
+
+		profile.RedeemedCodes = {}
+	end
+
+	if profile.RedeemedCodes[code]
+		== true then
+
+		return false
+	end
+
+	profile.RedeemedCodes[code] =
+		true
+
+	return true
+end
+
+
+function DataService.AddCash(
+	player: Player,
+	amount: number
+): boolean
+	if typeof(amount) ~= "number"
+		or amount ~= amount
+		or amount == math.huge
+		or amount == -math.huge then
+
+		return false
+	end
+
+	amount =
+		math.floor(amount)
+
+	if amount <= 0 then
+		return false
+	end
+
+	local profile =
+		profiles[player]
+
+	if not profile then
+		return false
+	end
+
+	profile.Cash +=
+		amount
+
+	player:SetAttribute(
+		"Cash",
+		profile.Cash
+	)
+
+	return true
+end
+
+function DataService.UnmarkCodeRedeemed(
+	player: Player,
+	code: string
+)
+	local profile =
+		profiles[player]
+
+	if not profile
+		or type(profile.RedeemedCodes)
+			~= "table" then
+
+		return
+	end
+
+	profile.RedeemedCodes[code] =
+		nil
 end
 
 return DataService
