@@ -98,6 +98,48 @@ local codeSubmitButton =
 		"Submit"
 	) :: TextButton
 
+-- Make sure the code input is actually usable.
+codeTextBox.Active =
+	true
+
+codeTextBox.Selectable =
+	true
+
+codeTextBox.TextEditable =
+	true
+
+codeTextBox.ClearTextOnFocus =
+	false
+
+codeTextBox.MultiLine =
+	false
+
+codeTextBox.TextTransparency =
+	0
+
+codeTextBox.TextColor3 =
+	Color3.fromRGB(
+		255,
+		255,
+		255
+	)
+
+codeTextBox.PlaceholderText =
+	"Enter code..."
+
+codeTextBox.PlaceholderColor3 =
+	Color3.fromRGB(
+		180,
+		180,
+		180
+	)
+
+codeSubmitButton.Active =
+	true
+
+codeSubmitButton.Selectable =
+	true
+
 
 local remotes =
 	ReplicatedStorage:WaitForChild(
@@ -904,10 +946,25 @@ end
 
 
 codeSubmitButton.Activated:
-	Connect(
-		submitCode
-	)
+	Connect(function()
 
+		print(
+			"[Codes] Submit pressed:",
+			codeTextBox.Text
+		)
+
+		submitCode()
+	end)
+
+codeTextBox:GetPropertyChangedSignal(
+	"Text"
+):Connect(function()
+
+	print(
+		"[Codes] Text changed:",
+		codeTextBox.Text
+	)
+end)
 
 codeTextBox.FocusLost:
 	Connect(function(

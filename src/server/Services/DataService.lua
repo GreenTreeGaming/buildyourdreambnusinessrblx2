@@ -2270,13 +2270,22 @@ function DataService.AddCash(
 		return false
 	end
 
-	profile.Cash +=
+	local cash =
+		getCashValue(player)
+
+	if not cash then
+		warn(
+			`[DataService] Could not add cash to {player.Name}: leaderstats.Cash was not found.`
+		)
+
+		return false
+	end
+
+	cash.Value +=
 		amount
 
-	player:SetAttribute(
-		"Cash",
-		profile.Cash
-	)
+	profile.Cash =
+		cash.Value
 
 	return true
 end
