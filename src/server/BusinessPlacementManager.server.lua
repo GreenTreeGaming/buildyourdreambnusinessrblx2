@@ -527,6 +527,16 @@ if not config then
 		"Unknown business."
 end
 
+if not editedStand
+	and not DataService.IsBusinessUnlocked(
+		player,
+		businessName
+	) then
+
+	return false,
+		"This business has not been unlocked yet."
+end
+
 	local ground =
 		plot:FindFirstChild("Ground")
 

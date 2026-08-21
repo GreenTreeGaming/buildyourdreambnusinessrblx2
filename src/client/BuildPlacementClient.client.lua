@@ -95,6 +95,17 @@ local cancelEditRemote =
 		"CancelBusinessEdit"
 	)
 
+local getBusinessUnlockStateRemote =
+	remotes:WaitForChild(
+		"GetBusinessUnlockState"
+	) :: RemoteFunction
+
+
+local businessUnlockedRemote =
+	remotes:WaitForChild(
+		"BusinessUnlocked"
+	) :: RemoteEvent
+
 
 local plotsFolder =
 	Workspace:WaitForChild(
@@ -248,6 +259,15 @@ local addButton =
 	screenGui:WaitForChild(
 		"Add"
 	) :: TextButton
+
+local addUpdateFrame =
+	addButton:WaitForChild(
+		"Update"
+	) :: Frame
+
+
+addUpdateFrame.Visible =
+	false
 
 
 local addFrame =
@@ -546,6 +566,69 @@ local function getBusinessCount(
 	)
 end
 
+type BusinessUnlockState = {
+	Unlocked: boolean,
+	CanUnlock: boolean,
+
+	Requirements: {
+		{[any]: any}
+	},
+
+	MissingRequirements: {
+		string
+	},
+}
+
+
+local businessUnlockStates: {
+	[string]: BusinessUnlockState
+} = {}
+
+
+local function refreshBusinessUnlockStates()
+	local success, result =
+		pcall(
+			function()
+
+				return getBusinessUnlockStateRemote
+					:InvokeServer()
+			end
+		)
+
+
+	if not success
+		or type(result)
+			~= "table" then
+
+		warn(
+			"Failed to retrieve business unlock states."
+		)
+
+		return
+	end
+
+
+	businessUnlockStates =
+		result
+end
+
+local function isBusinessUnlocked(
+	businessName: string
+): boolean
+
+	local state =
+		businessUnlockStates[
+			businessName
+		]
+
+
+	if not state then
+		return false
+	end
+
+
+	return state.Unlocked == true
+end
 
 local function canPlaceAnyBusiness(): boolean
 	for businessName, config in
@@ -563,12 +646,15 @@ local function canPlaceAnyBusiness(): boolean
 			or math.huge
 
 
-		if getBusinessCount(
-			businessName
-		) < maximumPlaced then
+		if isBusinessUnlocked(
+	businessName
+)
+	and getBusinessCount(
+		businessName
+	) < maximumPlaced then
 
-			return true
-		end
+	return true
+end
 	end
 
 
@@ -583,6 +669,14 @@ local function getBusinessButtonText(
 	local displayName =
 		config.DisplayName
 		or businessName
+
+
+	if not isBusinessUnlocked(
+		businessName
+	) then
+
+		return `🔒 {displayName}`
+	end
 
 
 	local businessCount =
@@ -687,6 +781,70 @@ end
 
 
 	return nil
+end
+
+local function getLockedBusinessMessage(
+	businessName: string
+): string
+
+	local config =
+		BusinessConfig[
+			businessName
+		]
+
+
+	local displayName =
+		config
+		and config.DisplayName
+		or businessName
+
+
+	local state =
+		businessUnlockStates[
+			businessName
+		]
+
+
+	if not state then
+		return `Keep progressing to unlock {displayName}.`
+	end
+
+
+	local missing =
+		state.MissingRequirements
+
+
+	if type(missing)
+			~= "table"
+		or #missing == 0 then
+
+		return `Keep progressing to unlock {displayName}.`
+	end
+
+
+	if #missing == 1 then
+		return `You need {missing[1]} to unlock {displayName}.`
+	end
+
+
+	if #missing == 2 then
+		return `You need {missing[1]} and {missing[2]} to unlock {displayName}.`
+	end
+
+
+	local allExceptLast =
+		{}
+
+
+	for index = 1, #missing - 1 do
+		table.insert(
+			allExceptLast,
+			missing[index]
+		)
+	end
+
+
+	return `You need {table.concat(allExceptLast, ", ")}, and {missing[#missing]} to unlock {displayName}.`
 end
 
 
@@ -809,7 +967,12 @@ local function openBusinessMenu()
 		return
 	end
 
-	updateBusinessButtonTexts()
+	refreshBusinessUnlockStates()
+
+updateBusinessButtonTexts()
+
+addUpdateFrame.Visible =
+	false
 
 	businessMenuOpen =
 		true
@@ -4353,26 +4516,44 @@ end
 
 
 		button.Activated:Connect(
-			function()
-				if isPlacementActive then
-					return
-				end
+	function()
+		if isPlacementActive then
+			return
+		end
 
 
-				closeBusinessMenu(
-					true
-				)
+		if not isBusinessUnlocked(
+			businessName
+		) then
 
-				hideAddButton()
-
-
-				startPlacement(
-					false,
-					nil,
+			Notification.Warning(
+				getLockedBusinessMessage(
 					businessName
-				)
-			end
+				),
+				{
+					Title =
+						"Business Locked",
+				}
+			)
+
+			return
+		end
+
+
+		closeBusinessMenu(
+			true
 		)
+
+		hideAddButton()
+
+
+		startPlacement(
+			false,
+			nil,
+			businessName
+		)
+	end
+)
 
 
 		businessButtons[
@@ -4854,6 +5035,7 @@ noticeWhilePlacing.Position =
 	noticeOpenPosition
 
 
+refreshBusinessUnlockStates()
 populateBusinessList()
 
 
@@ -4901,5 +5083,32 @@ task.spawn(function()
 		)
 	end
 end)
+
+businessUnlockedRemote.OnClientEvent:Connect(
+	function(
+		businessName: string,
+		displayName: string
+	)
+
+		refreshBusinessUnlockStates()
+
+		updateBusinessButtonTexts()
+
+
+		if not businessMenuOpen then
+			addUpdateFrame.Visible =
+				true
+		end
+
+
+		Notification.Success(
+			`You can now build a {displayName}!`,
+			{
+				Title =
+					"New Business Unlocked!",
+			}
+		)
+	end
+)
 
 updateBusinessButtonTexts()

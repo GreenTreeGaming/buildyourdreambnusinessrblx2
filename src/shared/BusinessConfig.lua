@@ -1,8 +1,15 @@
 local BusinessConfig = {
 	LemonadeStand = {
-		DisplayName = "Lemonade Stand",
+	DisplayName = "Lemonade Stand",
 
-		FirstStandFree = true,
+	DisplayOrder = 1,
+
+	RevealDescription =
+		"Start small, serve refreshing lemonade, and build your business empire from the ground up.",
+
+	UnlockRequirements = nil,
+
+	FirstStandFree = true,
 
 		-- Faster early expansion.
 		AdditionalStandCost = 500,
@@ -192,8 +199,22 @@ local BusinessConfig = {
 	HotdogStand = {
 	DisplayName = "Hotdog Stand",
 
-	-- Hotdog Stand is a second-tier business.
-	-- The player must actually purchase their first one.
+	DisplayOrder = 2,
+
+	RevealDescription =
+		"Serve hungry customers faster and earn bigger profits with your new hotdog business.",
+
+	UnlockRequirements = {
+		ReputationLevel = 3,
+
+		LifetimeEarnings = 250,
+
+		BusinessLevel = {
+			BusinessType = "LemonadeStand",
+			Level = 2,
+		},
+	},
+
 	FirstStandFree = false,
 
 	AdditionalStandCost = 1250,

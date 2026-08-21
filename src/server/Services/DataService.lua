@@ -25,7 +25,7 @@ local BusinessConfig = require(
 		:WaitForChild("BusinessConfig")
 )
 
-local DATA_STORE_NAME = "PlayerData_v4"
+local DATA_STORE_NAME = "PlayerData_v6"
 
 -- Version 2 changed Businesses from one fixed stand
 -- into a list of uniquely identified placed businesses.
@@ -92,9 +92,9 @@ local DEFAULT_PROFILE = {
 	},
 
 	UnlockedBusinesses = {
-		LemonadeStand = true,
-		HotdogStand = true,
-	},
+	LemonadeStand = true,
+	HotdogStand = false,
+},
 }
 
 type SerializedCFrame = {
