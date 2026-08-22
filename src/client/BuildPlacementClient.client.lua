@@ -1426,17 +1426,13 @@ setupButtonHover(
 --==================================================
 
 local function showAddButton()
-	if isPlacementActive
-		or isEditingExistingStand then
-
+	if isEditingExistingStand then
 		return
 	end
-
 
 	addButton.Visible =
 		true
 end
-
 
 local function hideAddButton()
 	addButton.Visible =
@@ -4251,9 +4247,13 @@ local function startPlacement(
 	addOccupiedGridAreas()
 
 
+	if editingExisting then
 	setBuildMenuVisible(
 		false
 	)
+else
+	showAddButton()
+end
 
 
 	setPlacementNotice(
@@ -4541,17 +4541,14 @@ end
 
 
 		closeBusinessMenu(
-			true
-		)
+	true
+)
 
-		hideAddButton()
-
-
-		startPlacement(
-			false,
-			nil,
-			businessName
-		)
+startPlacement(
+	false,
+	nil,
+	businessName
+)
 	end
 )
 
@@ -4848,9 +4845,11 @@ placeBusinessRemote.OnClientEvent:Connect(
 
 	finishPlacementMode()
 
+	-- Restore the Add button after placing/moving.
+	showAddButton()
 
-			ownedPlot =
-				getOwnedPlot()
+	ownedPlot =
+		getOwnedPlot()
 
 
 			task.defer(function()
@@ -5065,17 +5064,16 @@ task.spawn(function()
 
 
 		if ownedPlot
-			and not isPlacementActive
-			and not isEditingExistingStand then
+	and not isEditingExistingStand then
 
-			setBuildMenuVisible(
-				canPlaceAnyBusiness()
-			)
-		else
-			setBuildMenuVisible(
-				false
-			)
-		end
+	setBuildMenuVisible(
+		canPlaceAnyBusiness()
+	)
+else
+	setBuildMenuVisible(
+		false
+	)
+end
 
 
 		task.wait(

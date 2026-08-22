@@ -748,6 +748,16 @@ local function updatePlotReputation(
 			plot
 		)
 
+		plot:SetAttribute(
+		"ReputationRating",
+		state.Rating
+	)
+
+	plot:SetAttribute(
+		"ReputationLevel",
+		state.ReputationLevel
+	)
+
 
 	local multiplier =
 		1
