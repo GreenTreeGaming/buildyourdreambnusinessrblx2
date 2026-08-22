@@ -2112,22 +2112,14 @@ interactionResultRemote.OnClientEvent:Connect(
 
 
 		if action
-			== "Removed" then
+	== "Removed" then
 
-			hideRemoveConfirmation()
+	hideRemoveConfirmation()
 
-			destroyManagementUI()
+	destroyManagementUI()
 
-
-			Notification.Success(
-				typeof(message)
-					== "string"
-					and message
-					or "Business removed."
-			)
-
-			return
-		end
+	return
+end
 
 
 		if action
