@@ -20,6 +20,11 @@ local PlotService =
 			:WaitForChild("PlotService")
 	)
 
+local customersFolder =
+	Workspace:WaitForChild(
+		"Customers"
+	)
+
 
 local plotsFolder =
 	Workspace:WaitForChild(
@@ -73,6 +78,27 @@ local function getSortedPlots(): {
 
 
 	return plots
+end
+
+local function clearPlotCustomers(
+	plot: Model
+)
+	for _, customer in
+		customersFolder:GetChildren() do
+
+		if not customer:IsA("Model") then
+			continue
+		end
+
+		if customer:GetAttribute(
+			"PlotName"
+		) ~= plot.Name then
+
+			continue
+		end
+
+		customer:Destroy()
+	end
 end
 
 
@@ -183,26 +209,26 @@ end
 local function clearPlot(
 	plot: Model
 )
+	-- Remove any NPCs that belong to this plot.
+	clearPlotCustomers(
+		plot
+	)
+
 	local placedBusinesses =
 		getPlacedBusinesses(
 			plot
 		)
 
-
 	if placedBusinesses then
-
 		for _, business in
 			placedBusinesses:GetChildren() do
-
 			business:Destroy()
 		end
 	end
 
-
 	PlotService.ResetPlot(
 		plot
 	)
-
 
 	plot:SetAttribute(
 		"StarterBusinessPlaced",
