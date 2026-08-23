@@ -34,6 +34,17 @@ local getPlotCustomerRateMultiplier: (
 	plot: Model
 ) -> number
 
+local CustomerNames =
+	require(
+		ReplicatedStorage
+			:WaitForChild("Shared")
+			:WaitForChild("CustomerNames")
+	)
+
+local npcInfoTemplate =
+	ReplicatedStorage:WaitForChild(
+		"NPCInfo"
+	)
 
 local BusinessConfig =
 	require(
@@ -193,6 +204,232 @@ local standStates: {
 local plotNextSpawnTimes: {
 	[Model]: number
 } = {}
+
+--==================================================
+-- CUSTOMER INFO
+--==================================================
+
+local REGULAR_TEXT_COLOR =
+	Color3.fromRGB(
+		88,
+		255,
+		103
+	)
+
+local REGULAR_STROKE_COLOR =
+	Color3.fromRGB(
+		25,
+		112,
+		35
+	)
+
+
+local function setupCustomerInfo(
+	customer: Model
+)
+	-- Prevent accidentally adding the UI twice.
+	if customer:GetAttribute(
+		"CustomerInfoInitialized"
+	) == true then
+
+		return
+	end
+
+
+	local head =
+		customer:FindFirstChild(
+			"Head"
+		)
+
+
+	if not head
+		or not head:IsA(
+			"BasePart"
+		) then
+
+		warn(
+			`Customer "{customer.Name}" has no Head part.`
+		)
+
+		return
+	end
+
+
+	--==================================================
+	-- CUSTOMER DATA
+	--==================================================
+
+	local customerName =
+		CustomerNames.GetRandomName()
+
+
+	local customerType =
+		"Regular"
+
+
+	customer:SetAttribute(
+		"CustomerName",
+		customerName
+	)
+
+	customer:SetAttribute(
+		"CustomerType",
+		customerType
+	)
+
+
+	--==================================================
+	-- BILLBOARD
+	--==================================================
+
+	local existingInfo =
+		head:FindFirstChild(
+			"NPCInfo"
+		)
+
+
+	if existingInfo then
+		existingInfo:Destroy()
+	end
+
+
+	local billboard =
+	npcInfoTemplate:Clone()
+
+
+if not billboard:IsA(
+	"BillboardGui"
+) then
+
+	warn(
+		"ReplicatedStorage.NPCInfo must be a BillboardGui."
+	)
+
+	billboard:Destroy()
+
+	return
+end
+
+
+billboard.Name =
+	"NPCInfo"
+
+billboard.Adornee =
+	head
+
+billboard.Parent =
+	head
+
+
+	--==================================================
+	-- UI REFERENCES
+	--==================================================
+
+	local frame =
+		billboard:FindFirstChild(
+			"Frame"
+		)
+
+
+	if not frame
+		or not frame:IsA(
+			"Frame"
+		) then
+
+		warn(
+			"NPCInfo is missing Frame."
+		)
+
+		billboard:Destroy()
+
+		return
+	end
+
+
+	local customerNameLabel =
+		frame:FindFirstChild(
+			"CustomerName"
+		)
+
+
+	local customerTypeLabel =
+		frame:FindFirstChild(
+			"CustomerType"
+		)
+
+
+	if not customerNameLabel
+		or not customerNameLabel:IsA(
+			"TextLabel"
+		) then
+
+		warn(
+			"NPCInfo.Frame is missing CustomerName TextLabel."
+		)
+
+		billboard:Destroy()
+
+		return
+	end
+
+
+	if not customerTypeLabel
+		or not customerTypeLabel:IsA(
+			"TextLabel"
+		) then
+
+		warn(
+			"NPCInfo.Frame is missing CustomerType TextLabel."
+		)
+
+		billboard:Destroy()
+
+		return
+	end
+
+
+	--==================================================
+	-- NAME
+	--==================================================
+
+	customerNameLabel.Text =
+		customerName
+
+
+	--==================================================
+	-- TYPE
+	--==================================================
+
+	customerTypeLabel.Text =
+		customerType
+
+	customerTypeLabel.TextColor3 =
+		REGULAR_TEXT_COLOR
+
+
+	local typeStroke =
+		customerTypeLabel:FindFirstChildOfClass(
+			"UIStroke"
+		)
+
+
+	if typeStroke then
+
+		typeStroke.Color =
+			REGULAR_STROKE_COLOR
+	else
+
+		warn(
+			"NPCInfo.Frame.CustomerType is missing its UIStroke."
+		)
+	end
+
+
+	customer:SetAttribute(
+		"CustomerInfoInitialized",
+		true
+	)
+end
 
 
 --==================================================
@@ -1877,14 +2114,17 @@ local function prepareCustomer(
 
 	if humanoid then
 
-		humanoid.DisplayName =
-			"Customer"
+	humanoid.DisplayDistanceType =
+		Enum.HumanoidDisplayDistanceType.None
 
-		humanoid.AutoRotate =
-			true
+	humanoid.HealthDisplayType =
+		Enum.HumanoidHealthDisplayType.AlwaysOff
 
-		humanoid.WalkSpeed =
-			WALK_SPEED
+	humanoid.AutoRotate =
+		true
+
+	humanoid.WalkSpeed =
+		WALK_SPEED
 
 
 		setupCustomerMovementAnimation(
@@ -3696,22 +3936,27 @@ local function spawnCustomerForStand(
 
 
 	prepareCustomer(
-		customer
-	)
+	customer
+)
 
 
-	customer.Parent =
-		customersFolder
+customer.Parent =
+	customersFolder
 
 
-	customer:PivotTo(
-		customerSpawn.CFrame
-			* CFrame.new(
-				0,
-				3,
-				0
-			)
-	)
+customer:PivotTo(
+	customerSpawn.CFrame
+		* CFrame.new(
+			0,
+			3,
+			0
+		)
+)
+
+
+setupCustomerInfo(
+	customer
+)
 
 
 	local entry: QueueEntry = {
