@@ -19,6 +19,13 @@ local FormatNumber =
 local plotsFolder =
 	Workspace:WaitForChild("Plots")
 
+local DataService =
+	require(
+		script.Parent
+			:WaitForChild("Services")
+			:WaitForChild("DataService")
+	)
+
 
 local UPDATE_INTERVAL =
 	0.5
@@ -341,58 +348,63 @@ end
 --==================================================
 
 local function getCustomersServed(
-	plot: Model
+	player: Player
 ): number
 
-	local placedBusinesses =
-		plot:FindFirstChild(
-			"PlacedBusinesses"
+	local profile =
+		DataService.GetProfile(
+			player
 		)
 
 
-	if not placedBusinesses then
+	if not profile then
 		return 0
 	end
 
 
-	local total =
-		0
+	local quests =
+		profile.Quests
 
 
-	for _, business in
-		placedBusinesses:GetChildren() do
+	if typeof(quests)
+		~= "table" then
 
-		if not business:IsA("Model") then
-			continue
-		end
-
-
-		local totalSales =
-			business:GetAttribute(
-				"TotalSales"
-			)
-
-
-		if typeof(totalSales)
-			~= "number" then
-
-			continue
-		end
-
-
-		total +=
-			math.max(
-				0,
-				math.floor(
-					totalSales
-				)
-			)
+		return 0
 	end
 
 
-	return total
-end
+	local stats =
+		quests.Stats
 
+
+	if typeof(stats)
+		~= "table" then
+
+		return 0
+	end
+
+
+	local totalSales =
+		stats.TotalSales
+
+
+	if typeof(totalSales)
+			~= "number"
+		or totalSales ~= totalSales
+		or totalSales == math.huge
+		or totalSales == -math.huge then
+
+		return 0
+	end
+
+
+	return math.max(
+		0,
+		math.floor(
+			totalSales
+		)
+	)
+end
 
 --==================================================
 -- STARS
@@ -534,9 +546,9 @@ local function updateSign(
 
 	-- Customers served.
 	local customersServed =
-		getCustomersServed(
-			plot
-		)
+	getCustomersServed(
+		owner
+	)
 
 
 	references.CustomersServed.Text =
