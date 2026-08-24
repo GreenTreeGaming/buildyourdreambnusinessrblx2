@@ -4,6 +4,9 @@ local Players =
 local ReplicatedStorage =
 	game:GetService("ReplicatedStorage")
 
+local RunService =
+	game:GetService("RunService")
+
 
 local player =
 	Players.LocalPlayer
@@ -53,6 +56,13 @@ type BusinessState = {
 	HighestLevel: number,
 
 	Levels: {LevelState},
+}
+
+
+type SpinningPreview = {
+	Model: Model,
+	BasePivot: CFrame,
+	Angle: number,
 }
 
 
@@ -137,11 +147,31 @@ local LOCKED_COLOR =
 
 
 local VIEWPORT_FOV =
-	35
+	32
 
 
+-- Lower = larger previews.
 local CAMERA_PADDING =
-	1.4
+	1.18
+
+
+-- Camera elevation.
+local CAMERA_HEIGHT_RATIO =
+	0.20
+
+
+-- Keeps the business slightly above the
+-- LevelName without modifying any UI.
+local VERTICAL_VISUAL_OFFSET =
+	0.08
+
+
+-- Full rotation speed.
+-- 18 degrees/sec = 20 seconds per full rotation.
+local SPIN_SPEED =
+	math.rad(
+		18
+	)
 
 
 --==================================================
@@ -157,16 +187,58 @@ local loading =
 	false
 
 
+local spinningPreviews: {
+	[Model]: SpinningPreview
+} = {}
+
+
 businessTemplate.Visible =
 	false
 
 
-businessesFrame.AutomaticCanvasSize =
-	Enum.AutomaticSize.Y
+--==================================================
+-- SPIN LOOP
+--==================================================
+
+RunService.RenderStepped:Connect(
+	function(
+		deltaTime: number
+	)
+
+		for model,
+			preview in
+			spinningPreviews do
+
+			if not model.Parent then
+
+				spinningPreviews[
+					model
+				] = nil
+
+				continue
+			end
+
+
+			preview.Angle +=
+				SPIN_SPEED
+					* deltaTime
+
+
+			model:PivotTo(
+				preview.BasePivot
+					* CFrame.Angles(
+						0,
+						preview.Angle,
+						0
+					)
+			)
+		end
+	end
+)
 
 
 --==================================================
--- CLEANUP
+-- CLEAN GENERATED BUSINESSES
 --==================================================
 
 local function clearGeneratedBusinesses()
@@ -193,6 +265,10 @@ local function clearGeneratedBusinesses()
 	end
 end
 
+
+--==================================================
+-- CLEAN GENERATED LEVELS
+--==================================================
 
 local function clearGeneratedLevels(
 	levelsFrame: Frame,
@@ -223,7 +299,228 @@ end
 
 
 --==================================================
--- PREPARE VIEWPORT MODEL
+-- PREVIEW PART FILTER
+--==================================================
+
+local function isVisiblePreviewPart(
+	part: BasePart
+): boolean
+
+	if part.Transparency
+		>= 0.98 then
+
+		return false
+	end
+
+
+	local lowerName =
+		string.lower(
+			part.Name
+		)
+
+
+	local ignoredNames = {
+		"position",
+		"queue",
+		"waypoint",
+		"interaction",
+		"customerfacing",
+		"customer facing",
+		"editposition",
+		"customerposition",
+		"spawnposition",
+	}
+
+
+	for _, ignoredName in
+		ignoredNames do
+
+		if string.find(
+			lowerName,
+			ignoredName,
+			1,
+			true
+		) then
+
+			return false
+		end
+	end
+
+
+	return true
+end
+
+
+--==================================================
+-- GET VISIBLE PARTS
+--==================================================
+
+local function getVisibleParts(
+	model: Model
+): {BasePart}
+
+	local parts: {BasePart} =
+		{}
+
+
+	for _, descendant in
+		model:GetDescendants() do
+
+		if not descendant:IsA(
+			"BasePart"
+		) then
+
+			continue
+		end
+
+
+		if not isVisiblePreviewPart(
+			descendant
+		) then
+
+			continue
+		end
+
+
+		table.insert(
+			parts,
+			descendant
+		)
+	end
+
+
+	return parts
+end
+
+
+--==================================================
+-- VISIBLE BOUNDS
+--==================================================
+
+local function getVisibleBounds(
+	model: Model
+): (
+	Vector3,
+	Vector3
+)
+
+	local minimum:
+		Vector3? =
+		nil
+
+
+	local maximum:
+		Vector3? =
+		nil
+
+
+	for _, part in
+		getVisibleParts(
+			model
+		) do
+
+		local halfSize =
+			part.Size
+				* 0.5
+
+
+		for x = -1, 1, 2 do
+			for y = -1, 1, 2 do
+				for z = -1, 1, 2 do
+
+					local corner =
+						part.CFrame
+							:PointToWorldSpace(
+								Vector3.new(
+									halfSize.X
+										* x,
+
+									halfSize.Y
+										* y,
+
+									halfSize.Z
+										* z
+								)
+							)
+
+
+					if not minimum then
+
+						minimum =
+							corner
+
+						maximum =
+							corner
+
+					else
+
+						minimum =
+							Vector3.new(
+								math.min(
+									minimum.X,
+									corner.X
+								),
+
+								math.min(
+									minimum.Y,
+									corner.Y
+								),
+
+								math.min(
+									minimum.Z,
+									corner.Z
+								)
+							)
+
+
+						maximum =
+							Vector3.new(
+								math.max(
+									maximum.X,
+									corner.X
+								),
+
+								math.max(
+									maximum.Y,
+									corner.Y
+								),
+
+								math.max(
+									maximum.Z,
+									corner.Z
+								)
+							)
+					end
+				end
+			end
+		end
+	end
+
+
+	if not minimum
+		or not maximum then
+
+		local boundingCFrame,
+			boundingSize =
+			model:GetBoundingBox()
+
+
+		return boundingCFrame.Position,
+			boundingSize
+	end
+
+
+	return (
+		minimum
+			+ maximum
+	) * 0.5,
+		maximum
+			- minimum
+end
+
+
+--==================================================
+-- PREPARE MODEL
 --==================================================
 
 local function prepareModelForViewport(
@@ -234,7 +531,6 @@ local function prepareModelForViewport(
 	for _, descendant in
 		model:GetDescendants() do
 
-		-- Remove scripts.
 		if descendant:IsA(
 			"Script"
 		)
@@ -244,12 +540,10 @@ local function prepareModelForViewport(
 
 			descendant:Destroy()
 
-
 			continue
 		end
 
 
-		-- Remove world UI.
 		if descendant:IsA(
 			"BillboardGui"
 		)
@@ -258,7 +552,6 @@ local function prepareModelForViewport(
 			) then
 
 			descendant:Destroy()
-
 
 			continue
 		end
@@ -284,7 +577,10 @@ local function prepareModelForViewport(
 				false
 
 
-			if not unlocked then
+			if not unlocked
+				and isVisiblePreviewPart(
+					descendant
+				) then
 
 				descendant.Color =
 					LOCKED_COLOR
@@ -359,64 +655,175 @@ end
 
 
 --==================================================
+-- CENTER MODEL FOR SPINNING
+--==================================================
+
+local function centerModelForPreview(
+	model: Model
+): Vector3
+
+	local center,
+		size =
+		getVisibleBounds(
+			model
+		)
+
+
+	local currentPivot =
+		model:GetPivot()
+
+
+	-- Move the visual center to the origin.
+	local offset =
+		-center
+
+
+	model:PivotTo(
+		CFrame.new(
+			currentPivot.Position
+				+ offset
+		)
+		* currentPivot.Rotation
+	)
+
+
+	-- Recalculate after moving.
+	local newCenter =
+		getVisibleBounds(
+			model
+		)
+
+
+	-- Small corrective move in case the model
+	-- pivot/orientation caused any tiny offset.
+	model:PivotTo(
+		CFrame.new(
+			-newCenter
+		)
+		* model:GetPivot()
+	)
+
+
+	return size
+end
+
+
+--==================================================
 -- CAMERA
 --==================================================
 
 local function positionCamera(
 	viewport: ViewportFrame,
-	model: Model
+	model: Model,
+	boundingSize: Vector3
 )
 
-	local boundingCFrame,
-		boundingSize =
-		model:GetBoundingBox()
+	local viewportSize =
+		viewport.AbsoluteSize
 
 
-	local center =
-		boundingCFrame.Position
+	local aspectRatio =
+		1
 
 
-	local largestSize =
+	if viewportSize.Y > 0 then
+
+		aspectRatio =
+			viewportSize.X
+				/ viewportSize.Y
+	end
+
+
+	aspectRatio =
 		math.max(
-			boundingSize.X,
+			aspectRatio,
+			0.1
+		)
+
+
+	-- Since the model spins, camera distance must
+	-- account for either X or Z becoming the width.
+	local horizontalSize =
+		math.sqrt(
+			boundingSize.X
+				* boundingSize.X
+				+
+				boundingSize.Z
+					* boundingSize.Z
+		)
+
+
+	local verticalSize =
+		math.max(
 			boundingSize.Y,
-			boundingSize.Z
+			0.5
 		)
 
 
-	largestSize =
+	horizontalSize =
 		math.max(
-			largestSize,
-			1
+			horizontalSize,
+			0.5
 		)
 
 
-	local halfFov =
+	local verticalFov =
 		math.rad(
-			VIEWPORT_FOV * 0.5
+			VIEWPORT_FOV
 		)
+
+
+	local horizontalFov =
+		2
+		* math.atan(
+			math.tan(
+				verticalFov
+					* 0.5
+			)
+			* aspectRatio
+		)
+
+
+	local verticalDistance =
+		(verticalSize * 0.5)
+			/
+			math.tan(
+				verticalFov
+					* 0.5
+			)
+
+
+	local horizontalDistance =
+		(horizontalSize * 0.5)
+			/
+			math.tan(
+				horizontalFov
+					* 0.5
+			)
 
 
 	local distance =
-		(
-			largestSize
-				/
-				(
-					2
-					* math.tan(
-						halfFov
-					)
-				)
+		math.max(
+			verticalDistance,
+			horizontalDistance
 		)
 		* CAMERA_PADDING
 
 
-	local direction =
+	local height =
+		boundingSize.Y
+			* CAMERA_HEIGHT_RATIO
+
+
+	local lookTarget =
 		Vector3.new(
-			1,
-			0.65,
-			1
-		).Unit
+			0,
+
+			-boundingSize.Y
+				* VERTICAL_VISUAL_OFFSET,
+
+			0
+		)
 
 
 	local camera =
@@ -433,13 +840,17 @@ local function positionCamera(
 		VIEWPORT_FOV
 
 
+	-- Camera stays still.
+	-- The business rotates instead.
 	camera.CFrame =
 		CFrame.lookAt(
-			center
-				+ direction
-					* distance,
+			Vector3.new(
+				0,
+				height,
+				distance
+			),
 
-			center
+			lookTarget
 		)
 
 
@@ -449,6 +860,29 @@ local function positionCamera(
 
 	viewport.CurrentCamera =
 		camera
+end
+
+
+--==================================================
+-- START SPINNING
+--==================================================
+
+local function startSpinning(
+	model: Model
+)
+
+	spinningPreviews[
+		model
+	] = {
+		Model =
+			model,
+
+		BasePivot =
+			model:GetPivot(),
+
+		Angle =
+			0,
+	}
 end
 
 
@@ -463,10 +897,6 @@ local function populateViewport(
 )
 
 	viewport:ClearAllChildren()
-
-
-	viewport.BackgroundTransparency =
-		1
 
 
 	if unlocked then
@@ -488,7 +918,6 @@ local function populateViewport(
 
 	else
 
-		-- Completely dark locked silhouette.
 		viewport.Ambient =
 			Color3.new(
 				0,
@@ -562,9 +991,33 @@ local function populateViewport(
 		worldModel
 
 
-	positionCamera(
-		viewport,
-		model
+	local boundingSize =
+		centerModelForPreview(
+			model
+		)
+
+
+	task.defer(
+		function()
+
+			if not viewport.Parent
+				or not model.Parent then
+
+				return
+			end
+
+
+			positionCamera(
+				viewport,
+				model,
+				boundingSize
+			)
+
+
+			startSpinning(
+				model
+			)
+		end
 	)
 end
 
@@ -617,15 +1070,15 @@ local function createLevelCard(
 		`Level {levelState.Level}`
 
 
+	levelCard.Parent =
+		levelsFrame
+
+
 	populateViewport(
 		viewport,
 		levelState.TemplateName,
 		levelState.Unlocked
 	)
-
-
-	levelCard.Parent =
-		levelsFrame
 end
 
 
@@ -691,6 +1144,10 @@ local function createBusinessCard(
 	)
 
 
+	card.Parent =
+		businessesFrame
+
+
 	for _, levelState in
 		businessState.Levels do
 
@@ -700,15 +1157,11 @@ local function createBusinessCard(
 			levelState
 		)
 	end
-
-
-	card.Parent =
-		businessesFrame
 end
 
 
 --==================================================
--- BUILD BUSINESS INDEX
+-- BUILD INDEX
 --==================================================
 
 local function buildBusinessIndex(
@@ -808,14 +1261,9 @@ local function showBusinesses()
 end
 
 
--- Customers page comes next.
 local function showCustomers()
 
-	-- Don't hide Businesses yet because there is
-	-- currently no CustomersFrame.
-	--
-	-- Once CustomersFrame is added, this is where
-	-- we switch to it.
+	-- CustomersFrame comes later.
 end
 
 
@@ -843,6 +1291,7 @@ indexFrame:GetPropertyChangedSignal(
 	function()
 
 		if not indexFrame.Visible then
+
 			return
 		end
 
@@ -853,7 +1302,7 @@ indexFrame:GetPropertyChangedSignal(
 
 
 --==================================================
--- LIVE REFRESHES
+-- LIVE REFRESH
 --==================================================
 
 local businessUnlocked =
