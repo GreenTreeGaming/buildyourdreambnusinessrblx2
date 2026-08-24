@@ -1,0 +1,338 @@
+local CustomerTypes = {}
+
+
+local random =
+	Random.new()
+
+
+export type CustomerTypeConfig = {
+	DisplayName: string,
+
+	Weight: number,
+
+	PaymentMultiplier: number,
+	TrafficMultiplier: number,
+
+	TextColor: Color3,
+	StrokeColor: Color3,
+}
+
+
+--==================================================
+-- CONFIG
+--==================================================
+
+CustomerTypes.Types = {
+	Regular = {
+		DisplayName =
+			"Regular",
+
+		Weight =
+			700,
+
+		PaymentMultiplier =
+			1,
+
+		TrafficMultiplier =
+			1,
+
+		TextColor =
+			Color3.fromRGB(
+				88,
+				255,
+				103
+			),
+
+		StrokeColor =
+			Color3.fromRGB(
+				25,
+				112,
+				35
+			),
+	},
+
+
+	Generous = {
+		DisplayName =
+			"Generous",
+
+		Weight =
+			130,
+
+		PaymentMultiplier =
+			1.5,
+
+		TrafficMultiplier =
+			1,
+
+		TextColor =
+			Color3.fromRGB(
+				105,
+				220,
+				255
+			),
+
+		StrokeColor =
+			Color3.fromRGB(
+				30,
+				110,
+				160
+			),
+	},
+
+
+	Rich = {
+		DisplayName =
+			"Rich",
+
+		Weight =
+			80,
+
+		PaymentMultiplier =
+			2.5,
+
+		TrafficMultiplier =
+			1,
+
+		TextColor =
+			Color3.fromRGB(
+				93,
+				255,
+				181
+			),
+
+		StrokeColor =
+			Color3.fromRGB(
+				24,
+				128,
+				85
+			),
+	},
+
+
+	VIP = {
+		DisplayName =
+			"VIP",
+
+		Weight =
+			45,
+
+		PaymentMultiplier =
+			4,
+
+		TrafficMultiplier =
+			1,
+
+		TextColor =
+			Color3.fromRGB(
+				255,
+				226,
+				52
+			),
+
+		StrokeColor =
+			Color3.fromRGB(
+				165,
+				112,
+				10
+			),
+	},
+
+
+	Celebrity = {
+		DisplayName =
+			"Celebrity",
+
+		Weight =
+			25,
+
+		PaymentMultiplier =
+			3,
+
+		TrafficMultiplier =
+			1.35,
+
+		TextColor =
+			Color3.fromRGB(
+				255,
+				118,
+				218
+			),
+
+		StrokeColor =
+			Color3.fromRGB(
+				153,
+				45,
+				126
+			),
+	},
+
+
+	Influencer = {
+		DisplayName =
+			"Influencer",
+
+		Weight =
+			12,
+
+		PaymentMultiplier =
+			5,
+
+		TrafficMultiplier =
+			1.6,
+
+		TextColor =
+			Color3.fromRGB(
+				185,
+				105,
+				255
+			),
+
+		StrokeColor =
+			Color3.fromRGB(
+				93,
+				39,
+				153
+			),
+	},
+
+
+	Billionaire = {
+		DisplayName =
+			"Billionaire",
+
+		Weight =
+			7,
+
+		PaymentMultiplier =
+			10,
+
+		TrafficMultiplier =
+			1,
+
+		TextColor =
+			Color3.fromRGB(
+				68,
+				224,
+				255
+			),
+
+		StrokeColor =
+			Color3.fromRGB(
+				18,
+				94,
+				145
+			),
+	},
+
+
+	Golden = {
+		DisplayName =
+			"Golden",
+
+		Weight =
+			1,
+
+		PaymentMultiplier =
+			25,
+
+		TrafficMultiplier =
+			2,
+
+		TextColor =
+			Color3.fromRGB(
+				255,
+				206,
+				36
+			),
+
+		StrokeColor =
+			Color3.fromRGB(
+				150,
+				87,
+				5
+			),
+	},
+}
+
+
+--==================================================
+-- TOTAL WEIGHT
+--==================================================
+
+local totalWeight =
+	0
+
+
+for _, config in
+	CustomerTypes.Types do
+
+	totalWeight +=
+		config.Weight
+end
+
+
+--==================================================
+-- GET
+--==================================================
+
+function CustomerTypes.Get(
+	customerType: string
+): CustomerTypeConfig
+
+	local config =
+		CustomerTypes.Types[
+			customerType
+		]
+
+
+	if config then
+		return config
+	end
+
+
+	return CustomerTypes.Types.Regular
+end
+
+
+--==================================================
+-- RANDOM
+--==================================================
+
+function CustomerTypes.GetRandomType(): (
+	string,
+	CustomerTypeConfig
+)
+
+	local roll =
+		random:NextNumber(
+			0,
+			totalWeight
+		)
+
+
+	local accumulated =
+		0
+
+
+	for customerType, config in
+		CustomerTypes.Types do
+
+		accumulated +=
+			config.Weight
+
+
+		if roll <= accumulated then
+
+			return customerType,
+				config
+		end
+	end
+
+
+	return "Regular",
+		CustomerTypes.Types.Regular
+end
+
+
+return CustomerTypes

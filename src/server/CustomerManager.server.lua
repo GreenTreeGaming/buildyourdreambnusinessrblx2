@@ -41,6 +41,13 @@ local CustomerNames =
 			:WaitForChild("CustomerNames")
 	)
 
+local CustomerTypes =
+	require(
+		ReplicatedStorage
+			:WaitForChild("Shared")
+			:WaitForChild("CustomerTypes")
+	)
+
 local npcInfoTemplate =
 	ReplicatedStorage:WaitForChild(
 		"NPCInfo"
@@ -206,28 +213,375 @@ local plotNextSpawnTimes: {
 } = {}
 
 --==================================================
--- CUSTOMER INFO
+-- CUSTOMER VISUAL EFFECTS
 --==================================================
 
-local REGULAR_TEXT_COLOR =
-	Color3.fromRGB(
-		88,
-		255,
-		103
-	)
+local function createParticleEmitter(
+	parent: BasePart,
+	name: string,
+	texture: string,
+	color: ColorSequence,
+	rate: number,
+	lifetime: NumberRange,
+	speed: NumberRange,
+	size: NumberSequence
+): ParticleEmitter
 
-local REGULAR_STROKE_COLOR =
-	Color3.fromRGB(
-		25,
-		112,
-		35
-	)
+	local emitter =
+		Instance.new("ParticleEmitter")
 
+	emitter.Name =
+		name
+
+	emitter.Texture =
+		texture
+
+	emitter.Color =
+		color
+
+	emitter.Rate =
+		rate
+
+	emitter.Lifetime =
+		lifetime
+
+	emitter.Speed =
+		speed
+
+	emitter.Size =
+		size
+
+	emitter.LightEmission =
+		0.35
+
+	emitter.SpreadAngle =
+		Vector2.new(
+			180,
+			180
+		)
+
+	emitter.Rotation =
+		NumberRange.new(
+			0,
+			360
+		)
+
+	emitter.RotSpeed =
+		NumberRange.new(
+			-35,
+			35
+		)
+
+	emitter.Parent =
+		parent
+
+
+	return emitter
+end
+
+
+local function addCustomerVisualEffects(
+	customer: Model,
+	customerType: string
+)
+	local rootPart =
+		customer:FindFirstChild(
+			"HumanoidRootPart"
+		)
+
+	local head =
+		customer:FindFirstChild(
+			"Head"
+		)
+
+
+	if not rootPart
+		or not rootPart:IsA("BasePart")
+		or not head
+		or not head:IsA("BasePart") then
+
+		return
+	end
+
+
+	-- Prevent duplicate effects.
+	if customer:GetAttribute(
+		"CustomerEffectsInitialized"
+	) == true then
+
+		return
+	end
+
+
+	--==================================================
+	-- VIP
+	--==================================================
+
+	if customerType == "VIP" then
+
+		createParticleEmitter(
+			head,
+			"VIPSparkles",
+
+			"rbxasset://textures/particles/sparkles_main.dds",
+
+			ColorSequence.new(
+				Color3.fromRGB(
+					255,
+					222,
+					73
+				)
+			),
+
+			4,
+
+			NumberRange.new(
+				0.45,
+				0.8
+			),
+
+			NumberRange.new(
+				0.2,
+				0.7
+			),
+
+			NumberSequence.new({
+				NumberSequenceKeypoint.new(
+					0,
+					0.16
+				),
+
+				NumberSequenceKeypoint.new(
+					0.5,
+					0.22
+				),
+
+				NumberSequenceKeypoint.new(
+					1,
+					0
+				),
+			})
+		)
+
+
+	--==================================================
+	-- CELEBRITY
+	--==================================================
+
+	elseif customerType == "Celebrity" then
+
+		createParticleEmitter(
+			head,
+			"CelebrityStars",
+
+			"rbxasset://textures/particles/sparkles_main.dds",
+
+			ColorSequence.new(
+				Color3.fromRGB(
+					255,
+					102,
+					213
+				)
+			),
+
+			7,
+
+			NumberRange.new(
+				0.55,
+				0.95
+			),
+
+			NumberRange.new(
+				0.3,
+				0.9
+			),
+
+			NumberSequence.new({
+				NumberSequenceKeypoint.new(
+					0,
+					0.2
+				),
+
+				NumberSequenceKeypoint.new(
+					0.5,
+					0.28
+				),
+
+				NumberSequenceKeypoint.new(
+					1,
+					0
+				),
+			})
+		)
+
+
+	--==================================================
+	-- BILLIONAIRE
+	--==================================================
+
+	elseif customerType == "Billionaire" then
+
+		local emitter =
+			createParticleEmitter(
+				rootPart,
+				"BillionaireCash",
+
+				"rbxasset://textures/particles/sparkles_main.dds",
+
+				ColorSequence.new(
+					Color3.fromRGB(
+						77,
+						255,
+						126
+					)
+				),
+
+				6,
+
+				NumberRange.new(
+					0.7,
+					1.1
+				),
+
+				NumberRange.new(
+					0.6,
+					1.2
+				),
+
+				NumberSequence.new({
+					NumberSequenceKeypoint.new(
+						0,
+						0.22
+					),
+
+					NumberSequenceKeypoint.new(
+						0.7,
+						0.3
+					),
+
+					NumberSequenceKeypoint.new(
+						1,
+						0
+					),
+				})
+			)
+
+
+		emitter.Acceleration =
+			Vector3.new(
+				0,
+				2.2,
+				0
+			)
+
+
+	--==================================================
+	-- GOLDEN
+	--==================================================
+
+	elseif customerType == "Golden" then
+
+		local highlight =
+			Instance.new("Highlight")
+
+
+		highlight.Name =
+			"GoldenAura"
+
+		highlight.Adornee =
+			customer
+
+		highlight.FillColor =
+			Color3.fromRGB(
+				255,
+				196,
+				42
+			)
+
+		highlight.FillTransparency =
+			0.78
+
+		highlight.OutlineColor =
+			Color3.fromRGB(
+				255,
+				226,
+				105
+			)
+
+		highlight.OutlineTransparency =
+			0.15
+
+		highlight.DepthMode =
+			Enum.HighlightDepthMode.Occluded
+
+		highlight.Parent =
+			customer
+
+
+		local sparkles =
+			createParticleEmitter(
+				head,
+				"GoldenSparkles",
+
+				"rbxasset://textures/particles/sparkles_main.dds",
+
+				ColorSequence.new(
+					Color3.fromRGB(
+						255,
+						214,
+						65
+					)
+				),
+
+				9,
+
+				NumberRange.new(
+					0.55,
+					0.9
+				),
+
+				NumberRange.new(
+					0.25,
+					0.75
+				),
+
+				NumberSequence.new({
+					NumberSequenceKeypoint.new(
+						0,
+						0.18
+					),
+
+					NumberSequenceKeypoint.new(
+						0.5,
+						0.3
+					),
+
+					NumberSequenceKeypoint.new(
+						1,
+						0
+					),
+				})
+			)
+
+
+		sparkles.LightEmission =
+			0.65
+	end
+
+
+	customer:SetAttribute(
+		"CustomerEffectsInitialized",
+		true
+	)
+end
+
+--==================================================
+-- CUSTOMER INFO
+--==================================================
 
 local function setupCustomerInfo(
 	customer: Model
 )
-	-- Prevent accidentally adding the UI twice.
 	if customer:GetAttribute(
 		"CustomerInfoInitialized"
 	) == true then
@@ -256,27 +610,49 @@ local function setupCustomerInfo(
 
 
 	--==================================================
-	-- CUSTOMER DATA
+	-- GENERATE CUSTOMER
 	--==================================================
 
 	local customerName =
 		CustomerNames.GetRandomName()
 
 
-	local customerType =
-		"Regular"
+	local customerType,
+		typeConfig =
+		CustomerTypes.GetRandomType()
 
+
+	--==================================================
+	-- CUSTOMER ATTRIBUTES
+	--==================================================
 
 	customer:SetAttribute(
 		"CustomerName",
 		customerName
 	)
 
+
 	customer:SetAttribute(
 		"CustomerType",
 		customerType
 	)
 
+
+	customer:SetAttribute(
+		"PaymentMultiplier",
+		typeConfig.PaymentMultiplier
+	)
+
+
+	customer:SetAttribute(
+		"TrafficMultiplier",
+		typeConfig.TrafficMultiplier
+	)
+
+addCustomerVisualEffects(
+	customer,
+	customerType
+)
 
 	--==================================================
 	-- BILLBOARD
@@ -294,35 +670,35 @@ local function setupCustomerInfo(
 
 
 	local billboard =
-	npcInfoTemplate:Clone()
+		npcInfoTemplate:Clone()
 
 
-if not billboard:IsA(
-	"BillboardGui"
-) then
+	if not billboard:IsA(
+		"BillboardGui"
+	) then
 
-	warn(
-		"ReplicatedStorage.NPCInfo must be a BillboardGui."
-	)
+		warn(
+			"ReplicatedStorage.NPCInfo must be a BillboardGui."
+		)
 
-	billboard:Destroy()
+		billboard:Destroy()
 
-	return
-end
+		return
+	end
 
 
-billboard.Name =
-	"NPCInfo"
+	billboard.Name =
+		"NPCInfo"
 
-billboard.Adornee =
-	head
+	billboard.Adornee =
+		head
 
-billboard.Parent =
-	head
+	billboard.Parent =
+		head
 
 
 	--==================================================
-	-- UI REFERENCES
+	-- REFERENCES
 	--==================================================
 
 	local frame =
@@ -397,14 +773,15 @@ billboard.Parent =
 
 
 	--==================================================
-	-- TYPE
+	-- CUSTOMER TYPE
 	--==================================================
 
 	customerTypeLabel.Text =
-		customerType
+		typeConfig.DisplayName
+
 
 	customerTypeLabel.TextColor3 =
-		REGULAR_TEXT_COLOR
+		typeConfig.TextColor
 
 
 	local typeStroke =
@@ -416,7 +793,8 @@ billboard.Parent =
 	if typeStroke then
 
 		typeStroke.Color =
-			REGULAR_STROKE_COLOR
+			typeConfig.StrokeColor
+
 	else
 
 		warn(
@@ -424,13 +802,11 @@ billboard.Parent =
 		)
 	end
 
-
 	customer:SetAttribute(
-		"CustomerInfoInitialized",
-		true
-	)
+	"CustomerInfoInitialized",
+	true
+)
 end
-
 
 --==================================================
 -- PLOT HELPERS
@@ -481,6 +857,57 @@ local function getPlotCustomerLimit(
 	)
 end
 
+local function getActiveCustomerTrafficMultiplier(
+	plot: Model
+): number
+
+	local bestMultiplier =
+		1
+
+
+	for _, customer in
+		customersFolder:GetChildren() do
+
+		if not customer:IsA(
+			"Model"
+		) then
+
+			continue
+		end
+
+
+		if customer:GetAttribute(
+			"PlotName"
+		) ~= plot.Name then
+
+			continue
+		end
+
+
+		local multiplier =
+			customer:GetAttribute(
+				"TrafficMultiplier"
+			)
+
+
+		if typeof(multiplier)
+				~= "number"
+			or multiplier < 1 then
+
+			continue
+		end
+
+
+		bestMultiplier =
+			math.max(
+				bestMultiplier,
+				multiplier
+			)
+	end
+
+
+	return bestMultiplier
+end
 
 local function getPlotSpawnInterval(
 	plot: Model
@@ -524,15 +951,25 @@ local function getPlotSpawnInterval(
 		)
 
 
-	local rateMultiplier =
-		getPlotCustomerRateMultiplier(
-			plot
-		)
+	local plotRateMultiplier =
+	getPlotCustomerRateMultiplier(
+		plot
+	)
 
 
-	-- Higher rate = less time between customers.
-	return baseInterval
-		/ rateMultiplier
+local customerTrafficMultiplier =
+	getActiveCustomerTrafficMultiplier(
+		plot
+	)
+
+
+local finalRateMultiplier =
+	plotRateMultiplier
+		* customerTrafficMultiplier
+
+
+return baseInterval
+	/ finalRateMultiplier
 end
 
 
@@ -2684,7 +3121,8 @@ end
 
 local function rewardPlotOwner(
 	plot: Model,
-	stand: Model
+	stand: Model,
+	customer: Model
 ): boolean
 	local player =
 		getPlayerFromPlot(
@@ -2722,15 +3160,31 @@ local function rewardPlotOwner(
 			1
 	end
 
+	local customerPaymentMultiplier =
+	customer:GetAttribute(
+		"PaymentMultiplier"
+	)
+
+
+if typeof(customerPaymentMultiplier)
+		~= "number"
+	or customerPaymentMultiplier < 1 then
+
+	customerPaymentMultiplier =
+		1
+end
+
 	local finalSaleValue =
-		math.max(
-			0,
-			math.floor(
-				baseSaleValue
-					* cashMultiplier
-					+ 0.5
-			)
+	math.max(
+		0,
+
+		math.floor(
+			baseSaleValue
+				* cashMultiplier
+				* customerPaymentMultiplier
+				+ 0.5
 		)
+	)
 
 	cash.Value +=
 		finalSaleValue
@@ -3708,9 +4162,10 @@ local function processQueue(
 
 
 		rewardPlotOwner(
-			plot,
-			stand
-		)
+	plot,
+	stand,
+	firstEntry.customer
+)
 
 
 		firstEntry.isLeaving =
