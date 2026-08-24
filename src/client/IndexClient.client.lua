@@ -11,24 +11,18 @@ local RunService =
 local player =
 	Players.LocalPlayer
 
-
 local playerGui =
-	player:WaitForChild(
-		"PlayerGui"
-	)
-
+	player:WaitForChild("PlayerGui")
 
 local businessModels =
 	ReplicatedStorage:WaitForChild(
 		"BusinessModels"
 	)
 
-
 local remotes =
 	ReplicatedStorage:WaitForChild(
 		"Remotes"
 	)
-
 
 local getBusinessIndexState =
 	remotes:WaitForChild(
@@ -46,7 +40,6 @@ type LevelState = {
 	Unlocked: boolean,
 }
 
-
 type BusinessState = {
 	BusinessType: string,
 	DisplayName: string,
@@ -55,13 +48,18 @@ type BusinessState = {
 	Unlocked: boolean,
 	HighestLevel: number,
 
-	Levels: {LevelState},
+	Levels: { LevelState },
 }
 
-
 type SpinningPreview = {
-	Model: Model,
-	BasePivot: CFrame,
+	Viewport: ViewportFrame,
+	Camera: Camera,
+
+	Target: Vector3,
+
+	Radius: number,
+	Height: number,
+
 	Angle: number,
 }
 
@@ -75,42 +73,35 @@ local gui =
 		"ManageUI"
 	) :: ScreenGui
 
-
 local main =
 	gui:WaitForChild(
 		"Main"
 	) :: Frame
-
 
 local indexFrame =
 	main:WaitForChild(
 		"IndexFrame"
 	) :: Frame
 
-
 local buttons =
 	indexFrame:WaitForChild(
 		"Buttons"
 	) :: Frame
-
 
 local businessesButton =
 	buttons:WaitForChild(
 		"Businesses"
 	) :: TextButton
 
-
 local customersButton =
 	buttons:WaitForChild(
 		"Customers"
 	) :: TextButton
 
-
 local businessesFrame =
 	indexFrame:WaitForChild(
 		"BusinessesFrame"
 	) :: ScrollingFrame
-
 
 local businessTemplate =
 	businessesFrame:WaitForChild(
@@ -129,14 +120,12 @@ local UNLOCKED_AMBIENT =
 		150
 	)
 
-
 local UNLOCKED_LIGHT =
 	Color3.fromRGB(
 		255,
 		255,
 		255
 	)
-
 
 local LOCKED_COLOR =
 	Color3.fromRGB(
@@ -146,32 +135,48 @@ local LOCKED_COLOR =
 	)
 
 
+-- Camera FOV.
 local VIEWPORT_FOV =
 	32
 
 
--- Lower = larger previews.
+-- Extra room around the model.
 local CAMERA_PADDING =
-	1.18
+	1.16
 
 
--- Camera elevation.
+-- Slightly elevated camera.
 local CAMERA_HEIGHT_RATIO =
-	0.20
+	0.16
 
 
--- Keeps the business slightly above the
--- LevelName without modifying any UI.
+-- Moves what the camera is looking at slightly downward,
+-- which makes the model appear a little higher in the card.
 local VERTICAL_VISUAL_OFFSET =
-	0.08
+	0.04
 
 
--- Full rotation speed.
--- 18 degrees/sec = 20 seconds per full rotation.
+-- 18 degrees/sec = one rotation every 20 seconds.
 local SPIN_SPEED =
-	math.rad(
-		18
-	)
+	math.rad(18)
+
+
+-- We no longer move models every frame.
+-- Only their tiny ViewportFrame cameras move.
+--
+-- 60 FPS keeps the rotation completely smooth while still
+-- using only one shared RenderStepped connection.
+local MAX_SPIN_FPS =
+	60
+
+local SPIN_INTERVAL =
+	1 / MAX_SPIN_FPS
+
+
+-- Reserve this much room at the bottom of each level card
+-- exclusively for "Level X".
+local LEVEL_TEXT_RESERVED_HEIGHT =
+	22
 
 
 --==================================================
@@ -182,14 +187,18 @@ local currentIndexState: {
 	BusinessState
 } = {}
 
-
 local loading =
 	false
 
 
+-- Keying by ViewportFrame makes cleanup easier.
 local spinningPreviews: {
-	[Model]: SpinningPreview
+	[ViewportFrame]: SpinningPreview
 } = {}
+
+
+local spinAccumulator =
+	0
 
 
 businessTemplate.Visible =
@@ -197,41 +206,125 @@ businessTemplate.Visible =
 
 
 --==================================================
--- SPIN LOOP
+-- PREVIEW REGISTRATION
+--==================================================
+
+local function stopPreview(
+	viewport: ViewportFrame
+)
+	spinningPreviews[viewport] =
+		nil
+end
+
+
+local function clearAllPreviewRegistrations()
+	for viewport in spinningPreviews do
+		if not viewport.Parent then
+			spinningPreviews[viewport] =
+				nil
+		end
+	end
+end
+
+
+--==================================================
+-- CAMERA SPIN LOOP
 --==================================================
 
 RunService.RenderStepped:Connect(
-	function(
-		deltaTime: number
-	)
+	function(deltaTime: number)
 
-		for model,
-			preview in
+		-- Don't spend time rotating previews while
+		-- the index isn't even being shown.
+		if not indexFrame.Visible
+			or not businessesFrame.Visible then
+
+			spinAccumulator =
+				0
+
+			return
+		end
+
+
+		spinAccumulator +=
+			deltaTime
+
+
+		-- Prevent unnecessarily updating faster than
+		-- the chosen preview FPS.
+		if spinAccumulator
+			< SPIN_INTERVAL then
+
+			return
+		end
+
+
+		local step =
+			math.min(
+				spinAccumulator,
+				0.1
+			)
+
+		spinAccumulator =
+			0
+
+
+		for viewport, preview in
 			spinningPreviews do
 
-			if not model.Parent then
+			if not viewport.Parent
+				or not preview.Camera.Parent then
 
-				spinningPreviews[
-					model
-				] = nil
+				spinningPreviews[viewport] =
+					nil
 
 				continue
 			end
 
 
-			preview.Angle +=
-				SPIN_SPEED
-					* deltaTime
+			-- Don't update previews which aren't currently
+			-- visible in the UI hierarchy.
+			if not viewport.Visible then
+				continue
+			end
 
 
-			model:PivotTo(
-				preview.BasePivot
-					* CFrame.Angles(
-						0,
-						preview.Angle,
-						0
-					)
-			)
+			preview.Angle =
+				(
+					preview.Angle
+					+ SPIN_SPEED * step
+				)
+				% (math.pi * 2)
+
+
+			local angle =
+				preview.Angle
+
+
+			-- Constant-radius orbit.
+			--
+			-- THIS is the important difference from the old
+			-- version. The model itself never moves, meaning
+			-- weird PrimaryParts / pivots cannot make a model
+			-- swing outward and inward.
+			local cameraPosition =
+				preview.Target
+				+ Vector3.new(
+					math.sin(angle)
+						* preview.Radius,
+
+					preview.Height,
+
+					math.cos(angle)
+						* preview.Radius
+				)
+
+
+			preview.Camera.CFrame =
+				CFrame.lookAt(
+					cameraPosition,
+					preview.Target
+				)
 		end
 	end
 )
@@ -246,23 +339,39 @@ local function clearGeneratedBusinesses()
 	for _, child in
 		businessesFrame:GetChildren() do
 
-		if child
-			== businessTemplate then
-
+		if child == businessTemplate then
 			continue
 		end
 
 
-		if child:IsA(
-			"GuiObject"
-		)
+		if child:IsA("GuiObject")
 			and child:GetAttribute(
 				"IndexGenerated"
 			) == true then
 
+			-- Remove ViewportFrames from the spin table
+			-- immediately rather than waiting for the next
+			-- RenderStepped cleanup pass.
+			for _, descendant in
+				child:GetDescendants() do
+
+				if descendant:IsA(
+					"ViewportFrame"
+				) then
+
+					stopPreview(
+						descendant
+					)
+				end
+			end
+
+
 			child:Destroy()
 		end
 	end
+
+
+	clearAllPreviewRegistrations()
 end
 
 
@@ -278,19 +387,29 @@ local function clearGeneratedLevels(
 	for _, child in
 		levelsFrame:GetChildren() do
 
-		if child
-			== levelTemplate then
-
+		if child == levelTemplate then
 			continue
 		end
 
 
-		if child:IsA(
-			"GuiObject"
-		)
+		if child:IsA("GuiObject")
 			and child:GetAttribute(
 				"IndexGenerated"
 			) == true then
+
+			for _, descendant in
+				child:GetDescendants() do
+
+				if descendant:IsA(
+					"ViewportFrame"
+				) then
+
+					stopPreview(
+						descendant
+					)
+				end
+			end
+
 
 			child:Destroy()
 		end
@@ -302,13 +421,33 @@ end
 -- PREVIEW PART FILTER
 --==================================================
 
+local IGNORED_PREVIEW_NAMES = {
+	"position",
+	"queue",
+	"waypoint",
+	"interaction",
+
+	"customerfacing",
+	"customer facing",
+
+	"editposition",
+	"customerposition",
+	"spawnposition",
+
+	"placementorigin",
+	"placementbounds",
+
+	"managementuiposition",
+	"cooldownuiposition",
+	"saleeffectposition",
+}
+
+
 local function isVisiblePreviewPart(
 	part: BasePart
 ): boolean
 
-	if part.Transparency
-		>= 0.98 then
-
+	if part.Transparency >= 0.98 then
 		return false
 	end
 
@@ -319,21 +458,8 @@ local function isVisiblePreviewPart(
 		)
 
 
-	local ignoredNames = {
-		"position",
-		"queue",
-		"waypoint",
-		"interaction",
-		"customerfacing",
-		"customer facing",
-		"editposition",
-		"customerposition",
-		"spawnposition",
-	}
-
-
 	for _, ignoredName in
-		ignoredNames do
+		IGNORED_PREVIEW_NAMES do
 
 		if string.find(
 			lowerName,
@@ -352,14 +478,14 @@ end
 
 
 --==================================================
--- GET VISIBLE PARTS
+-- VISIBLE PARTS
 --==================================================
 
 local function getVisibleParts(
 	model: Model
-): {BasePart}
+): { BasePart }
 
-	local parts: {BasePart} =
+	local parts: { BasePart } =
 		{}
 
 
@@ -404,24 +530,20 @@ local function getVisibleBounds(
 	Vector3
 )
 
-	local minimum:
-		Vector3? =
+	local minimum: Vector3? =
+		nil
+
+	local maximum: Vector3? =
 		nil
 
 
-	local maximum:
-		Vector3? =
-		nil
-
-
+	-- This runs ONCE when a preview is created.
+	-- It does not run every frame.
 	for _, part in
-		getVisibleParts(
-			model
-		) do
+		getVisibleParts(model) do
 
 		local halfSize =
-			part.Size
-				* 0.5
+			part.Size * 0.5
 
 
 		for x = -1, 1, 2 do
@@ -432,19 +554,15 @@ local function getVisibleBounds(
 						part.CFrame
 							:PointToWorldSpace(
 								Vector3.new(
-									halfSize.X
-										* x,
-
-									halfSize.Y
-										* y,
-
-									halfSize.Z
-										* z
+									halfSize.X * x,
+									halfSize.Y * y,
+									halfSize.Z * z
 								)
 							)
 
 
-					if not minimum then
+					if not minimum
+						or not maximum then
 
 						minimum =
 							corner
@@ -505,17 +623,15 @@ local function getVisibleBounds(
 			model:GetBoundingBox()
 
 
-		return boundingCFrame.Position,
+		return
+			boundingCFrame.Position,
 			boundingSize
 	end
 
 
-	return (
-		minimum
-			+ maximum
-	) * 0.5,
-		maximum
-			- minimum
+	return
+		(minimum + maximum) * 0.5,
+		maximum - minimum
 end
 
 
@@ -531,9 +647,7 @@ local function prepareModelForViewport(
 	for _, descendant in
 		model:GetDescendants() do
 
-		if descendant:IsA(
-			"Script"
-		)
+		if descendant:IsA("Script")
 			or descendant:IsA(
 				"LocalScript"
 			) then
@@ -564,14 +678,11 @@ local function prepareModelForViewport(
 			descendant.Anchored =
 				true
 
-
 			descendant.CanCollide =
 				false
 
-
 			descendant.CanTouch =
 				false
-
 
 			descendant.CanQuery =
 				false
@@ -585,10 +696,8 @@ local function prepareModelForViewport(
 				descendant.Color =
 					LOCKED_COLOR
 
-
 				descendant.Material =
 					Enum.Material.SmoothPlastic
-
 
 				descendant.Reflectance =
 					0
@@ -603,6 +712,38 @@ local function prepareModelForViewport(
 				end
 			end
 
+
+			continue
+		end
+
+
+		if descendant:IsA(
+			"ParticleEmitter"
+		)
+			or descendant:IsA(
+				"Trail"
+			)
+			or descendant:IsA(
+				"Beam"
+			) then
+
+			-- These previews are tiny.
+			-- There is no reason to spend rendering time on
+			-- particles/trails/beams in the index.
+			descendant.Enabled =
+				false
+
+			continue
+		end
+
+
+		if descendant:IsA(
+			"Light"
+		) then
+
+			-- ViewportFrame already provides lighting.
+			descendant.Enabled =
+				false
 
 			continue
 		end
@@ -626,28 +767,6 @@ local function prepareModelForViewport(
 			) then
 
 				descendant:Destroy()
-
-
-			elseif descendant:IsA(
-				"ParticleEmitter"
-			)
-				or descendant:IsA(
-					"Trail"
-				)
-				or descendant:IsA(
-					"Beam"
-				) then
-
-				descendant.Enabled =
-					false
-
-
-			elseif descendant:IsA(
-				"Light"
-			) then
-
-				descendant.Enabled =
-					false
 			end
 		end
 	end
@@ -655,68 +774,13 @@ end
 
 
 --==================================================
--- CENTER MODEL FOR SPINNING
+-- CAMERA MATH
 --==================================================
 
-local function centerModelForPreview(
-	model: Model
-): Vector3
-
-	local center,
-		size =
-		getVisibleBounds(
-			model
-		)
-
-
-	local currentPivot =
-		model:GetPivot()
-
-
-	-- Move the visual center to the origin.
-	local offset =
-		-center
-
-
-	model:PivotTo(
-		CFrame.new(
-			currentPivot.Position
-				+ offset
-		)
-		* currentPivot.Rotation
-	)
-
-
-	-- Recalculate after moving.
-	local newCenter =
-		getVisibleBounds(
-			model
-		)
-
-
-	-- Small corrective move in case the model
-	-- pivot/orientation caused any tiny offset.
-	model:PivotTo(
-		CFrame.new(
-			-newCenter
-		)
-		* model:GetPivot()
-	)
-
-
-	return size
-end
-
-
---==================================================
--- CAMERA
---==================================================
-
-local function positionCamera(
+local function calculateCameraDistance(
 	viewport: ViewportFrame,
-	model: Model,
 	boundingSize: Vector3
-)
+): number
 
 	local viewportSize =
 		viewport.AbsoluteSize
@@ -741,32 +805,6 @@ local function positionCamera(
 		)
 
 
-	-- Since the model spins, camera distance must
-	-- account for either X or Z becoming the width.
-	local horizontalSize =
-		math.sqrt(
-			boundingSize.X
-				* boundingSize.X
-				+
-				boundingSize.Z
-					* boundingSize.Z
-		)
-
-
-	local verticalSize =
-		math.max(
-			boundingSize.Y,
-			0.5
-		)
-
-
-	horizontalSize =
-		math.max(
-			horizontalSize,
-			0.5
-		)
-
-
 	local verticalFov =
 		math.rad(
 			VIEWPORT_FOV
@@ -777,112 +815,56 @@ local function positionCamera(
 		2
 		* math.atan(
 			math.tan(
-				verticalFov
-					* 0.5
+				verticalFov * 0.5
 			)
 			* aspectRatio
 		)
 
 
-	local verticalDistance =
-		(verticalSize * 0.5)
-			/
-			math.tan(
-				verticalFov
-					* 0.5
-			)
+	-- The model can face any direction while the camera
+	-- orbits it, so use the diagonal of the X/Z footprint.
+	--
+	-- This prevents wide businesses from clipping or
+	-- appearing to zoom in/out at different angles.
+	local horizontalDiameter =
+		math.sqrt(
+			boundingSize.X
+				* boundingSize.X
+			+
+			boundingSize.Z
+				* boundingSize.Z
+		)
+
+
+	local verticalDiameter =
+		math.max(
+			boundingSize.Y,
+			0.5
+		)
 
 
 	local horizontalDistance =
-		(horizontalSize * 0.5)
-			/
-			math.tan(
-				horizontalFov
-					* 0.5
-			)
+		(horizontalDiameter * 0.5)
+		/
+		math.tan(
+			horizontalFov * 0.5
+		)
 
 
-	local distance =
+	local verticalDistance =
+		(verticalDiameter * 0.5)
+		/
+		math.tan(
+			verticalFov * 0.5
+		)
+
+
+	return
 		math.max(
-			verticalDistance,
-			horizontalDistance
+			horizontalDistance,
+			verticalDistance
 		)
 		* CAMERA_PADDING
-
-
-	local height =
-		boundingSize.Y
-			* CAMERA_HEIGHT_RATIO
-
-
-	local lookTarget =
-		Vector3.new(
-			0,
-
-			-boundingSize.Y
-				* VERTICAL_VISUAL_OFFSET,
-
-			0
-		)
-
-
-	local camera =
-		Instance.new(
-			"Camera"
-		)
-
-
-	camera.Name =
-		"IndexCamera"
-
-
-	camera.FieldOfView =
-		VIEWPORT_FOV
-
-
-	-- Camera stays still.
-	-- The business rotates instead.
-	camera.CFrame =
-		CFrame.lookAt(
-			Vector3.new(
-				0,
-				height,
-				distance
-			),
-
-			lookTarget
-		)
-
-
-	camera.Parent =
-		viewport
-
-
-	viewport.CurrentCamera =
-		camera
-end
-
-
---==================================================
--- START SPINNING
---==================================================
-
-local function startSpinning(
-	model: Model
-)
-
-	spinningPreviews[
-		model
-	] = {
-		Model =
-			model,
-
-		BasePivot =
-			model:GetPivot(),
-
-		Angle =
-			0,
-	}
 end
 
 
@@ -896,7 +878,16 @@ local function populateViewport(
 	unlocked: boolean
 )
 
+	stopPreview(
+		viewport
+	)
+
+
 	viewport:ClearAllChildren()
+
+
+	viewport.ClipsDescendants =
+		true
 
 
 	if unlocked then
@@ -904,10 +895,8 @@ local function populateViewport(
 		viewport.Ambient =
 			UNLOCKED_AMBIENT
 
-
 		viewport.LightColor =
 			UNLOCKED_LIGHT
-
 
 		viewport.LightDirection =
 			Vector3.new(
@@ -925,14 +914,12 @@ local function populateViewport(
 				0
 			)
 
-
 		viewport.LightColor =
 			Color3.new(
 				0,
 				0,
 				0
 			)
-
 
 		viewport.LightDirection =
 			Vector3.zero
@@ -954,7 +941,6 @@ local function populateViewport(
 			`[Index] Missing business model "{templateName}".`
 		)
 
-
 		return
 	end
 
@@ -964,10 +950,8 @@ local function populateViewport(
 			"WorldModel"
 		)
 
-
 	worldModel.Name =
 		"PreviewWorld"
-
 
 	worldModel.Parent =
 		viewport
@@ -975,7 +959,6 @@ local function populateViewport(
 
 	local model =
 		template:Clone()
-
 
 	model.Name =
 		"PreviewModel"
@@ -991,32 +974,118 @@ local function populateViewport(
 		worldModel
 
 
-	local boundingSize =
-		centerModelForPreview(
+	-- IMPORTANT:
+	--
+	-- We do NOT move the model to its PrimaryPart/pivot.
+	-- The camera simply rotates around the actual visible
+	-- center of the model.
+	--
+	-- This means PlacementOrigin, PrimaryPart and imported
+	-- model pivots cannot cause the preview to orbit wildly.
+	local visibleCenter,
+		boundingSize =
+		getVisibleBounds(
 			model
 		)
+
+
+	local camera =
+		Instance.new(
+			"Camera"
+		)
+
+	camera.Name =
+		"IndexCamera"
+
+	camera.FieldOfView =
+		VIEWPORT_FOV
+
+	camera.Parent =
+		viewport
+
+	viewport.CurrentCamera =
+		camera
 
 
 	task.defer(
 		function()
 
 			if not viewport.Parent
-				or not model.Parent then
+				or not model.Parent
+				or not camera.Parent then
 
 				return
 			end
 
 
-			positionCamera(
-				viewport,
-				model,
-				boundingSize
-			)
+			local distance =
+				calculateCameraDistance(
+					viewport,
+					boundingSize
+				)
 
 
-			startSpinning(
-				model
-			)
+			local lookTarget =
+				visibleCenter
+				+ Vector3.new(
+					0,
+
+					-boundingSize.Y
+						* VERTICAL_VISUAL_OFFSET,
+
+					0
+				)
+
+
+			local cameraHeight =
+				boundingSize.Y
+					* CAMERA_HEIGHT_RATIO
+
+
+			local startingAngle =
+				math.rad(25)
+
+
+			camera.CFrame =
+				CFrame.lookAt(
+					lookTarget
+						+ Vector3.new(
+							math.sin(
+								startingAngle
+							)
+								* distance,
+
+							cameraHeight,
+
+							math.cos(
+								startingAngle
+							)
+								* distance
+						),
+
+					lookTarget
+				)
+
+
+			spinningPreviews[viewport] = {
+				Viewport =
+					viewport,
+
+				Camera =
+					camera,
+
+				Target =
+					lookTarget,
+
+				Radius =
+					distance,
+
+				Height =
+					cameraHeight,
+
+				Angle =
+					startingAngle,
+			}
 		end
 	)
 end
@@ -1039,14 +1108,11 @@ local function createLevelCard(
 	levelCard.Name =
 		`Level{levelState.Level}`
 
-
 	levelCard.Visible =
 		true
 
-
 	levelCard.LayoutOrder =
 		levelState.Level
-
 
 	levelCard:SetAttribute(
 		"IndexGenerated",
@@ -1068,6 +1134,50 @@ local function createLevelCard(
 
 	levelName.Text =
 		`Level {levelState.Level}`
+
+
+	--==================================================
+	-- KEEP VIEWPORT ABOVE TEXT AREA
+	--==================================================
+
+	-- The old viewport could extend underneath LevelName,
+	-- making models overlap/cut through the text.
+	--
+	-- Reserve a fixed bottom strip for the label.
+	viewport.AnchorPoint =
+		Vector2.new(
+			0,
+			0
+		)
+
+	viewport.Position =
+		UDim2.new(
+			0,
+			0,
+
+			0,
+			0
+		)
+
+	viewport.Size =
+		UDim2.new(
+			1,
+			0,
+
+			1,
+			-LEVEL_TEXT_RESERVED_HEIGHT
+		)
+
+	viewport.ClipsDescendants =
+		true
+
+
+	-- Keep the label above anything else in the card.
+	levelName.ZIndex =
+		math.max(
+			levelName.ZIndex,
+			viewport.ZIndex + 2
+		)
 
 
 	levelCard.Parent =
@@ -1097,14 +1207,11 @@ local function createBusinessCard(
 	card.Name =
 		businessState.BusinessType
 
-
 	card.Visible =
 		true
 
-
 	card.LayoutOrder =
 		businessState.DisplayOrder
-
 
 	card:SetAttribute(
 		"IndexGenerated",
@@ -1165,7 +1272,7 @@ end
 --==================================================
 
 local function buildBusinessIndex(
-	state: {BusinessState}
+	state: { BusinessState }
 )
 
 	clearGeneratedBusinesses()
@@ -1221,7 +1328,6 @@ local function requestIndexState()
 				warn(
 					"[Index] Failed to load business index."
 				)
-
 
 				return
 			end
@@ -1292,6 +1398,10 @@ indexFrame:GetPropertyChangedSignal(
 
 		if not indexFrame.Visible then
 
+			-- No camera updates are performed while hidden.
+			spinAccumulator =
+				0
+
 			return
 		end
 
@@ -1357,7 +1467,6 @@ end
 
 businessTemplate.Visible =
 	false
-
 
 businessesFrame.Visible =
 	false
