@@ -48,6 +48,17 @@ local CustomerTypes =
 			:WaitForChild("CustomerTypes")
 	)
 
+local remotes =
+	ReplicatedStorage:WaitForChild(
+		"Remotes"
+	)
+
+
+local rareCustomerNotification =
+	remotes:WaitForChild(
+		"RareCustomerNotification"
+	)
+
 local npcInfoTemplate =
 	ReplicatedStorage:WaitForChild(
 		"NPCInfo"
@@ -576,10 +587,69 @@ local function addCustomerVisualEffects(
 end
 
 --==================================================
+-- RARE CUSTOMER NOTIFICATIONS
+--==================================================
+
+local NOTIFIED_CUSTOMER_TYPES = {
+	VIP = true,
+	Celebrity = true,
+	Influencer = true,
+	Billionaire = true,
+	Golden = true,
+}
+
+
+local function notifyRareCustomer(
+	plot: Model,
+	customerType: string,
+	customerName: string
+)
+	if NOTIFIED_CUSTOMER_TYPES[
+		customerType
+	] ~= true then
+
+		return
+	end
+
+
+	local ownerUserId =
+		plot:GetAttribute(
+			"OwnerUserId"
+		)
+
+
+	if typeof(ownerUserId)
+			~= "number"
+		or ownerUserId <= 0 then
+
+		return
+	end
+
+
+	local player =
+		Players:GetPlayerByUserId(
+			ownerUserId
+		)
+
+
+	if not player then
+		return
+	end
+
+
+	rareCustomerNotification:FireClient(
+		player,
+		customerType,
+		customerName
+	)
+end
+
+--==================================================
 -- CUSTOMER INFO
 --==================================================
 
 local function setupCustomerInfo(
+	plot: Model,
 	customer: Model
 )
 	if customer:GetAttribute(
@@ -652,6 +722,12 @@ local function setupCustomerInfo(
 addCustomerVisualEffects(
 	customer,
 	customerType
+)
+
+notifyRareCustomer(
+	plot,
+	customerType,
+	customerName
 )
 
 	--==================================================
@@ -4410,6 +4486,7 @@ customer:PivotTo(
 
 
 setupCustomerInfo(
+	plot,
 	customer
 )
 

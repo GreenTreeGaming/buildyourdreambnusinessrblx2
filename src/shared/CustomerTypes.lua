@@ -28,7 +28,7 @@ CustomerTypes.Types = {
 			"Regular",
 
 		Weight =
-			700,
+			720,
 
 		PaymentMultiplier =
 			1,
@@ -57,7 +57,7 @@ CustomerTypes.Types = {
 			"Generous",
 
 		Weight =
-			130,
+			140,
 
 		PaymentMultiplier =
 			1.5,
@@ -89,7 +89,7 @@ CustomerTypes.Types = {
 			80,
 
 		PaymentMultiplier =
-			2.5,
+			2,
 
 		TrafficMultiplier =
 			1,
@@ -115,10 +115,10 @@ CustomerTypes.Types = {
 			"VIP",
 
 		Weight =
-			45,
+			35,
 
 		PaymentMultiplier =
-			4,
+			3,
 
 		TrafficMultiplier =
 			1,
@@ -144,13 +144,13 @@ CustomerTypes.Types = {
 			"Celebrity",
 
 		Weight =
-			25,
+			15,
 
 		PaymentMultiplier =
-			3,
+			2.5,
 
 		TrafficMultiplier =
-			1.35,
+			1.3,
 
 		TextColor =
 			Color3.fromRGB(
@@ -173,13 +173,13 @@ CustomerTypes.Types = {
 			"Influencer",
 
 		Weight =
-			12,
+			6,
 
 		PaymentMultiplier =
-			5,
+			3.5,
 
 		TrafficMultiplier =
-			1.6,
+			1.5,
 
 		TextColor =
 			Color3.fromRGB(
@@ -202,10 +202,10 @@ CustomerTypes.Types = {
 			"Billionaire",
 
 		Weight =
-			7,
+			3,
 
 		PaymentMultiplier =
-			10,
+			7,
 
 		TrafficMultiplier =
 			1,
@@ -234,10 +234,10 @@ CustomerTypes.Types = {
 			1,
 
 		PaymentMultiplier =
-			25,
+			15,
 
 		TrafficMultiplier =
-			2,
+			1.75,
 
 		TextColor =
 			Color3.fromRGB(
