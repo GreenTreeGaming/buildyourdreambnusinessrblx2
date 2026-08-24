@@ -54,24 +54,9 @@ local remotes =
 	)
 
 local customerVisitUpdated =
-	remotes:FindFirstChild(
+	remotes:WaitForChild(
 		"CustomerVisitUpdated"
-	)
-
-
-if not customerVisitUpdated then
-
-	customerVisitUpdated =
-		Instance.new(
-			"RemoteEvent"
-		)
-
-	customerVisitUpdated.Name =
-		"CustomerVisitUpdated"
-
-	customerVisitUpdated.Parent =
-		remotes
-end
+	) :: RemoteEvent
 
 
 local rareCustomerNotification =
@@ -3358,36 +3343,33 @@ end
 		end
 	end
 
-		--==================================================
-	-- CUSTOMER INDEX VISIT
 	--==================================================
+-- CUSTOMER INDEX VISIT
+--==================================================
 
-	local customerType =
-		customer:GetAttribute(
-			"CustomerType"
-		)
-
-
-	if typeof(customerType)
-		== "string" then
-
-		local newVisitAmount =
-			DataService.AddCustomerVisit(
-				player,
-				customerType,
-				1
-			)
+local customerType =
+	customer:GetAttribute(
+		"CustomerType"
+	)
 
 
-		(
-			customerVisitUpdated
-				:: RemoteEvent
-		):FireClient(
+if typeof(customerType)
+	== "string" then
+
+	local newVisitAmount =
+		DataService.AddCustomerVisit(
 			player,
 			customerType,
-			newVisitAmount
+			1
 		)
-	end
+
+
+	customerVisitUpdated:FireClient(
+		player,
+		customerType,
+		newVisitAmount
+	)
+end
 
 	showCashPopup(
 		stand,

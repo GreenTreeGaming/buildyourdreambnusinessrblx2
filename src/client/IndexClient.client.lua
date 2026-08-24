@@ -1453,10 +1453,18 @@ local function populateViewport(
 	else
 
 		viewport.Ambient =
-			Color3.zero
+			Color3.fromRGB(
+				0,
+				0,
+				0
+			)
 
 		viewport.LightColor =
-			Color3.zero
+			Color3.fromRGB(
+				0,
+				0,
+				0
+			)
 
 		viewport.LightDirection =
 			Vector3.zero
