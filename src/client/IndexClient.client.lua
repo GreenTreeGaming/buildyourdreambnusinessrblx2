@@ -155,6 +155,57 @@ local customerTemplate =
 		"Template"
 	) :: Frame
 
+--==================================================
+-- INDEX UI LAYERING
+--==================================================
+
+-- Make ZIndex behave globally and predictably.
+gui.ZIndexBehavior =
+	Enum.ZIndexBehavior.Global
+
+
+-- Content pages stay underneath the tab buttons.
+businessesFrame.ZIndex =
+	10
+
+customersFrame.ZIndex =
+	10
+
+
+-- The tab bar must ALWAYS be above both scrolling frames.
+buttons.ZIndex =
+	100
+
+businessesButton.ZIndex =
+	101
+
+customersButton.ZIndex =
+	101
+
+
+-- Text/icons inside the buttons should also stay above.
+for _, descendant in
+	buttons:GetDescendants() do
+
+	if descendant:IsA(
+		"GuiObject"
+	) then
+
+		descendant.ZIndex =
+			math.max(
+				descendant.ZIndex,
+				102
+			)
+	end
+end
+
+
+businessesButton.Active =
+	true
+
+customersButton.Active =
+	true
+
 
 --==================================================
 -- CONSTANTS
@@ -1914,28 +1965,65 @@ end
 --==================================================
 
 local function showBusinesses()
-	businessesFrame.Visible = true
-	customersFrame.Visible = false
 
-	businessesButton.BackgroundTransparency = 0
-	customersButton.BackgroundTransparency = 0.2
+	print("[Index] Businesses clicked")
+
+
+	businessesFrame.Visible =
+		true
+
+	customersFrame.Visible =
+		false
+
+
+	businessesButton.BackgroundTransparency =
+		0
+
+	customersButton.BackgroundTransparency =
+		0.2
+
 
 	if not businessesBuilt then
+
 		requestIndexState()
 	end
 end
 
 
+--==================================================
+-- CUSTOMERS PAGE
+--==================================================
+
 local function showCustomers()
-	businessesFrame.Visible = false
-	customersFrame.Visible = true
 
-	customersButton.BackgroundTransparency = 0
-	businessesButton.BackgroundTransparency = 0.2
+	print("[Index] Customers clicked")
 
-	if not customersBuilt then
-		buildCustomerIndex()
-	end
+
+	-- Switch pages FIRST.
+	businessesFrame.Visible =
+		false
+
+	customersFrame.Visible =
+		true
+
+
+	customersButton.BackgroundTransparency =
+		0
+
+	businessesButton.BackgroundTransparency =
+		0.2
+
+
+	-- Build after the page has already switched.
+	task.defer(
+		function()
+
+			if not customersBuilt then
+
+				buildCustomerIndex()
+			end
+		end
+	)
 end
 
 
@@ -1951,7 +2039,6 @@ businessesButton.Activated:Connect(
 customersButton.Activated:Connect(
 	showCustomers
 )
-
 
 --==================================================
 -- INDEX OPEN
@@ -2043,7 +2130,6 @@ end
 businessTemplate.Visible =
 	false
 
-
 customerTemplate.Visible =
 	false
 
@@ -2051,6 +2137,11 @@ customerTemplate.Visible =
 businessesFrame.Visible =
 	false
 
-
 customersFrame.Visible =
 	false
+
+
+if indexFrame.Visible then
+
+	showBusinesses()
+end
