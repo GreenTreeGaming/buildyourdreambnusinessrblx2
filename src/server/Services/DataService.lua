@@ -32,7 +32,7 @@ local DATA_STORE_NAME = "PlayerData_v6"
 --
 -- Version 3 saves each placed business's physical model level.
 -- Version 4 adds plot-wide marketing progression.
-local CURRENT_DATA_VERSION = 7
+local CURRENT_DATA_VERSION = 8
 
 local MAX_RETRIES = 3
 local RETRY_DELAY_SECONDS = 2
@@ -42,6 +42,17 @@ local DEFAULT_UPGRADES = {
 	ServingSpeed = 0,
 	SaleValue = 0,
 	QueueCapacity = 0,
+}
+
+local DEFAULT_CUSTOMER_VISITS = {
+	Regular = 0,
+	Generous = 0,
+	Rich = 0,
+	VIP = 0,
+	Celebrity = 0,
+	Influencer = 0,
+	Billionaire = 0,
+	Golden = 0,
 }
 
 local UPGRADE_LEVEL_ATTRIBUTES = {
@@ -54,6 +65,17 @@ local DEFAULT_PROFILE = {
 	Version = CURRENT_DATA_VERSION,
 
 	Cash = 0,
+
+	CustomerVisits = {
+		Regular = 0,
+		Generous = 0,
+		Rich = 0,
+		VIP = 0,
+		Celebrity = 0,
+		Influencer = 0,
+		Billionaire = 0,
+		Golden = 0,
+	},
 
 	RedeemedCodes = {},
 
@@ -122,6 +144,11 @@ type SavedPlacedBusiness = {
 type PlayerProfile = {
 	Version: number,
 	Cash: number,
+
+	CustomerVisits: {
+		[string]: number,
+	},
+
 	MarketingLevel: number,
 
 	PlotLevel: number,
@@ -132,7 +159,6 @@ type PlayerProfile = {
 
 	NextBusinessNumber: number,
 
-	-- Temporary compatibility field.
 	Upgrades: {
 		[string]: UpgradeLevels,
 	},
@@ -302,6 +328,41 @@ local function sanitizeStatistic(
 		0,
 		math.floor(value)
 	)
+end
+
+local function sanitizeCustomerVisits(
+	profile: {[any]: any}
+)
+	if type(profile.CustomerVisits)
+		~= "table" then
+
+		profile.CustomerVisits =
+			deepCopy(
+				DEFAULT_CUSTOMER_VISITS
+			)
+
+		return
+	end
+
+
+	local sanitized = {}
+
+
+	for customerType in
+		DEFAULT_CUSTOMER_VISITS do
+
+		sanitized[
+			customerType
+		] = sanitizeStatistic(
+			profile.CustomerVisits[
+				customerType
+			]
+		)
+	end
+
+
+	profile.CustomerVisits =
+		sanitized
 end
 
 local function sanitizeTimestamp(
@@ -708,12 +769,18 @@ local function migrateProfile(
 		loadedVersion = 2
 	end
 
-	reconcileTable(
+		reconcileTable(
 		profile,
 		DEFAULT_PROFILE
 	)
 
-	sanitizeMonetization(profile)
+	sanitizeCustomerVisits(
+		profile
+	)
+
+	sanitizeMonetization(
+		profile
+	)
 
 	if type(profile.Cash) ~= "number" then
 		profile.Cash =
@@ -2306,6 +2373,188 @@ function DataService.UnmarkCodeRedeemed(
 
 	profile.RedeemedCodes[code] =
 		nil
+end
+
+--==================================================
+-- CUSTOMER VISITS
+--==================================================
+
+function DataService.GetCustomerVisits(
+	player: Player
+): {[string]: number}
+
+	local profile =
+		profiles[
+			player
+		]
+
+
+	if not profile then
+
+		return deepCopy(
+			DEFAULT_CUSTOMER_VISITS
+		)
+	end
+
+
+	if type(profile.CustomerVisits)
+		~= "table" then
+
+		profile.CustomerVisits =
+			deepCopy(
+				DEFAULT_CUSTOMER_VISITS
+			)
+	end
+
+
+	local visits = {}
+
+
+	for customerType in
+		DEFAULT_CUSTOMER_VISITS do
+
+		visits[
+			customerType
+		] = sanitizeStatistic(
+			profile.CustomerVisits[
+				customerType
+			]
+		)
+	end
+
+
+	return visits
+end
+
+
+function DataService.GetCustomerVisitCount(
+	player: Player,
+	customerType: string
+): number
+
+	local profile =
+		profiles[
+			player
+		]
+
+
+	if not profile
+		or type(customerType)
+			~= "string"
+		or DEFAULT_CUSTOMER_VISITS[
+			customerType
+		] == nil then
+
+		return 0
+	end
+
+
+	if type(profile.CustomerVisits)
+		~= "table" then
+
+		profile.CustomerVisits =
+			deepCopy(
+				DEFAULT_CUSTOMER_VISITS
+			)
+	end
+
+
+	return sanitizeStatistic(
+		profile.CustomerVisits[
+			customerType
+		]
+	)
+end
+
+
+function DataService.AddCustomerVisit(
+	player: Player,
+	customerType: string,
+	amount: number?
+): number
+
+	local profile =
+		profiles[
+			player
+		]
+
+
+	if not profile
+		or type(customerType)
+			~= "string"
+		or DEFAULT_CUSTOMER_VISITS[
+			customerType
+		] == nil then
+
+		return 0
+	end
+
+
+	local increment =
+		amount
+		or 1
+
+
+	if typeof(increment)
+			~= "number"
+		or increment ~= increment
+		or increment == math.huge
+		or increment == -math.huge then
+
+		return DataService.GetCustomerVisitCount(
+			player,
+			customerType
+		)
+	end
+
+
+	increment =
+		math.max(
+			0,
+			math.floor(
+				increment
+			)
+		)
+
+
+	if increment <= 0 then
+
+		return DataService.GetCustomerVisitCount(
+			player,
+			customerType
+		)
+	end
+
+
+	if type(profile.CustomerVisits)
+		~= "table" then
+
+		profile.CustomerVisits =
+			deepCopy(
+				DEFAULT_CUSTOMER_VISITS
+			)
+	end
+
+
+	local oldAmount =
+		sanitizeStatistic(
+			profile.CustomerVisits[
+				customerType
+			]
+		)
+
+
+	local newAmount =
+		oldAmount
+		+ increment
+
+
+	profile.CustomerVisits[
+		customerType
+	] = newAmount
+
+
+	return newAmount
 end
 
 return DataService

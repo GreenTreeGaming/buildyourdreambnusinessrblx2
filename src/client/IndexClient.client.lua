@@ -49,6 +49,18 @@ local getBusinessIndexState =
 	) :: RemoteFunction
 
 
+local getCustomerIndexState =
+	remotes:WaitForChild(
+		"GetCustomerIndexState"
+	) :: RemoteFunction
+
+
+local customerVisitUpdated =
+	remotes:WaitForChild(
+		"CustomerVisitUpdated"
+	) :: RemoteEvent
+
+
 --==================================================
 -- TYPES
 --==================================================
@@ -68,7 +80,17 @@ type BusinessState = {
 	Unlocked: boolean,
 	HighestLevel: number,
 
-	Levels: { LevelState },
+	Levels: {LevelState},
+}
+
+
+type CustomerState = {
+	TypeName: string,
+	DisplayName: string,
+	Order: number,
+
+	Visits: number,
+	Discovered: boolean,
 }
 
 
@@ -82,13 +104,6 @@ type PreviewState = {
 	Height: number,
 
 	Angle: number,
-}
-
-
-type CustomerEntry = {
-	TypeName: string,
-	DisplayName: string,
-	Order: number,
 }
 
 
@@ -147,7 +162,7 @@ local businessTemplate =
 local customersFrame =
 	indexFrame:WaitForChild(
 		"CustomersFrame"
-	) :: GuiObject
+	) :: ScrollingFrame
 
 
 local customerTemplate =
@@ -155,53 +170,38 @@ local customerTemplate =
 		"Template"
 	) :: Frame
 
+
 --==================================================
--- INDEX UI LAYERING
+-- LAYERING
 --==================================================
 
--- Make ZIndex behave globally and predictably.
 gui.ZIndexBehavior =
 	Enum.ZIndexBehavior.Global
 
 
--- Content pages stay underneath the tab buttons.
 businessesFrame.ZIndex =
 	10
+
 
 customersFrame.ZIndex =
 	10
 
 
--- The tab bar must ALWAYS be above both scrolling frames.
 buttons.ZIndex =
 	100
 
+
 businessesButton.ZIndex =
 	101
+
 
 customersButton.ZIndex =
 	101
 
 
--- Text/icons inside the buttons should also stay above.
-for _, descendant in
-	buttons:GetDescendants() do
-
-	if descendant:IsA(
-		"GuiObject"
-	) then
-
-		descendant.ZIndex =
-			math.max(
-				descendant.ZIndex,
-				102
-			)
-	end
-end
-
-
 businessesButton.Active =
 	true
+
 
 customersButton.Active =
 	true
@@ -270,7 +270,8 @@ local MAX_SPIN_FPS =
 
 
 local SPIN_INTERVAL =
-	1 / MAX_SPIN_FPS
+	1
+	/ MAX_SPIN_FPS
 
 
 local LEVEL_TEXT_RESERVED_HEIGHT =
@@ -278,19 +279,7 @@ local LEVEL_TEXT_RESERVED_HEIGHT =
 
 
 local CUSTOMER_TEXT_RESERVED_HEIGHT =
-	24
-
-
-local CUSTOMER_ORDER = {
-	"Regular",
-	"Generous",
-	"Rich",
-	"VIP",
-	"Celebrity",
-	"Influencer",
-	"Billionaire",
-	"Golden",
-}
+	42
 
 
 local IGNORED_PREVIEW_NAMES = {
@@ -326,7 +315,16 @@ local currentIndexState: {
 } = {}
 
 
-local loading =
+local currentCustomerState: {
+	CustomerState
+} = {}
+
+
+local loadingBusinesses =
+	false
+
+
+local loadingCustomers =
 	false
 
 
@@ -343,6 +341,11 @@ local previews: {
 } = {}
 
 
+local customerCards: {
+	[string]: Frame
+} = {}
+
+
 local spinAccumulator =
 	0
 
@@ -356,7 +359,7 @@ customerTemplate.Visible =
 
 
 --==================================================
--- GUI VISIBILITY
+-- ACTUAL GUI VISIBILITY
 --==================================================
 
 local function isGuiActuallyVisible(
@@ -369,7 +372,9 @@ local function isGuiActuallyVisible(
 
 	while current do
 
-		if current:IsA("GuiObject")
+		if current:IsA(
+			"GuiObject"
+		)
 			and not current.Visible then
 
 			return false
@@ -433,11 +438,13 @@ end
 
 
 --==================================================
--- CAMERA ORBIT LOOP
+-- CAMERA ORBIT
 --==================================================
 
 RunService.RenderStepped:Connect(
-	function(deltaTime: number)
+	function(
+		deltaTime: number
+	)
 
 		if not indexFrame.Visible then
 
@@ -495,10 +502,12 @@ RunService.RenderStepped:Connect(
 			preview.Angle =
 				(
 					preview.Angle
-					+ SPIN_SPEED
+					+
+					SPIN_SPEED
 						* step
 				)
-				% (
+				%
+				(
 					math.pi
 					* 2
 				)
@@ -508,7 +517,7 @@ RunService.RenderStepped:Connect(
 				preview.Angle
 
 
-			local cameraPosition =
+			local position =
 				preview.Target
 				+ Vector3.new(
 					math.sin(
@@ -527,7 +536,7 @@ RunService.RenderStepped:Connect(
 
 			preview.Camera.CFrame =
 				CFrame.lookAt(
-					cameraPosition,
+					position,
 					preview.Target
 				)
 		end
@@ -536,7 +545,7 @@ RunService.RenderStepped:Connect(
 
 
 --==================================================
--- CLEAR GENERATED BUSINESSES
+-- CLEAN UI
 --==================================================
 
 local function clearGeneratedBusinesses()
@@ -562,7 +571,6 @@ local function clearGeneratedBusinesses()
 				child
 			)
 
-
 			child:Destroy()
 		end
 	end
@@ -571,10 +579,6 @@ local function clearGeneratedBusinesses()
 	cleanPreviewRegistrations()
 end
 
-
---==================================================
--- CLEAR GENERATED LEVELS
---==================================================
 
 local function clearGeneratedLevels(
 	levelsFrame: Frame,
@@ -602,18 +606,18 @@ local function clearGeneratedLevels(
 				child
 			)
 
-
 			child:Destroy()
 		end
 	end
 end
 
 
---==================================================
--- CLEAR GENERATED CUSTOMERS
---==================================================
-
 local function clearGeneratedCustomers()
+
+	table.clear(
+		customerCards
+	)
+
 
 	for _, child in
 		customersFrame:GetChildren() do
@@ -636,7 +640,6 @@ local function clearGeneratedCustomers()
 				child
 			)
 
-
 			child:Destroy()
 		end
 	end
@@ -647,7 +650,7 @@ end
 
 
 --==================================================
--- PREVIEW PART FILTER
+-- PART FILTER
 --==================================================
 
 local function isVisiblePreviewPart(
@@ -661,7 +664,7 @@ local function isVisiblePreviewPart(
 	end
 
 
-	local lowerName =
+	local name =
 		string.lower(
 			part.Name
 		)
@@ -671,7 +674,7 @@ local function isVisiblePreviewPart(
 		IGNORED_PREVIEW_NAMES do
 
 		if string.find(
-			lowerName,
+			name,
 			ignoredName,
 			1,
 			true
@@ -686,41 +689,28 @@ local function isVisiblePreviewPart(
 end
 
 
---==================================================
--- VISIBLE PARTS
---==================================================
-
 local function getVisibleParts(
 	model: Model
-): { BasePart }
+): {BasePart}
 
-	local parts: { BasePart } =
-		{}
+	local parts = {}
 
 
 	for _, descendant in
 		model:GetDescendants() do
 
-		if not descendant:IsA(
+		if descendant:IsA(
 			"BasePart"
-		) then
-
-			continue
-		end
-
-
-		if not isVisiblePreviewPart(
-			descendant
-		) then
-
-			continue
-		end
-
-
-		table.insert(
-			parts,
-			descendant
 		)
+			and isVisiblePreviewPart(
+				descendant
+			) then
+
+			table.insert(
+				parts,
+				descendant
+			)
+		end
 	end
 
 
@@ -729,7 +719,7 @@ end
 
 
 --==================================================
--- VISIBLE BOUNDS
+-- BOUNDS
 --==================================================
 
 local function getVisibleBounds(
@@ -758,23 +748,16 @@ local function getVisibleBounds(
 
 
 		for x = -1, 1, 2 do
-
 			for y = -1, 1, 2 do
-
 				for z = -1, 1, 2 do
 
 					local corner =
 						part.CFrame
 							:PointToWorldSpace(
 								Vector3.new(
-									halfSize.X
-										* x,
-
-									halfSize.Y
-										* y,
-
-									halfSize.Z
-										* z
+									halfSize.X * x,
+									halfSize.Y * y,
+									halfSize.Z * z
 								)
 							)
 
@@ -836,14 +819,14 @@ local function getVisibleBounds(
 	if not minimum
 		or not maximum then
 
-		local boundsCFrame,
-			boundsSize =
+		local cf,
+			size =
 			model:GetBoundingBox()
 
 
 		return
-			boundsCFrame.Position,
-			boundsSize
+			cf.Position,
+			size
 	end
 
 
@@ -860,7 +843,7 @@ end
 
 
 --==================================================
--- PREPARE MODEL FOR VIEWPORT
+-- PREPARE PREVIEW MODEL
 --==================================================
 
 local function prepareModelForViewport(
@@ -871,11 +854,15 @@ local function prepareModelForViewport(
 	for _, descendant in
 		model:GetDescendants() do
 
-		if descendant:IsA(
-			"Script"
-		)
+		if descendant:IsA("Script")
 			or descendant:IsA(
 				"LocalScript"
+			)
+			or descendant:IsA(
+				"BillboardGui"
+			)
+			or descendant:IsA(
+				"SurfaceGui"
 			) then
 
 			descendant:Destroy()
@@ -885,13 +872,27 @@ local function prepareModelForViewport(
 
 
 		if descendant:IsA(
-			"BillboardGui"
+			"ParticleEmitter"
 		)
 			or descendant:IsA(
-				"SurfaceGui"
+				"Trail"
+			)
+			or descendant:IsA(
+				"Beam"
 			) then
 
 			descendant:Destroy()
+
+			continue
+		end
+
+
+		if descendant:IsA(
+			"Light"
+		) then
+
+			descendant.Enabled =
+				false
 
 			continue
 		end
@@ -938,37 +939,6 @@ local function prepareModelForViewport(
 						""
 				end
 			end
-
-
-			continue
-		end
-
-
-		if descendant:IsA(
-			"ParticleEmitter"
-		)
-			or descendant:IsA(
-				"Trail"
-			)
-			or descendant:IsA(
-				"Beam"
-			) then
-
-			descendant.Enabled =
-				false
-
-			continue
-		end
-
-
-		if descendant:IsA(
-			"Light"
-		) then
-
-			descendant.Enabled =
-				false
-
-			continue
 		end
 
 
@@ -984,6 +954,7 @@ local function prepareModelForViewport(
 				descendant.Transparency =
 					1
 
+
 			elseif descendant:IsA(
 				"SurfaceAppearance"
 			) then
@@ -996,75 +967,115 @@ end
 
 
 --==================================================
--- CUSTOMER TYPE STYLE
+-- CUSTOMER EFFECT HELPERS
 --==================================================
 
-local function createCustomerHighlight(
-	model: Model,
+local function createParticleEmitter(
+	parent: BasePart,
 	name: string,
 	color: Color3,
-	fillTransparency: number,
-	outlineTransparency: number
-)
+	rate: number,
+	lifetime: NumberRange,
+	speed: NumberRange,
+	size: NumberSequence
+): ParticleEmitter
 
-	local highlight =
+	local emitter =
 		Instance.new(
-			"Highlight"
+			"ParticleEmitter"
 		)
 
 
-	highlight.Name =
+	emitter.Name =
 		name
 
 
-	highlight.Adornee =
-		model
+	emitter.Texture =
+		"rbxasset://textures/particles/sparkles_main.dds"
 
 
-	highlight.FillColor =
-		color
+	emitter.Color =
+		ColorSequence.new(
+			color
+		)
 
 
-	highlight.FillTransparency =
-		fillTransparency
+	emitter.Rate =
+		rate
 
 
-	highlight.OutlineColor =
-		color
+	emitter.Lifetime =
+		lifetime
 
 
-	highlight.OutlineTransparency =
-		outlineTransparency
+	emitter.Speed =
+		speed
 
 
-	highlight.DepthMode =
-		Enum.HighlightDepthMode
-			.Occluded
+	emitter.Size =
+		size
 
 
-	highlight.Parent =
-		model
+	emitter.LightEmission =
+		0.35
+
+
+	emitter.SpreadAngle =
+		Vector2.new(
+			180,
+			180
+		)
+
+
+	emitter.Rotation =
+		NumberRange.new(
+			0,
+			360
+		)
+
+
+	emitter.RotSpeed =
+		NumberRange.new(
+			-35,
+			35
+		)
+
+
+	emitter.Parent =
+		parent
+
+
+	return emitter
 end
 
 
-local function applyCustomerTypeStyle(
+local function addCustomerEffects(
 	model: Model,
 	customerType: string
 )
 
-	local config =
-		CustomerTypes.Types[
-			customerType
-		]
+	local root =
+		model:FindFirstChild(
+			"HumanoidRootPart",
+			true
+		)
 
 
-	if not config then
-		return
-	end
+	local head =
+		model:FindFirstChild(
+			"Head",
+			true
+		)
 
 
-	if customerType
-		== "Regular" then
+	if not root
+		or not root:IsA(
+			"BasePart"
+		)
+		or not head
+		or not head:IsA(
+			"BasePart"
+		) then
 
 		return
 	end
@@ -1073,86 +1084,238 @@ local function applyCustomerTypeStyle(
 	if customerType
 		== "VIP" then
 
-		createCustomerHighlight(
-			model,
-			"VIPHighlight",
-			config.TextColor,
-			0.9,
-			0.35
+		createParticleEmitter(
+			head,
+			"VIPSparkles",
+
+			Color3.fromRGB(
+				255,
+				222,
+				73
+			),
+
+			4,
+
+			NumberRange.new(
+				0.45,
+				0.8
+			),
+
+			NumberRange.new(
+				0.2,
+				0.7
+			),
+
+			NumberSequence.new({
+				NumberSequenceKeypoint.new(
+					0,
+					0.16
+				),
+
+				NumberSequenceKeypoint.new(
+					0.5,
+					0.22
+				),
+
+				NumberSequenceKeypoint.new(
+					1,
+					0
+				),
+			})
 		)
 
 
 	elseif customerType
 		== "Celebrity" then
 
-		createCustomerHighlight(
-			model,
-			"CelebrityHighlight",
-			config.TextColor,
-			0.9,
-			0.25
-		)
+		createParticleEmitter(
+			head,
+			"CelebrityStars",
 
+			Color3.fromRGB(
+				255,
+				102,
+				213
+			),
 
-	elseif customerType
-		== "Influencer" then
+			7,
 
-		createCustomerHighlight(
-			model,
-			"InfluencerHighlight",
-			config.TextColor,
-			0.92,
-			0.25
+			NumberRange.new(
+				0.55,
+				0.95
+			),
+
+			NumberRange.new(
+				0.3,
+				0.9
+			),
+
+			NumberSequence.new({
+				NumberSequenceKeypoint.new(
+					0,
+					0.2
+				),
+
+				NumberSequenceKeypoint.new(
+					0.5,
+					0.28
+				),
+
+				NumberSequenceKeypoint.new(
+					1,
+					0
+				),
+			})
 		)
 
 
 	elseif customerType
 		== "Billionaire" then
 
-		createCustomerHighlight(
-			model,
-			"BillionaireHighlight",
-			config.TextColor,
-			0.92,
-			0.2
-		)
+		local emitter =
+			createParticleEmitter(
+				root,
+				"BillionaireCash",
+
+				Color3.fromRGB(
+					77,
+					255,
+					126
+				),
+
+				6,
+
+				NumberRange.new(
+					0.7,
+					1.1
+				),
+
+				NumberRange.new(
+					0.6,
+					1.2
+				),
+
+				NumberSequence.new({
+					NumberSequenceKeypoint.new(
+						0,
+						0.22
+					),
+
+					NumberSequenceKeypoint.new(
+						0.7,
+						0.3
+					),
+
+					NumberSequenceKeypoint.new(
+						1,
+						0
+					),
+				})
+			)
+
+
+		emitter.Acceleration =
+			Vector3.new(
+				0,
+				2.2,
+				0
+			)
 
 
 	elseif customerType
 		== "Golden" then
 
-		for _, descendant in
-			model:GetDescendants() do
-
-			if descendant:IsA(
-				"BasePart"
+		local highlight =
+			Instance.new(
+				"Highlight"
 			)
-				and descendant.Name
-					~= "HumanoidRootPart"
-				and descendant.Transparency
-					< 0.98 then
-
-				descendant.Color =
-					Color3.fromRGB(
-						255,
-						205,
-						55
-					)
-			end
-		end
 
 
-		createCustomerHighlight(
-			model,
-			"GoldenAura",
+		highlight.Name =
+			"GoldenAura"
+
+
+		highlight.Adornee =
+			model
+
+
+		highlight.FillColor =
 			Color3.fromRGB(
 				255,
-				205,
-				55
-			),
-			0.72,
-			0.08
-		)
+				196,
+				42
+			)
+
+
+		highlight.FillTransparency =
+			0.78
+
+
+		highlight.OutlineColor =
+			Color3.fromRGB(
+				255,
+				226,
+				105
+			)
+
+
+		highlight.OutlineTransparency =
+			0.15
+
+
+		highlight.DepthMode =
+			Enum.HighlightDepthMode
+				.Occluded
+
+
+		highlight.Parent =
+			model
+
+
+		local sparkles =
+			createParticleEmitter(
+				head,
+				"GoldenSparkles",
+
+				Color3.fromRGB(
+					255,
+					214,
+					65
+				),
+
+				9,
+
+				NumberRange.new(
+					0.55,
+					0.9
+				),
+
+				NumberRange.new(
+					0.25,
+					0.75
+				),
+
+				NumberSequence.new({
+					NumberSequenceKeypoint.new(
+						0,
+						0.18
+					),
+
+					NumberSequenceKeypoint.new(
+						0.5,
+						0.3
+					),
+
+					NumberSequenceKeypoint.new(
+						1,
+						0
+					),
+				})
+			)
+
+
+		sparkles.LightEmission =
+			0.65
 	end
 end
 
@@ -1163,7 +1326,7 @@ end
 
 local function calculateCameraDistance(
 	viewport: ViewportFrame,
-	boundingSize: Vector3,
+	size: Vector3,
 	padding: number
 ): number
 
@@ -1171,21 +1334,21 @@ local function calculateCameraDistance(
 		viewport.AbsoluteSize
 
 
-	local aspectRatio =
+	local aspect =
 		1
 
 
 	if viewportSize.Y > 0 then
 
-		aspectRatio =
+		aspect =
 			viewportSize.X
 				/ viewportSize.Y
 	end
 
 
-	aspectRatio =
+	aspect =
 		math.max(
-			aspectRatio,
+			aspect,
 			0.1
 		)
 
@@ -1203,48 +1366,38 @@ local function calculateCameraDistance(
 				verticalFov
 					* 0.5
 			)
-			* aspectRatio
+			* aspect
 		)
 
 
 	local horizontalDiameter =
 		math.sqrt(
-			boundingSize.X
-				* boundingSize.X
+			size.X * size.X
 			+
-			boundingSize.Z
-				* boundingSize.Z
+			size.Z * size.Z
 		)
 
 
 	local verticalDiameter =
 		math.max(
-			boundingSize.Y,
+			size.Y,
 			0.5
 		)
 
 
 	local horizontalDistance =
-		(
-			horizontalDiameter
-				* 0.5
-		)
+		(horizontalDiameter * 0.5)
 		/
 		math.tan(
-			horizontalFov
-				* 0.5
+			horizontalFov * 0.5
 		)
 
 
 	local verticalDistance =
-		(
-			verticalDiameter
-				* 0.5
-		)
+		(verticalDiameter * 0.5)
 		/
 		math.tan(
-			verticalFov
-				* 0.5
+			verticalFov * 0.5
 		)
 
 
@@ -1258,12 +1411,12 @@ end
 
 
 --==================================================
--- POPULATE GENERIC VIEWPORT
+-- GENERIC VIEWPORT
 --==================================================
 
 local function populateViewport(
 	viewport: ViewportFrame,
-	sourceModel: Model,
+	source: Model,
 	unlocked: boolean,
 	padding: number,
 	verticalOffset: number,
@@ -1287,10 +1440,8 @@ local function populateViewport(
 		viewport.Ambient =
 			UNLOCKED_AMBIENT
 
-
 		viewport.LightColor =
 			UNLOCKED_LIGHT
-
 
 		viewport.LightDirection =
 			Vector3.new(
@@ -1302,42 +1453,32 @@ local function populateViewport(
 	else
 
 		viewport.Ambient =
-			Color3.new(
-				0,
-				0,
-				0
-			)
-
+			Color3.zero
 
 		viewport.LightColor =
-			Color3.new(
-				0,
-				0,
-				0
-			)
-
+			Color3.zero
 
 		viewport.LightDirection =
 			Vector3.zero
 	end
 
 
-	local worldModel =
+	local world =
 		Instance.new(
 			"WorldModel"
 		)
 
 
-	worldModel.Name =
+	world.Name =
 		"PreviewWorld"
 
 
-	worldModel.Parent =
+	world.Parent =
 		viewport
 
 
 	local model =
-		sourceModel:Clone()
+		source:Clone()
 
 
 	model.Name =
@@ -1350,22 +1491,22 @@ local function populateViewport(
 	)
 
 
+	model.Parent =
+		world
+
+
 	if unlocked
 		and customerType then
 
-		applyCustomerTypeStyle(
+		addCustomerEffects(
 			model,
 			customerType
 		)
 	end
 
 
-	model.Parent =
-		worldModel
-
-
-	local visibleCenter,
-		boundingSize =
+	local center,
+		size =
 		getVisibleBounds(
 			model
 		)
@@ -1407,25 +1548,23 @@ local function populateViewport(
 			local distance =
 				calculateCameraDistance(
 					viewport,
-					boundingSize,
+					size,
 					padding
 				)
 
 
-			local lookTarget =
-				visibleCenter
+			local target =
+				center
 				+ Vector3.new(
 					0,
-
-					-boundingSize.Y
+					-size.Y
 						* verticalOffset,
-
 					0
 				)
 
 
-			local cameraHeight =
-				boundingSize.Y
+			local height =
+				size.Y
 					* CAMERA_HEIGHT_RATIO
 
 
@@ -1437,14 +1576,14 @@ local function populateViewport(
 
 			camera.CFrame =
 				CFrame.lookAt(
-					lookTarget
+					target
 						+ Vector3.new(
 							math.sin(
 								startingAngle
 							)
 								* distance,
 
-							cameraHeight,
+							height,
 
 							math.cos(
 								startingAngle
@@ -1452,7 +1591,7 @@ local function populateViewport(
 								* distance
 						),
 
-					lookTarget
+					target
 				)
 
 
@@ -1466,13 +1605,13 @@ local function populateViewport(
 					camera,
 
 				Target =
-					lookTarget,
+					target,
 
 				Radius =
 					distance,
 
 				Height =
-					cameraHeight,
+					height,
 
 				Angle =
 					startingAngle,
@@ -1483,7 +1622,7 @@ end
 
 
 --==================================================
--- BUSINESS VIEWPORT
+-- BUSINESS PREVIEW
 --==================================================
 
 local function populateBusinessViewport(
@@ -1532,36 +1671,36 @@ local function createLevelCard(
 	levelState: LevelState
 )
 
-	local levelCard =
+	local card =
 		levelTemplate:Clone()
 
 
-	levelCard.Name =
+	card.Name =
 		`Level{levelState.Level}`
 
 
-	levelCard.Visible =
+	card.Visible =
 		true
 
 
-	levelCard.LayoutOrder =
+	card.LayoutOrder =
 		levelState.Level
 
 
-	levelCard:SetAttribute(
+	card:SetAttribute(
 		"IndexGenerated",
 		true
 	)
 
 
 	local levelName =
-		levelCard:WaitForChild(
+		card:WaitForChild(
 			"LevelName"
 		) :: TextLabel
 
 
 	local viewport =
-		levelCard:WaitForChild(
+		card:WaitForChild(
 			"ViewportFrame"
 		) :: ViewportFrame
 
@@ -1598,11 +1737,12 @@ local function createLevelCard(
 	levelName.ZIndex =
 		math.max(
 			levelName.ZIndex,
-			viewport.ZIndex + 2
+			viewport.ZIndex
+				+ 2
 		)
 
 
-	levelCard.Parent =
+	card.Parent =
 		levelsFrame
 
 
@@ -1619,7 +1759,7 @@ end
 --==================================================
 
 local function createBusinessCard(
-	businessState: BusinessState
+	state: BusinessState
 )
 
 	local card =
@@ -1627,7 +1767,7 @@ local function createBusinessCard(
 
 
 	card.Name =
-		businessState.BusinessType
+		state.BusinessType
 
 
 	card.Visible =
@@ -1635,7 +1775,7 @@ local function createBusinessCard(
 
 
 	card.LayoutOrder =
-		businessState.DisplayOrder
+		state.DisplayOrder
 
 
 	card:SetAttribute(
@@ -1663,7 +1803,7 @@ local function createBusinessCard(
 
 
 	businessName.Text =
-		businessState.DisplayName
+		state.DisplayName
 
 
 	levelTemplate.Visible =
@@ -1681,7 +1821,7 @@ local function createBusinessCard(
 
 
 	for _, levelState in
-		businessState.Levels do
+		state.Levels do
 
 		createLevelCard(
 			levelsFrame,
@@ -1692,22 +1832,17 @@ local function createBusinessCard(
 end
 
 
---==================================================
--- BUILD BUSINESS INDEX
---==================================================
-
 local function buildBusinessIndex(
-	state: { BusinessState }
+	state: {BusinessState}
 )
 
 	clearGeneratedBusinesses()
 
 
-	for _, businessState in
-		state do
+	for _, business in state do
 
 		createBusinessCard(
-			businessState
+			business
 		)
 	end
 
@@ -1718,59 +1853,11 @@ end
 
 
 --==================================================
--- CUSTOMER ENTRIES
---==================================================
-
-local function getCustomerEntries(): {
-	CustomerEntry
-}
-
-	local entries: {
-		CustomerEntry
-	} = {}
-
-
-	for order, typeName in
-		CUSTOMER_ORDER do
-
-		local config =
-			CustomerTypes.Types[
-				typeName
-			]
-
-
-		if not config then
-			continue
-		end
-
-
-		table.insert(
-			entries,
-			{
-				TypeName =
-					typeName,
-
-				DisplayName =
-					config.DisplayName
-						or typeName,
-
-				Order =
-					order,
-			}
-		)
-	end
-
-
-	return entries
-end
-
-
---==================================================
 -- CUSTOMER CARD
 --==================================================
 
 local function createCustomerCard(
-	entry: CustomerEntry
+	state: CustomerState
 )
 
 	local card =
@@ -1778,15 +1865,15 @@ local function createCustomerCard(
 
 
 	card.Name =
-		entry.TypeName
+		state.TypeName
+
+
+	card.LayoutOrder =
+		state.Order
 
 
 	card.Visible =
 		true
-
-
-	card.LayoutOrder =
-		entry.Order
 
 
 	card:SetAttribute(
@@ -1807,24 +1894,46 @@ local function createCustomerCard(
 		) :: TextLabel
 
 
-	customerType.Text =
-		entry.DisplayName
+	local customerAmount =
+		card:WaitForChild(
+			"CustomerAmount"
+		) :: TextLabel
 
 
 	local config =
 		CustomerTypes.Types[
-			entry.TypeName
+			state.TypeName
 		]
 
 
-	if config then
+	if state.Discovered then
 
-		customerType.TextColor3 =
-			config.TextColor
+		customerType.Text =
+			state.DisplayName
 
 
-		customerType.TextStrokeColor3 =
-			config.StrokeColor
+		customerAmount.Text =
+			`Visits: {state.Visits}`
+
+
+		if config then
+
+			customerType.TextColor3 =
+				config.TextColor
+
+
+			customerType.TextStrokeColor3 =
+				config.StrokeColor
+		end
+
+	else
+
+		customerType.Text =
+			"???"
+
+
+		customerAmount.Text =
+			"Visits: 0"
 	end
 
 
@@ -1860,41 +1969,60 @@ local function createCustomerCard(
 		)
 
 
+	customerAmount.ZIndex =
+		math.max(
+			customerAmount.ZIndex,
+			viewport.ZIndex + 2
+		)
+
+
 	card.Parent =
 		customersFrame
 
 
-	-- For now every customer type is visible.
-	-- Later this can be replaced by saved discovery data.
-	local discovered =
-		true
+	customerCards[
+		state.TypeName
+	] = card
 
 
 	populateViewport(
 		viewport,
 		customerPreviewModel,
-		discovered,
+		state.Discovered,
 		CUSTOMER_CAMERA_PADDING,
 		CUSTOMER_VERTICAL_OFFSET,
-		entry.TypeName
+		state.Discovered
+			and state.TypeName
+			or nil
 	)
 end
 
 
---==================================================
--- BUILD CUSTOMER INDEX
---==================================================
-
-local function buildCustomerIndex()
+local function buildCustomerIndex(
+	state: {CustomerState}
+)
 
 	clearGeneratedCustomers()
 
 
-	for _, entry in
-		getCustomerEntries() do
+	table.sort(
+		state,
+		function(
+			first: CustomerState,
+			second: CustomerState
+		)
+
+			return first.Order
+				< second.Order
+		end
+	)
+
+
+	for _, customerState in
+		state do
 
 		createCustomerCard(
-			entry
+			customerState
 		)
 	end
 
@@ -1905,17 +2033,17 @@ end
 
 
 --==================================================
--- REQUEST BUSINESS INDEX
+-- BUSINESS STATE
 --==================================================
 
-local function requestIndexState()
+local function requestBusinessState()
 
-	if loading then
+	if loadingBusinesses then
 		return
 	end
 
 
-	loading =
+	loadingBusinesses =
 		true
 
 
@@ -1933,7 +2061,7 @@ local function requestIndexState()
 				)
 
 
-			loading =
+			loadingBusinesses =
 				false
 
 
@@ -1960,17 +2088,73 @@ local function requestIndexState()
 	)
 end
 
+
 --==================================================
--- BUSINESSES PAGE
+-- CUSTOMER STATE
+--==================================================
+
+local function requestCustomerState()
+
+	if loadingCustomers then
+		return
+	end
+
+
+	loadingCustomers =
+		true
+
+
+	task.spawn(
+		function()
+
+			local success,
+				result =
+				pcall(
+					function()
+
+						return getCustomerIndexState
+							:InvokeServer()
+					end
+				)
+
+
+			loadingCustomers =
+				false
+
+
+			if not success
+				or typeof(result)
+					~= "table" then
+
+				warn(
+					"[Index] Failed to load customer index."
+				)
+
+				return
+			end
+
+
+			currentCustomerState =
+				result
+
+
+			buildCustomerIndex(
+				currentCustomerState
+			)
+		end
+	)
+end
+
+
+--==================================================
+-- PAGE SWITCHING
 --==================================================
 
 local function showBusinesses()
 
-	print("[Index] Businesses clicked")
-
-
 	businessesFrame.Visible =
 		true
+
 
 	customersFrame.Visible =
 		false
@@ -1978,6 +2162,7 @@ local function showBusinesses()
 
 	businessesButton.BackgroundTransparency =
 		0
+
 
 	customersButton.BackgroundTransparency =
 		0.2
@@ -1985,23 +2170,16 @@ local function showBusinesses()
 
 	if not businessesBuilt then
 
-		requestIndexState()
+		requestBusinessState()
 	end
 end
 
 
---==================================================
--- CUSTOMERS PAGE
---==================================================
-
 local function showCustomers()
 
-	print("[Index] Customers clicked")
-
-
-	-- Switch pages FIRST.
 	businessesFrame.Visible =
 		false
+
 
 	customersFrame.Visible =
 		true
@@ -2010,20 +2188,15 @@ local function showCustomers()
 	customersButton.BackgroundTransparency =
 		0
 
+
 	businessesButton.BackgroundTransparency =
 		0.2
 
 
-	-- Build after the page has already switched.
-	task.defer(
-		function()
+	if not customersBuilt then
 
-			if not customersBuilt then
-
-				buildCustomerIndex()
-			end
-		end
-	)
+		requestCustomerState()
+	end
 end
 
 
@@ -2039,6 +2212,106 @@ businessesButton.Activated:Connect(
 customersButton.Activated:Connect(
 	showCustomers
 )
+
+
+--==================================================
+-- LIVE CUSTOMER VISITS
+--==================================================
+
+customerVisitUpdated.OnClientEvent:Connect(
+	function(
+		customerType: string,
+		newAmount: number
+	)
+
+		if typeof(customerType)
+			~= "string"
+			or typeof(newAmount)
+				~= "number" then
+
+			return
+		end
+
+
+		-- Rebuild when first discovered so the
+		-- silhouette becomes its full model/effects.
+		local wasDiscovered =
+			false
+
+
+		for _, state in
+			currentCustomerState do
+
+			if state.TypeName
+				~= customerType then
+
+				continue
+			end
+
+
+			wasDiscovered =
+				state.Discovered
+
+
+			state.Visits =
+				newAmount
+
+
+			state.Discovered =
+				newAmount > 0
+
+
+			break
+		end
+
+
+		if not customersBuilt then
+			return
+		end
+
+
+		if not wasDiscovered
+			and newAmount > 0 then
+
+			requestCustomerState()
+
+			return
+		end
+
+
+		local card =
+			customerCards[
+				customerType
+			]
+
+
+		if not card then
+			return
+		end
+
+
+		local amount =
+			card:FindFirstChild(
+				"CustomerAmount"
+			)
+
+
+		if amount
+			and amount:IsA(
+				"TextLabel"
+			) then
+
+			amount.Text =
+				`Visits: {math.max(
+					0,
+					math.floor(
+						newAmount
+					)
+				)}`
+		end
+	end
+)
+
 
 --==================================================
 -- INDEX OPEN
@@ -2088,7 +2361,7 @@ if businessUnlocked
 			if indexFrame.Visible
 				and businessesFrame.Visible then
 
-				requestIndexState()
+				requestBusinessState()
 			end
 		end
 	)
@@ -2116,7 +2389,7 @@ if upgradeResult
 			if indexFrame.Visible
 				and businessesFrame.Visible then
 
-				requestIndexState()
+				requestBusinessState()
 			end
 		end
 	)
@@ -2130,12 +2403,14 @@ end
 businessTemplate.Visible =
 	false
 
+
 customerTemplate.Visible =
 	false
 
 
 businessesFrame.Visible =
 	false
+
 
 customersFrame.Visible =
 	false
