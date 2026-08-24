@@ -15,14 +15,6 @@ local playerGui =
 	)
 
 
-local BusinessConfig =
-	require(
-		ReplicatedStorage
-			:WaitForChild("Shared")
-			:WaitForChild("BusinessConfig")
-	)
-
-
 local businessModels =
 	ReplicatedStorage:WaitForChild(
 		"BusinessModels"
@@ -74,32 +66,14 @@ local gui =
 	) :: ScreenGui
 
 
-local mainFrame =
+local main =
 	gui:WaitForChild(
 		"Main"
 	) :: Frame
 
 
-local title =
-	mainFrame:WaitForChild(
-		"Title"
-	) :: TextLabel
-
-
-local subtitle =
-	mainFrame:FindFirstChild(
-		"Subtitle"
-	)
-
-
-local indexButton =
-	mainFrame:WaitForChild(
-		"IndexButton"
-	) :: TextButton
-
-
 local indexFrame =
-	mainFrame:WaitForChild(
+	main:WaitForChild(
 		"IndexFrame"
 	) :: Frame
 
@@ -113,13 +87,13 @@ local buttons =
 local businessesButton =
 	buttons:WaitForChild(
 		"Businesses"
-	) :: GuiButton
+	) :: TextButton
 
 
 local customersButton =
 	buttons:WaitForChild(
 		"Customers"
-	) :: GuiButton
+	) :: TextButton
 
 
 local businessesFrame =
@@ -132,43 +106,6 @@ local businessTemplate =
 	businessesFrame:WaitForChild(
 		"Template"
 	) :: Frame
-
-
--- Existing Manage UI pages.
-local marketingFrame =
-	mainFrame:FindFirstChild(
-		"Frame"
-	)
-
-
-local plotFrame =
-	mainFrame:FindFirstChild(
-		"PlotFrame"
-	)
-
-
-local reputationFrame =
-	mainFrame:FindFirstChild(
-		"ReputationFrame"
-	)
-
-
-local marketingButton =
-	mainFrame:FindFirstChild(
-		"MarketingButton"
-	)
-
-
-local plotButton =
-	mainFrame:FindFirstChild(
-		"PlotButton"
-	)
-
-
-local reputationButton =
-	mainFrame:FindFirstChild(
-		"ReputationButton"
-	)
 
 
 --==================================================
@@ -211,10 +148,6 @@ local CAMERA_PADDING =
 -- STATE
 --==================================================
 
-local indexSelected =
-	false
-
-
 local currentIndexState: {
 	BusinessState
 } = {}
@@ -224,8 +157,6 @@ local loading =
 	false
 
 
--- The real templates remain hidden.
--- Every generated card is a visible clone.
 businessTemplate.Visible =
 	false
 
@@ -239,10 +170,13 @@ businessesFrame.AutomaticCanvasSize =
 --==================================================
 
 local function clearGeneratedBusinesses()
+
 	for _, child in
 		businessesFrame:GetChildren() do
 
-		if child == businessTemplate then
+		if child
+			== businessTemplate then
+
 			continue
 		end
 
@@ -264,10 +198,13 @@ local function clearGeneratedLevels(
 	levelsFrame: Frame,
 	levelTemplate: Frame
 )
+
 	for _, child in
 		levelsFrame:GetChildren() do
 
-		if child == levelTemplate then
+		if child
+			== levelTemplate then
+
 			continue
 		end
 
@@ -286,17 +223,18 @@ end
 
 
 --==================================================
--- VIEWPORT MODEL CLEANUP
+-- PREPARE VIEWPORT MODEL
 --==================================================
 
 local function prepareModelForViewport(
 	model: Model,
 	unlocked: boolean
 )
+
 	for _, descendant in
 		model:GetDescendants() do
 
-		-- Scripts have no reason to run in an index preview.
+		-- Remove scripts.
 		if descendant:IsA(
 			"Script"
 		)
@@ -306,11 +244,12 @@ local function prepareModelForViewport(
 
 			descendant:Destroy()
 
+
 			continue
 		end
 
 
-		-- Don't display world UI inside previews.
+		-- Remove world UI.
 		if descendant:IsA(
 			"BillboardGui"
 		)
@@ -319,6 +258,7 @@ local function prepareModelForViewport(
 			) then
 
 			descendant:Destroy()
+
 
 			continue
 		end
@@ -331,11 +271,14 @@ local function prepareModelForViewport(
 			descendant.Anchored =
 				true
 
+
 			descendant.CanCollide =
 				false
 
+
 			descendant.CanTouch =
 				false
+
 
 			descendant.CanQuery =
 				false
@@ -346,8 +289,10 @@ local function prepareModelForViewport(
 				descendant.Color =
 					LOCKED_COLOR
 
+
 				descendant.Material =
 					Enum.Material.SmoothPlastic
+
 
 				descendant.Reflectance =
 					0
@@ -379,11 +324,13 @@ local function prepareModelForViewport(
 				descendant.Transparency =
 					1
 
+
 			elseif descendant:IsA(
 				"SurfaceAppearance"
 			) then
 
 				descendant:Destroy()
+
 
 			elseif descendant:IsA(
 				"ParticleEmitter"
@@ -397,6 +344,7 @@ local function prepareModelForViewport(
 
 				descendant.Enabled =
 					false
+
 
 			elseif descendant:IsA(
 				"Light"
@@ -418,6 +366,7 @@ local function positionCamera(
 	viewport: ViewportFrame,
 	model: Model
 )
+
 	local boundingCFrame,
 		boundingSize =
 		model:GetBoundingBox()
@@ -451,7 +400,8 @@ local function positionCamera(
 	local distance =
 		(
 			largestSize
-				/ (
+				/
+				(
 					2
 					* math.tan(
 						halfFov
@@ -477,6 +427,7 @@ local function positionCamera(
 
 	camera.Name =
 		"IndexCamera"
+
 
 	camera.FieldOfView =
 		VIEWPORT_FOV
@@ -510,6 +461,7 @@ local function populateViewport(
 	templateName: string,
 	unlocked: boolean
 )
+
 	viewport:ClearAllChildren()
 
 
@@ -522,8 +474,10 @@ local function populateViewport(
 		viewport.Ambient =
 			UNLOCKED_AMBIENT
 
+
 		viewport.LightColor =
 			UNLOCKED_LIGHT
+
 
 		viewport.LightDirection =
 			Vector3.new(
@@ -534,7 +488,7 @@ local function populateViewport(
 
 	else
 
-		-- Locked previews receive no viewport light at all.
+		-- Completely dark locked silhouette.
 		viewport.Ambient =
 			Color3.new(
 				0,
@@ -542,12 +496,14 @@ local function populateViewport(
 				0
 			)
 
+
 		viewport.LightColor =
 			Color3.new(
 				0,
 				0,
 				0
 			)
+
 
 		viewport.LightDirection =
 			Vector3.zero
@@ -566,8 +522,9 @@ local function populateViewport(
 		) then
 
 		warn(
-			`[Index] ReplicatedStorage.BusinessModels is missing model "{templateName}".`
+			`[Index] Missing business model "{templateName}".`
 		)
+
 
 		return
 	end
@@ -578,8 +535,10 @@ local function populateViewport(
 			"WorldModel"
 		)
 
+
 	worldModel.Name =
 		"PreviewWorld"
+
 
 	worldModel.Parent =
 		viewport
@@ -619,6 +578,7 @@ local function createLevelCard(
 	levelTemplate: Frame,
 	levelState: LevelState
 )
+
 	local levelCard =
 		levelTemplate:Clone()
 
@@ -626,11 +586,14 @@ local function createLevelCard(
 	levelCard.Name =
 		`Level{levelState.Level}`
 
+
 	levelCard.Visible =
 		true
 
+
 	levelCard.LayoutOrder =
 		levelState.Level
+
 
 	levelCard:SetAttribute(
 		"IndexGenerated",
@@ -673,6 +636,7 @@ end
 local function createBusinessCard(
 	businessState: BusinessState
 )
+
 	local card =
 		businessTemplate:Clone()
 
@@ -680,11 +644,14 @@ local function createBusinessCard(
 	card.Name =
 		businessState.BusinessType
 
+
 	card.Visible =
 		true
 
+
 	card.LayoutOrder =
 		businessState.DisplayOrder
+
 
 	card:SetAttribute(
 		"IndexGenerated",
@@ -741,12 +708,13 @@ end
 
 
 --==================================================
--- BUILD INDEX
+-- BUILD BUSINESS INDEX
 --==================================================
 
 local function buildBusinessIndex(
 	state: {BusinessState}
 )
+
 	clearGeneratedBusinesses()
 
 
@@ -761,10 +729,11 @@ end
 
 
 --==================================================
--- REQUEST INDEX
+-- REQUEST STATE
 --==================================================
 
 local function requestIndexState()
+
 	if loading then
 		return
 	end
@@ -800,6 +769,7 @@ local function requestIndexState()
 					"[Index] Failed to load business index."
 				)
 
+
 				return
 			end
 
@@ -817,114 +787,35 @@ end
 
 
 --==================================================
--- PAGE VISIBILITY
+-- INDEX SUB-PAGES
 --==================================================
 
-local function hideExistingPages()
-	if marketingFrame
-		and marketingFrame:IsA(
-			"GuiObject"
-		) then
+local function showBusinesses()
 
-		marketingFrame.Visible =
-			false
-	end
-
-
-	if plotFrame
-		and plotFrame:IsA(
-			"GuiObject"
-		) then
-
-		plotFrame.Visible =
-			false
-	end
-
-
-	if reputationFrame
-		and reputationFrame:IsA(
-			"GuiObject"
-		) then
-
-		reputationFrame.Visible =
-			false
-	end
-end
-
-
-local function deactivateExistingButtons()
-	for _, button in {
-		marketingButton,
-		plotButton,
-		reputationButton,
-	} do
-
-		if button
-			and button:IsA(
-				"GuiButton"
-			) then
-
-			button.BackgroundTransparency =
-				0.2
-		end
-	end
-end
-
-
-local function showIndex()
-	indexSelected =
+	businessesFrame.Visible =
 		true
 
 
-	hideExistingPages()
-
-
-	indexFrame.Visible =
-		true
-
-
-	-- User specifically requested the ManageUI title
-	-- to simply become "Index".
-	title.Text =
-		"Index"
-
-
-	if subtitle
-		and subtitle:IsA(
-			"TextLabel"
-		) then
-
-		subtitle.Text =
-			"Discover every business and upgrade level!"
-	end
-
-
-	deactivateExistingButtons()
-
-
-	indexButton.BackgroundTransparency =
+	businessesButton.BackgroundTransparency =
 		0
 
 
-	-- Start on Businesses.
-	businessesFrame.Visible =
-		true
+	customersButton.BackgroundTransparency =
+		0.2
 
 
 	requestIndexState()
 end
 
 
-local function leaveIndex()
-	indexSelected =
-		false
+-- Customers page comes next.
+local function showCustomers()
 
-	indexFrame.Visible =
-		false
-
-
-	indexButton.BackgroundTransparency =
-		0.2
+	-- Don't hide Businesses yet because there is
+	-- currently no CustomersFrame.
+	--
+	-- Once CustomersFrame is added, this is where
+	-- we switch to it.
 end
 
 
@@ -932,70 +823,37 @@ end
 -- BUTTONS
 --==================================================
 
-indexButton.Activated:Connect(
-	function()
-
-		showIndex()
-	end
-)
-
-
 businessesButton.Activated:Connect(
-	function()
-
-		businessesFrame.Visible =
-			true
-	end
+	showBusinesses
 )
 
 
--- Customers is intentionally left for the next stage
--- of the Index.
 customersButton.Activated:Connect(
-	function()
-
-		-- We don't have a CustomersFrame yet.
-		-- Leave the businesses page as-is for now.
-	end
-)
-
-
-local function connectExistingTab(
-	button: Instance?
-)
-	if not button
-		or not button:IsA(
-			"GuiButton"
-		) then
-
-		return
-	end
-
-
-	button.Activated:Connect(
-		function()
-
-			leaveIndex()
-		end
-	)
-end
-
-
-connectExistingTab(
-	marketingButton
-)
-
-connectExistingTab(
-	plotButton
-)
-
-connectExistingTab(
-	reputationButton
+	showCustomers
 )
 
 
 --==================================================
--- REFRESH EVENTS
+-- INDEX OPEN
+--==================================================
+
+indexFrame:GetPropertyChangedSignal(
+	"Visible"
+):Connect(
+	function()
+
+		if not indexFrame.Visible then
+			return
+		end
+
+
+		showBusinesses()
+	end
+)
+
+
+--==================================================
+-- LIVE REFRESHES
 --==================================================
 
 local businessUnlocked =
@@ -1012,7 +870,7 @@ if businessUnlocked
 	businessUnlocked.OnClientEvent:Connect(
 		function()
 
-			if indexSelected then
+			if indexFrame.Visible then
 
 				requestIndexState()
 			end
@@ -1035,7 +893,7 @@ if upgradeResult
 	upgradeResult.OnClientEvent:Connect(
 		function()
 
-			if indexSelected then
+			if indexFrame.Visible then
 
 				requestIndexState()
 			end
@@ -1045,62 +903,12 @@ end
 
 
 --==================================================
--- REOPEN SAFETY
+-- INITIAL
 --==================================================
 
--- MarketingMenuClient remembers its own last tab.
--- If the player closed the menu while on Index and
--- opens it again, re-apply Index after its normal
--- showTab() has run.
-
-mainFrame:GetPropertyChangedSignal(
-	"Visible"
-):Connect(
-	function()
-
-		if not mainFrame.Visible
-			or not indexSelected then
-
-			return
-		end
-
-
-		task.defer(
-			function()
-
-				if mainFrame.Visible
-					and indexSelected then
-
-					hideExistingPages()
-
-					indexFrame.Visible =
-						true
-
-					title.Text =
-						"Index"
-
-
-					if subtitle
-						and subtitle:IsA(
-							"TextLabel"
-						) then
-
-						subtitle.Text =
-							"Discover every business and upgrade level!"
-					end
-				end
-			end
-		)
-	end
-)
-
-
---==================================================
--- INITIAL STATE
---==================================================
-
-indexFrame.Visible =
+businessTemplate.Visible =
 	false
+
 
 businessesFrame.Visible =
 	false
