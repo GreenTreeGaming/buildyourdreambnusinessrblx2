@@ -11,55 +11,54 @@ local BusinessConfig = {
 
 		FirstStandFree = true,
 
-		AdditionalStandCost = 500,
+		AdditionalStandCost = 450,
 
 		MaximumPlaced = 15,
 
-		BaseSaleValue = 3,
-
-		BaseServingCooldown = 5,
+		BaseSaleValue = 4,
+BaseServingCooldown = 5,
 
 		StandLevels = {
-			[1] = {
-				TemplateName = "LemonadeStand",
-				UpgradeCost = 40,
+	[1] = {
+		TemplateName = "LemonadeStand",
+		UpgradeCost = 35,
 
-				CustomerAttraction = 1.00,
-				CustomerRateMultiplier = 1.00,
-			},
+		CustomerAttraction = 1.00,
+		CustomerRateMultiplier = 1.00,
+	},
 
-			[2] = {
-				TemplateName = "LemonadeStand2",
-				UpgradeCost = 200,
+	[2] = {
+		TemplateName = "LemonadeStand2",
+		UpgradeCost = 175,
 
-				CustomerAttraction = 1.15,
-				CustomerRateMultiplier = 1.10,
-			},
+		CustomerAttraction = 1.15,
+		CustomerRateMultiplier = 1.10,
+	},
 
-			[3] = {
-				TemplateName = "LemonadeStand3",
-				UpgradeCost = 750,
+	[3] = {
+		TemplateName = "LemonadeStand3",
+		UpgradeCost = 650,
 
-				CustomerAttraction = 1.35,
-				CustomerRateMultiplier = 1.25,
-			},
+		CustomerAttraction = 1.35,
+		CustomerRateMultiplier = 1.25,
+	},
 
-			[4] = {
-				TemplateName = "LemonadeStand4",
-				UpgradeCost = 3000,
+	[4] = {
+		TemplateName = "LemonadeStand4",
+		UpgradeCost = 2500,
 
-				CustomerAttraction = 1.60,
-				CustomerRateMultiplier = 1.45,
-			},
+		CustomerAttraction = 1.60,
+		CustomerRateMultiplier = 1.45,
+	},
 
-			[5] = {
-				TemplateName = "LemonadeStand5",
-				UpgradeCost = nil,
+	[5] = {
+		TemplateName = "LemonadeStand5",
+		UpgradeCost = nil,
 
-				CustomerAttraction = 1.90,
-				CustomerRateMultiplier = 1.70,
-			},
-		},
+		CustomerAttraction = 1.90,
+		CustomerRateMultiplier = 1.70,
+	},
+},
 
 		Upgrades = {
 			ServingSpeed = {
@@ -153,449 +152,454 @@ local BusinessConfig = {
 				ValueType = "SaleValue",
 
 				Levels = {
-					{
-						Level = 0,
-						Cost = 0,
-						SaleValue = 3,
-					},
+	{
+		Level = 0,
+		Cost = 0,
+		SaleValue = 4,
+	},
 
-					{
-						Level = 1,
-						Cost = 40,
-						SaleValue = 4,
-					},
+	{
+		Level = 1,
+		Cost = 35,
+		SaleValue = 5,
+	},
 
-					{
-						Level = 2,
-						Cost = 125,
-						SaleValue = 6,
-					},
+	{
+		Level = 2,
+		Cost = 110,
+		SaleValue = 7,
+	},
 
-					{
-						Level = 3,
-						Cost = 325,
-						SaleValue = 9,
-					},
+	{
+		Level = 3,
+		Cost = 280,
+		SaleValue = 10,
+	},
 
-					{
-						Level = 4,
-						Cost = 800,
-						SaleValue = 13,
-					},
+	{
+		Level = 4,
+		Cost = 650,
+		SaleValue = 15,
+	},
 
-					{
-						Level = 5,
-						Cost = 1900,
-						SaleValue = 19,
-					},
-				},
+	{
+		Level = 5,
+		Cost = 1500,
+		SaleValue = 22,
+	},
+},
 			},
 		},
 	},
 
 	HotdogStand = {
-		DisplayName = "Hotdog Stand",
+	DisplayName = "Hotdog Stand",
 
-		DisplayOrder = 2,
+	DisplayOrder = 2,
 
-		RevealDescription =
-			"Serve hungry customers faster and earn bigger profits with your new hotdog business.",
+	RevealDescription =
+		"Serve hungry customers faster and earn bigger profits with your new hotdog business.",
 
-		UnlockRequirements = {
-			ReputationLevel = 3,
+	UnlockRequirements = {
+		ReputationLevel = 3,
 
-			LifetimeEarnings = 250,
+		LifetimeEarnings = 250,
 
-			BusinessLevel = {
-				BusinessType = "LemonadeStand",
-				Level = 2,
+		BusinessLevel = {
+			BusinessType = "LemonadeStand",
+			Level = 2,
+		},
+	},
+
+	FirstStandFree = false,
+
+	-- Cheap enough that unlocking Hotdogs encourages the
+	-- player to actually branch into the new business.
+	AdditionalStandCost = 900,
+
+	MaximumPlaced = 12,
+
+	-- Hotdogs should immediately feel more valuable than
+	-- lemonade without invalidating upgraded lemonade stands.
+	BaseSaleValue = 15,
+
+	BaseServingCooldown = 5,
+
+	StandLevels = {
+		[1] = {
+			TemplateName = "HotdogStand",
+			UpgradeCost = 200,
+
+			CustomerAttraction = 1.00,
+			CustomerRateMultiplier = 1.00,
+		},
+
+		[2] = {
+			TemplateName = "HotdogStand2",
+			UpgradeCost = 700,
+
+			CustomerAttraction = 1.15,
+			CustomerRateMultiplier = 1.10,
+		},
+
+		[3] = {
+			TemplateName = "HotdogStand3",
+			UpgradeCost = 2250,
+
+			CustomerAttraction = 1.35,
+			CustomerRateMultiplier = 1.25,
+		},
+
+		[4] = {
+			TemplateName = "HotdogStand4",
+			UpgradeCost = 7000,
+
+			CustomerAttraction = 1.60,
+			CustomerRateMultiplier = 1.45,
+		},
+
+		[5] = {
+			TemplateName = "HotdogStand5",
+			UpgradeCost = nil,
+
+			CustomerAttraction = 1.90,
+			CustomerRateMultiplier = 1.70,
+		},
+	},
+
+	Upgrades = {
+		ServingSpeed = {
+			DisplayName = "Faster Service",
+
+			Description =
+				"Serve hotdogs faster and keep the line moving.",
+
+			ValueType = "Cooldown",
+
+			Levels = {
+				{
+					Level = 0,
+					Cost = 0,
+					Cooldown = 5,
+				},
+
+				{
+					Level = 1,
+					Cost = 80,
+					Cooldown = 4.25,
+				},
+
+				{
+					Level = 2,
+					Cost = 225,
+					Cooldown = 3.5,
+				},
+
+				{
+					Level = 3,
+					Cost = 525,
+					Cooldown = 2.8,
+				},
+
+				{
+					Level = 4,
+					Cost = 1200,
+					Cooldown = 2.15,
+				},
+
+				{
+					Level = 5,
+					Cost = 2800,
+					Cooldown = 1.6,
+				},
 			},
 		},
 
-		FirstStandFree = false,
+		QueueCapacity = {
+			DisplayName = "Longer Queue",
 
-		AdditionalStandCost = 1250,
+			Description =
+				"Allow more customers to wait at this stand.",
 
-		MaximumPlaced = 12,
+			ValueType = "QueueCapacity",
 
-		BaseSaleValue = 7,
-		BaseServingCooldown = 5.5,
+			Levels = {
+				{
+					Level = 0,
+					Cost = 0,
+					Capacity = 1,
+				},
 
-		StandLevels = {
-			[1] = {
-				TemplateName = "HotdogStand",
-				UpgradeCost = 250,
+				{
+					Level = 1,
+					Cost = 160,
+					Capacity = 2,
+				},
 
-				CustomerAttraction = 1.00,
-				CustomerRateMultiplier = 1.00,
-			},
+				{
+					Level = 2,
+					Cost = 500,
+					Capacity = 3,
+				},
 
-			[2] = {
-				TemplateName = "HotdogStand2",
-				UpgradeCost = 900,
-
-				CustomerAttraction = 1.15,
-				CustomerRateMultiplier = 1.10,
-			},
-
-			[3] = {
-				TemplateName = "HotdogStand3",
-				UpgradeCost = 3000,
-
-				CustomerAttraction = 1.35,
-				CustomerRateMultiplier = 1.25,
-			},
-
-			[4] = {
-				TemplateName = "HotdogStand4",
-				UpgradeCost = 9500,
-
-				CustomerAttraction = 1.60,
-				CustomerRateMultiplier = 1.45,
-			},
-
-			[5] = {
-				TemplateName = "HotdogStand5",
-				UpgradeCost = nil,
-
-				CustomerAttraction = 1.90,
-				CustomerRateMultiplier = 1.70,
+				{
+					Level = 3,
+					Cost = 1400,
+					Capacity = 4,
+				},
 			},
 		},
 
-		Upgrades = {
-			ServingSpeed = {
-				DisplayName = "Faster Service",
+		SaleValue = {
+			DisplayName = "Better Hotdogs",
 
-				Description =
-					"Serve hotdogs faster and keep the line moving.",
+			Description =
+				"Improve your hotdogs and earn more from every sale.",
 
-				ValueType = "Cooldown",
+			ValueType = "SaleValue",
 
-				Levels = {
-					{
-						Level = 0,
-						Cost = 0,
-						Cooldown = 5.5,
-					},
-
-					{
-						Level = 1,
-						Cost = 100,
-						Cooldown = 4.75,
-					},
-
-					{
-						Level = 2,
-						Cost = 275,
-						Cooldown = 4,
-					},
-
-					{
-						Level = 3,
-						Cost = 650,
-						Cooldown = 3.25,
-					},
-
-					{
-						Level = 4,
-						Cost = 1500,
-						Cooldown = 2.5,
-					},
-
-					{
-						Level = 5,
-						Cost = 3500,
-						Cooldown = 1.75,
-					},
+			Levels = {
+				{
+					Level = 0,
+					Cost = 0,
+					SaleValue = 15,
 				},
-			},
 
-			QueueCapacity = {
-				DisplayName = "Longer Queue",
-
-				Description =
-					"Allow more customers to wait at this stand.",
-
-				ValueType = "QueueCapacity",
-
-				Levels = {
-					{
-						Level = 0,
-						Cost = 0,
-						Capacity = 1,
-					},
-
-					{
-						Level = 1,
-						Cost = 200,
-						Capacity = 2,
-					},
-
-					{
-						Level = 2,
-						Cost = 650,
-						Capacity = 3,
-					},
-
-					{
-						Level = 3,
-						Cost = 1800,
-						Capacity = 4,
-					},
+				{
+					Level = 1,
+					Cost = 120,
+					SaleValue = 20,
 				},
-			},
 
-			SaleValue = {
-				DisplayName = "Better Hotdogs",
+				{
+					Level = 2,
+					Cost = 350,
+					SaleValue = 27,
+				},
 
-				Description =
-					"Improve your hotdogs and earn more from every sale.",
+				{
+					Level = 3,
+					Cost = 900,
+					SaleValue = 36,
+				},
 
-				ValueType = "SaleValue",
+				{
+					Level = 4,
+					Cost = 2200,
+					SaleValue = 48,
+				},
 
-				Levels = {
-					{
-						Level = 0,
-						Cost = 0,
-						SaleValue = 7,
-					},
-
-					{
-						Level = 1,
-						Cost = 150,
-						SaleValue = 9,
-					},
-
-					{
-						Level = 2,
-						Cost = 450,
-						SaleValue = 12,
-					},
-
-					{
-						Level = 3,
-						Cost = 1200,
-						SaleValue = 16,
-					},
-
-					{
-						Level = 4,
-						Cost = 3000,
-						SaleValue = 22,
-					},
-
-					{
-						Level = 5,
-						Cost = 7000,
-						SaleValue = 30,
-					},
+				{
+					Level = 5,
+					Cost = 5000,
+					SaleValue = 64,
 				},
 			},
 		},
 	},
+},
 
 	HaircutStand = {
-		DisplayName = "Haircut Stand",
+	DisplayName = "Haircut Stand",
 
-		DisplayOrder = 3,
+	DisplayOrder = 3,
 
-		RevealDescription =
-			"Cut hair, serve higher-paying customers, and grow your business into a professional barbershop.",
+	RevealDescription =
+		"Cut hair, serve higher-paying customers, and grow your business into a professional barbershop.",
 
-		UnlockRequirements = {
-			ReputationLevel = 7,
+	UnlockRequirements = {
+		ReputationLevel = 7,
 
-			LifetimeEarnings = 3000,
+		LifetimeEarnings = 3000,
 
-			BusinessLevel = {
-				BusinessType = "HotdogStand",
-				Level = 3,
+		BusinessLevel = {
+			BusinessType = "HotdogStand",
+			Level = 3,
+		},
+	},
+
+	FirstStandFree = false,
+
+	AdditionalStandCost = 4500,
+
+	MaximumPlaced = 10,
+
+	BaseSaleValue = 40,
+	BaseServingCooldown = 6,
+
+	StandLevels = {
+		[1] = {
+			TemplateName = "HaircutStand",
+			UpgradeCost = 900,
+
+			CustomerAttraction = 1.00,
+			CustomerRateMultiplier = 1.00,
+		},
+
+		[2] = {
+			TemplateName = "HaircutStand2",
+			UpgradeCost = 3200,
+
+			CustomerAttraction = 1.15,
+			CustomerRateMultiplier = 1.10,
+		},
+
+		[3] = {
+			TemplateName = "HaircutStand3",
+			UpgradeCost = 10000,
+
+			CustomerAttraction = 1.35,
+			CustomerRateMultiplier = 1.25,
+		},
+
+		[4] = {
+			TemplateName = "HaircutStand4",
+			UpgradeCost = 30000,
+
+			CustomerAttraction = 1.60,
+			CustomerRateMultiplier = 1.45,
+		},
+
+		[5] = {
+			TemplateName = "HaircutStand5",
+			UpgradeCost = nil,
+
+			CustomerAttraction = 1.90,
+			CustomerRateMultiplier = 1.70,
+		},
+	},
+
+	Upgrades = {
+		ServingSpeed = {
+			DisplayName = "Faster Haircuts",
+
+			Description =
+				"Improve your tools and technique to finish haircuts faster.",
+
+			ValueType = "Cooldown",
+
+			Levels = {
+				{
+					Level = 0,
+					Cost = 0,
+					Cooldown = 6,
+				},
+
+				{
+					Level = 1,
+					Cost = 350,
+					Cooldown = 5.1,
+				},
+
+				{
+					Level = 2,
+					Cost = 1000,
+					Cooldown = 4.3,
+				},
+
+				{
+					Level = 3,
+					Cost = 2600,
+					Cooldown = 3.5,
+				},
+
+				{
+					Level = 4,
+					Cost = 6500,
+					Cooldown = 2.8,
+				},
+
+				{
+					Level = 5,
+					Cost = 14500,
+					Cooldown = 2.1,
+				},
 			},
 		},
 
-		FirstStandFree = false,
+		QueueCapacity = {
+			DisplayName = "Waiting Area",
 
-		AdditionalStandCost = 6000,
+			Description =
+				"Add more seating so additional customers can wait for a haircut.",
 
-		MaximumPlaced = 10,
+			ValueType = "QueueCapacity",
 
-		BaseSaleValue = 18,
-		BaseServingCooldown = 7,
+			Levels = {
+				{
+					Level = 0,
+					Cost = 0,
+					Capacity = 1,
+				},
 
-		StandLevels = {
-			[1] = {
-				TemplateName = "HaircutStand",
-				UpgradeCost = 1200,
+				{
+					Level = 1,
+					Cost = 650,
+					Capacity = 2,
+				},
 
-				CustomerAttraction = 1.00,
-				CustomerRateMultiplier = 1.00,
-			},
+				{
+					Level = 2,
+					Cost = 2100,
+					Capacity = 3,
+				},
 
-			[2] = {
-				TemplateName = "HaircutStand2",
-				UpgradeCost = 4500,
-
-				CustomerAttraction = 1.15,
-				CustomerRateMultiplier = 1.10,
-			},
-
-			[3] = {
-				TemplateName = "HaircutStand3",
-				UpgradeCost = 14000,
-
-				CustomerAttraction = 1.35,
-				CustomerRateMultiplier = 1.25,
-			},
-
-			[4] = {
-				TemplateName = "HaircutStand4",
-				UpgradeCost = 42000,
-
-				CustomerAttraction = 1.60,
-				CustomerRateMultiplier = 1.45,
-			},
-
-			[5] = {
-				TemplateName = "HaircutStand5",
-				UpgradeCost = nil,
-
-				CustomerAttraction = 1.90,
-				CustomerRateMultiplier = 1.70,
+				{
+					Level = 3,
+					Cost = 6000,
+					Capacity = 4,
+				},
 			},
 		},
 
-		Upgrades = {
-			ServingSpeed = {
-				DisplayName = "Faster Haircuts",
+		SaleValue = {
+			DisplayName = "Better Haircuts",
 
-				Description =
-					"Improve your tools and technique to finish haircuts faster.",
+			Description =
+				"Improve your haircut quality and charge more for every customer.",
 
-				ValueType = "Cooldown",
+			ValueType = "SaleValue",
 
-				Levels = {
-					{
-						Level = 0,
-						Cost = 0,
-						Cooldown = 7,
-					},
-
-					{
-						Level = 1,
-						Cost = 450,
-						Cooldown = 6,
-					},
-
-					{
-						Level = 2,
-						Cost = 1250,
-						Cooldown = 5,
-					},
-
-					{
-						Level = 3,
-						Cost = 3200,
-						Cooldown = 4.1,
-					},
-
-					{
-						Level = 4,
-						Cost = 8000,
-						Cooldown = 3.3,
-					},
-
-					{
-						Level = 5,
-						Cost = 18000,
-						Cooldown = 2.5,
-					},
+			Levels = {
+				{
+					Level = 0,
+					Cost = 0,
+					SaleValue = 40,
 				},
-			},
 
-			QueueCapacity = {
-				DisplayName = "Waiting Area",
-
-				Description =
-					"Add more seating so additional customers can wait for a haircut.",
-
-				ValueType = "QueueCapacity",
-
-				Levels = {
-					{
-						Level = 0,
-						Cost = 0,
-						Capacity = 1,
-					},
-
-					{
-						Level = 1,
-						Cost = 850,
-						Capacity = 2,
-					},
-
-					{
-						Level = 2,
-						Cost = 2800,
-						Capacity = 3,
-					},
-
-					{
-						Level = 3,
-						Cost = 8000,
-						Capacity = 4,
-					},
+				{
+					Level = 1,
+					Cost = 550,
+					SaleValue = 52,
 				},
-			},
 
-			SaleValue = {
-				DisplayName = "Better Haircuts",
+				{
+					Level = 2,
+					Cost = 1600,
+					SaleValue = 68,
+				},
 
-				Description =
-					"Improve your haircut quality and charge more for every customer.",
+				{
+					Level = 3,
+					Cost = 4200,
+					SaleValue = 90,
+				},
 
-				ValueType = "SaleValue",
+				{
+					Level = 4,
+					Cost = 10500,
+					SaleValue = 120,
+				},
 
-				Levels = {
-					{
-						Level = 0,
-						Cost = 0,
-						SaleValue = 18,
-					},
-
-					{
-						Level = 1,
-						Cost = 700,
-						SaleValue = 24,
-					},
-
-					{
-						Level = 2,
-						Cost = 2000,
-						SaleValue = 33,
-					},
-
-					{
-						Level = 3,
-						Cost = 5200,
-						SaleValue = 45,
-					},
-
-					{
-						Level = 4,
-						Cost = 13000,
-						SaleValue = 62,
-					},
-
-					{
-						Level = 5,
-						Cost = 30000,
-						SaleValue = 85,
-					},
+				{
+					Level = 5,
+					Cost = 24000,
+					SaleValue = 160,
 				},
 			},
 		},
 	},
+},
 }
 
 return BusinessConfig
