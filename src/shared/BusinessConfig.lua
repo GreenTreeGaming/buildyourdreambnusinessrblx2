@@ -397,6 +397,208 @@ local BusinessConfig = {
 			},
 		},
 	},
+
+		HaircutStand = {
+		DisplayName = "Haircut Stand",
+
+		DisplayOrder = 3,
+
+		RevealDescription =
+			"Cut hair, serve higher-paying customers, and grow your business into a professional barbershop.",
+
+		UnlockRequirements = {
+			ReputationLevel = 7,
+
+			LifetimeEarnings = 3000,
+
+			BusinessLevel = {
+				BusinessType = "HotdogStand",
+				Level = 3,
+			},
+		},
+
+		FirstStandFree = false,
+
+		AdditionalStandCost = 6000,
+
+		MaximumPlaced = 10,
+
+		BaseSaleValue = 18,
+		BaseServingCooldown = 7,
+
+		StandLevels = {
+			[1] = {
+				TemplateName = "HaircutStand",
+				UpgradeCost = 1200,
+
+				CustomerAttraction = 1.00,
+				CustomerRateMultiplier = 1.00,
+			},
+
+			[2] = {
+				TemplateName = "HaircutStand2",
+				UpgradeCost = 4500,
+
+				CustomerAttraction = 1.15,
+				CustomerRateMultiplier = 1.10,
+			},
+
+			[3] = {
+				TemplateName = "HaircutStand3",
+				UpgradeCost = 14000,
+
+				CustomerAttraction = 1.35,
+				CustomerRateMultiplier = 1.25,
+			},
+
+			[4] = {
+				TemplateName = "HaircutStand4",
+				UpgradeCost = 42000,
+
+				CustomerAttraction = 1.60,
+				CustomerRateMultiplier = 1.45,
+			},
+
+			[5] = {
+				TemplateName = "HaircutStand5",
+				UpgradeCost = nil,
+
+				CustomerAttraction = 1.90,
+				CustomerRateMultiplier = 1.70,
+			},
+		},
+
+		Upgrades = {
+			ServingSpeed = {
+				DisplayName = "Faster Haircuts",
+
+				Description =
+					"Improve your tools and technique to finish haircuts faster.",
+
+				ValueType = "Cooldown",
+
+				Levels = {
+					{
+						Level = 0,
+						Cost = 0,
+						Cooldown = 7,
+					},
+
+					{
+						Level = 1,
+						Cost = 450,
+						Cooldown = 6,
+					},
+
+					{
+						Level = 2,
+						Cost = 1250,
+						Cooldown = 5,
+					},
+
+					{
+						Level = 3,
+						Cost = 3200,
+						Cooldown = 4.1,
+					},
+
+					{
+						Level = 4,
+						Cost = 8000,
+						Cooldown = 3.3,
+					},
+
+					{
+						Level = 5,
+						Cost = 18000,
+						Cooldown = 2.5,
+					},
+				},
+			},
+
+			QueueCapacity = {
+				DisplayName = "Waiting Area",
+
+				Description =
+					"Add more seating so additional customers can wait for a haircut.",
+
+				ValueType = "QueueCapacity",
+
+				Levels = {
+					{
+						Level = 0,
+						Cost = 0,
+						Capacity = 1,
+					},
+
+					{
+						Level = 1,
+						Cost = 850,
+						Capacity = 2,
+					},
+
+					{
+						Level = 2,
+						Cost = 2800,
+						Capacity = 3,
+					},
+
+					{
+						Level = 3,
+						Cost = 8000,
+						Capacity = 4,
+					},
+				},
+			},
+
+			SaleValue = {
+				DisplayName = "Better Haircuts",
+
+				Description =
+					"Improve your haircut quality and charge more for every customer.",
+
+				ValueType = "SaleValue",
+
+				Levels = {
+					{
+						Level = 0,
+						Cost = 0,
+						SaleValue = 18,
+					},
+
+					{
+						Level = 1,
+						Cost = 700,
+						SaleValue = 24,
+					},
+
+					{
+						Level = 2,
+						Cost = 2000,
+						SaleValue = 33,
+					},
+
+					{
+						Level = 3,
+						Cost = 5200,
+						SaleValue = 45,
+					},
+
+					{
+						Level = 4,
+						Cost = 13000,
+						SaleValue = 62,
+					},
+
+					{
+						Level = 5,
+						Cost = 30000,
+						SaleValue = 85,
+					},
+				},
+			},
+		},
+	},
 },
 }
 

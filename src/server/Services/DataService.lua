@@ -116,6 +116,7 @@ local DEFAULT_PROFILE = {
 	UnlockedBusinesses = {
 	LemonadeStand = true,
 	HotdogStand = false,
+	HaircutStand = false,
 },
 }
 
