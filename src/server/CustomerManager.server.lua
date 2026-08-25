@@ -689,7 +689,9 @@ local function setupCustomerInfo(
 	--==================================================
 
 	local customerName =
-		CustomerNames.GetRandomName()
+	CustomerNames.GetRandomName(
+		customer
+	)
 
 
 	local customerType,

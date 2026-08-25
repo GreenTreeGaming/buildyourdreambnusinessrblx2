@@ -1,3 +1,7 @@
+local CollectionService =
+	game:GetService("CollectionService")
+
+
 local CustomerNames = {}
 
 
@@ -9,32 +13,21 @@ local random =
 -- NAMES
 --==================================================
 
-local FIRST_NAMES = {
+local BOY_FIRST_NAMES = {
 	"Alex",
 	"Andrew",
-	"Anna",
-	"Avery",
 	"Ben",
 	"Blake",
 	"Brandon",
-	"Brooke",
 	"Cameron",
 	"Charlie",
-	"Chloe",
 	"Chris",
 	"Daniel",
 	"David",
 	"Dylan",
-	"Ella",
-	"Emily",
-	"Emma",
 	"Ethan",
 	"Evan",
-	"Grace",
-	"Hailey",
-	"Hannah",
 	"Henry",
-	"Isabella",
 	"Jack",
 	"Jacob",
 	"Jake",
@@ -42,35 +35,50 @@ local FIRST_NAMES = {
 	"Jason",
 	"Jordan",
 	"Josh",
-	"Julia",
-	"Kayla",
 	"Kevin",
-	"Lauren",
 	"Leo",
 	"Liam",
-	"Lily",
 	"Logan",
 	"Lucas",
-	"Madison",
 	"Mason",
 	"Matthew",
-	"Maya",
-	"Mia",
 	"Michael",
-	"Natalie",
 	"Nathan",
 	"Nick",
 	"Noah",
-	"Olivia",
 	"Owen",
 	"Ryan",
 	"Sam",
+	"Tyler",
+	"William",
+}
+
+
+local GIRL_FIRST_NAMES = {
+	"Anna",
+	"Avery",
+	"Brooke",
+	"Chloe",
+	"Ella",
+	"Emily",
+	"Emma",
+	"Grace",
+	"Hailey",
+	"Hannah",
+	"Isabella",
+	"Julia",
+	"Kayla",
+	"Lauren",
+	"Lily",
+	"Madison",
+	"Maya",
+	"Mia",
+	"Natalie",
+	"Olivia",
 	"Sarah",
 	"Sofia",
 	"Sophie",
 	"Taylor",
-	"Tyler",
-	"William",
 	"Zoe",
 }
 
@@ -147,32 +155,116 @@ local LAST_NAMES = {
 
 
 --==================================================
+-- INTERNAL
+--==================================================
+
+local function getRandomFrom(
+	list: {string}
+): string
+
+	return list[
+		random:NextInteger(
+			1,
+			#list
+		)
+	]
+end
+
+
+local function getGender(
+	npc: Instance?
+): string?
+
+	if not npc then
+		return nil
+	end
+
+
+	if CollectionService:HasTag(
+		npc,
+		"Boy"
+	) then
+
+		return "Boy"
+	end
+
+
+	if CollectionService:HasTag(
+		npc,
+		"Girl"
+	) then
+
+		return "Girl"
+	end
+
+
+	return nil
+end
+
+
+--==================================================
 -- PUBLIC
 --==================================================
 
-function CustomerNames.GetRandomFirstName(): string
-	return FIRST_NAMES[
-		random:NextInteger(
-			1,
-			#FIRST_NAMES
+function CustomerNames.GetRandomFirstName(
+	npc: Instance?
+): string
+
+	local gender =
+		getGender(
+			npc
 		)
-	]
+
+
+	if gender == "Boy" then
+
+		return getRandomFrom(
+			BOY_FIRST_NAMES
+		)
+	end
+
+
+	if gender == "Girl" then
+
+		return getRandomFrom(
+			GIRL_FIRST_NAMES
+		)
+	end
+
+
+	-- Fallback in case an NPC somehow has
+	-- neither tag.
+	if random:NextNumber() < 0.5 then
+
+		return getRandomFrom(
+			BOY_FIRST_NAMES
+		)
+	end
+
+
+	return getRandomFrom(
+		GIRL_FIRST_NAMES
+	)
 end
 
 
 function CustomerNames.GetRandomLastName(): string
-	return LAST_NAMES[
-		random:NextInteger(
-			1,
-			#LAST_NAMES
-		)
-	]
+
+	return getRandomFrom(
+		LAST_NAMES
+	)
 end
 
 
-function CustomerNames.GetRandomName(): string
+function CustomerNames.GetRandomName(
+	npc: Instance?
+): string
+
 	local firstName =
-		CustomerNames.GetRandomFirstName()
+		CustomerNames.GetRandomFirstName(
+			npc
+		)
+
 
 	local lastName =
 		CustomerNames.GetRandomLastName()
