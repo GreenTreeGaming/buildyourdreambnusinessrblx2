@@ -117,34 +117,56 @@ local function getTotalSales(
 	local totalSales =
 		0
 
-	local profile =
-		DataService.GetProfile(
+
+	local plot =
+		getPlayerPlot(
 			player
 		)
 
-	if not profile then
-		return 0
-	end
+
+	if plot then
+
+		local placedBusinesses =
+			plot:FindFirstChild(
+				"PlacedBusinesses"
+			)
 
 
-	for _, business in
-		profile.PlacedBusinesses or {} do
+		if placedBusinesses then
 
-		local sales =
-			business.TotalSales
+			for _, business in
+				placedBusinesses:GetChildren() do
 
-		if typeof(sales) == "number" then
-			totalSales +=
-				math.max(
-					0,
-					math.floor(sales)
-				)
+				if not business:IsA(
+					"Model"
+				) then
+
+					continue
+				end
+
+
+				local sales =
+					business:GetAttribute(
+						"TotalSales"
+					)
+
+
+				if typeof(sales)
+					== "number" then
+
+					totalSales +=
+						math.max(
+							0,
+							math.floor(
+								sales
+							)
+						)
+				end
+			end
 		end
 	end
 
 
-	-- Reputation boosts can contribute bonus sales
-	-- in the existing reputation system.
 	totalSales +=
 		DataService.GetReputationBonusSales(
 			player
@@ -153,7 +175,6 @@ local function getTotalSales(
 
 	return totalSales
 end
-
 
 local function getReputationLevel(
 	player: Player

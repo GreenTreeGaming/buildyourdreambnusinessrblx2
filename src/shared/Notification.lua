@@ -21,11 +21,41 @@ local DEFAULT_DURATION =
 local CARD_WIDTH =
 	410
 
-local CARD_HEIGHT =
+local MIN_CARD_HEIGHT =
 	78
+
+local MAX_CARD_HEIGHT =
+	150
 
 local CARD_GAP =
 	10
+
+
+-- Approximate wrapping.
+--
+-- The actual message label is allowed to use the
+-- resulting vertical space, so wrapped text will no
+-- longer be clipped.
+local MESSAGE_CHARS_PER_LINE =
+	38
+
+local MESSAGE_LINE_HEIGHT =
+	17
+
+local MESSAGE_TOP =
+	39
+
+local MESSAGE_BOTTOM_PADDING =
+	18
+
+
+-- Give especially long messages a little more
+-- reading time automatically.
+local LONG_MESSAGE_EXTRA_DURATION =
+	1.5
+
+local LONG_MESSAGE_THRESHOLD =
+	70
 
 
 -- How far down the notification stack begins.
@@ -174,6 +204,108 @@ local nextId =
 -- HELPERS
 --==================================================
 
+local function getEstimatedLineCount(
+	message: string
+): number
+	local lineCount =
+		0
+
+
+	-- Respect manually inserted line breaks too.
+	for line in string.gmatch(
+		message .. "\n",
+		"(.-)\n"
+	) do
+
+		local lineLength =
+			#line
+
+
+		lineCount +=
+			math.max(
+				1,
+				math.ceil(
+					lineLength
+						/ MESSAGE_CHARS_PER_LINE
+				)
+			)
+	end
+
+
+	return math.max(
+		1,
+		lineCount
+	)
+end
+
+
+local function getCardHeight(
+	message: string
+): number
+
+	local estimatedLines =
+		getEstimatedLineCount(
+			message
+		)
+
+
+	if estimatedLines <= 1 then
+		return MIN_CARD_HEIGHT
+	end
+
+
+	-- The normal card already has room for one line,
+	-- so only additional lines increase its height.
+	local extraLines =
+		estimatedLines - 1
+
+
+	return math.clamp(
+		MIN_CARD_HEIGHT
+			+ extraLines
+				* MESSAGE_LINE_HEIGHT,
+		MIN_CARD_HEIGHT,
+		MAX_CARD_HEIGHT
+	)
+end
+
+
+local function getMessageHeight(
+	cardHeight: number
+): number
+
+	return math.max(
+		24,
+		cardHeight
+			- MESSAGE_TOP
+			- MESSAGE_BOTTOM_PADDING
+	)
+end
+
+
+local function getDuration(
+	message: string,
+	options
+): number
+
+	if typeof(options.Duration)
+		== "number" then
+
+		return options.Duration
+	end
+
+
+	if #message >= LONG_MESSAGE_THRESHOLD then
+
+		return DEFAULT_DURATION
+			+ LONG_MESSAGE_EXTRA_DURATION
+	end
+
+
+	return DEFAULT_DURATION
+end
+
+
 local function addCorner(
 	instance: GuiObject,
 	radius: number
@@ -265,6 +397,7 @@ end
 local function getGui(): ScreenGui
 	local player =
 		Players.LocalPlayer
+
 
 	if not player then
 		error(
@@ -591,6 +724,18 @@ local function createCard(
 		getHolder()
 
 
+	local cardHeight =
+		getCardHeight(
+			message
+		)
+
+
+	local messageHeight =
+		getMessageHeight(
+			cardHeight
+		)
+
+
 	--==================================================
 	-- CARD
 	--==================================================
@@ -609,7 +754,7 @@ local function createCard(
 	card.Size =
 		UDim2.fromOffset(
 			CARD_WIDTH,
-			CARD_HEIGHT
+			cardHeight
 		)
 
 	card.BackgroundColor3 =
@@ -905,6 +1050,9 @@ local function createCard(
 	title.TextSize =
 		20
 
+	title.TextTruncate =
+		Enum.TextTruncate.AtEnd
+
 	title.FontFace =
 		Font.new(
 			"rbxassetid://12188570269",
@@ -939,15 +1087,15 @@ local function createCard(
 			0,
 			79,
 			0,
-			39
+			MESSAGE_TOP
 		)
 
 	messageLabel.Size =
 		UDim2.new(
 			1,
-			-117,
+			-128,
 			0,
-			24
+			messageHeight
 		)
 
 	messageLabel.BackgroundTransparency =
@@ -969,7 +1117,7 @@ local function createCard(
 		true
 
 	messageLabel.TextTruncate =
-		Enum.TextTruncate.AtEnd
+		Enum.TextTruncate.None
 
 	messageLabel.TextSize =
 		14
@@ -1459,8 +1607,10 @@ function Notification.Show(
 
 
 	local duration =
-		options.Duration
-		or DEFAULT_DURATION
+		getDuration(
+			message,
+			options
+		)
 
 
 	if duration <= 0 then
