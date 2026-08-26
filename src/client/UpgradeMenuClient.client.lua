@@ -594,83 +594,6 @@ local openUpgradeMenuEvent =
 -- PLOT HELPERS
 --==================================================
 
-local function getEffectiveSaleValue(
-	stand: Model?
-): number
-
-	if not stand then
-		return 0
-	end
-
-
-	local businessConfig =
-		getBusinessConfigForStand(
-			stand
-		)
-
-
-	if not businessConfig then
-		return 0
-	end
-
-
-	local baseSaleValue =
-		getNumericAttribute(
-			stand,
-			"SaleValue",
-			businessConfig.BaseSaleValue
-				or 0
-		)
-
-
-	local level =
-		getNumericAttribute(
-			stand,
-			"Level",
-			1
-		)
-
-
-	level =
-		math.max(
-			1,
-			math.floor(level)
-		)
-
-
-	local levelConfig =
-		businessConfig.StandLevels
-		and businessConfig.StandLevels[
-			level
-		]
-
-
-	local multiplier =
-		1
-
-
-	if levelConfig
-		and typeof(
-			levelConfig.SaleValueMultiplier
-		) == "number"
-		and levelConfig.SaleValueMultiplier > 0 then
-
-		multiplier =
-			levelConfig.SaleValueMultiplier
-	end
-
-
-	return math.max(
-		0,
-
-		math.floor(
-			baseSaleValue
-				* multiplier
-				+ 0.5
-		)
-	)
-end
-
 local function getOwnedPlot():
 	Model?
 
@@ -923,6 +846,83 @@ local function getNumericAttribute(
 	return math.max(
 		0,
 		value
+	)
+end
+
+local function getEffectiveSaleValue(
+	stand: Model?
+): number
+
+	if not stand then
+		return 0
+	end
+
+
+	local businessConfig =
+		getBusinessConfigForStand(
+			stand
+		)
+
+
+	if not businessConfig then
+		return 0
+	end
+
+
+	local baseSaleValue =
+		getNumericAttribute(
+			stand,
+			"SaleValue",
+			businessConfig.BaseSaleValue
+				or 0
+		)
+
+
+	local level =
+		getNumericAttribute(
+			stand,
+			"Level",
+			1
+		)
+
+
+	level =
+		math.max(
+			1,
+			math.floor(level)
+		)
+
+
+	local levelConfig =
+		businessConfig.StandLevels
+		and businessConfig.StandLevels[
+			level
+		]
+
+
+	local multiplier =
+		1
+
+
+	if levelConfig
+		and typeof(
+			levelConfig.SaleValueMultiplier
+		) == "number"
+		and levelConfig.SaleValueMultiplier > 0 then
+
+		multiplier =
+			levelConfig.SaleValueMultiplier
+	end
+
+
+	return math.max(
+		0,
+
+		math.floor(
+			baseSaleValue
+				* multiplier
+				+ 0.5
+		)
 	)
 end
 
