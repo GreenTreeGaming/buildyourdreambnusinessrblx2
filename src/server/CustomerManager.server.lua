@@ -1246,7 +1246,8 @@ local function getStandLevelConfig(
 end
 
 local function getStandCustomerAttraction(
-	stand: Model
+	stand: Model,
+	customer: Model?
 ): number
 
 	local levelConfig =
@@ -1265,14 +1266,73 @@ local function getStandCustomerAttraction(
 
 
 	if typeof(attraction)
-		~= "number"
+			~= "number"
 		or attraction <= 0 then
 
-		return 1
+		attraction = 1
 	end
 
 
+	--==================================================
+	-- PREMIUM CUSTOMER ATTRACTION
+	--==================================================
+
+	local premiumAttraction =
+		levelConfig.PremiumCustomerAttraction
+
+
+	if typeof(premiumAttraction)
+			~= "number"
+		or premiumAttraction < 1 then
+
+		premiumAttraction = 1
+	end
+
+
+	if not customer then
+		return attraction
+	end
+
+
+	local paymentMultiplier =
+		customer:GetAttribute(
+			"PaymentMultiplier"
+		)
+
+
+	if typeof(paymentMultiplier)
+			~= "number"
+		or paymentMultiplier <= 1 then
+
+		return attraction
+	end
+
+
+	-- Regular customers get no premium attraction bonus.
+	--
+	-- As payment multiplier increases, the customer becomes
+	-- increasingly interested in higher-level stands.
+	--
+	-- At roughly a 7x payment multiplier, the full premium
+	-- attraction value is being applied.
+	local premiumStrength =
+		math.clamp(
+			(paymentMultiplier - 1) / 6,
+			0,
+			1
+		)
+
+
+	local premiumMultiplier =
+		1
+		+ (
+			(premiumAttraction - 1)
+			* premiumStrength
+		)
+
+
 	return attraction
+		* premiumMultiplier
 end
 
 
@@ -1672,19 +1732,16 @@ local function getBusinessSaleValue(
 	stand: Model
 ): number
 
-	local saleValue =
+	local upgradeSaleValue =
 		stand:GetAttribute(
 			"SaleValue"
 		)
 
+	if typeof(upgradeSaleValue)
+			~= "number"
+		or upgradeSaleValue < 0 then
 
-	if typeof(saleValue)
-			== "number"
-		and saleValue >= 0 then
-
-		return math.floor(
-			saleValue
-		)
+		upgradeSaleValue = nil
 	end
 
 
@@ -1694,26 +1751,92 @@ local function getBusinessSaleValue(
 		)
 
 
-	local config =
-		businessType
-		and BusinessConfig[
+	if not businessType then
+		return 0
+	end
+
+
+	local businessConfig =
+		BusinessConfig[
 			businessType
 		]
 
 
-	if config
-		and typeof(
-			config.BaseSaleValue
-		) == "number"
-		and config.BaseSaleValue >= 0 then
-
-		return math.floor(
-			config.BaseSaleValue
-		)
+	if not businessConfig then
+		return 0
 	end
 
 
-	return 0
+	if not upgradeSaleValue then
+		upgradeSaleValue =
+			businessConfig.BaseSaleValue
+	end
+
+
+	if typeof(upgradeSaleValue)
+			~= "number"
+		or upgradeSaleValue < 0 then
+
+		upgradeSaleValue = 0
+	end
+
+
+	--==================================================
+	-- APPEARANCE LEVEL VALUE BONUS
+	--==================================================
+
+	local level =
+		stand:GetAttribute(
+			"Level"
+		)
+
+
+	if typeof(level) ~= "number" then
+		level = 1
+	end
+
+
+	level =
+		math.max(
+			1,
+			math.floor(level)
+		)
+
+
+	local standLevels =
+		businessConfig.StandLevels
+
+
+	local levelConfig =
+		typeof(standLevels) == "table"
+		and standLevels[level]
+		or nil
+
+
+	local saleValueMultiplier =
+		1
+
+
+	if levelConfig
+		and typeof(
+			levelConfig.SaleValueMultiplier
+		) == "number"
+		and levelConfig.SaleValueMultiplier > 0 then
+
+		saleValueMultiplier =
+			levelConfig.SaleValueMultiplier
+	end
+
+
+	return math.max(
+		0,
+
+		math.floor(
+			upgradeSaleValue
+				* saleValueMultiplier
+				+ 0.5
+		)
+	)
 end
 
 --==================================================
@@ -2067,9 +2190,10 @@ local function chooseStandForCustomer(
 
 
 		local attraction =
-			getStandCustomerAttraction(
-				stand
-			)
+	getStandCustomerAttraction(
+		stand,
+		customer
+	)
 
 
 		-- ==================================================
