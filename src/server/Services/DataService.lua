@@ -25,14 +25,14 @@ local BusinessConfig = require(
 		:WaitForChild("BusinessConfig")
 )
 
-local DATA_STORE_NAME = "PlayerData_v7"
+local DATA_STORE_NAME = "PlayerData_v9"
 
 -- Version 2 changed Businesses from one fixed stand
 -- into a list of uniquely identified placed businesses.
 --
 -- Version 3 saves each placed business's physical model level.
 -- Version 4 adds plot-wide marketing progression.
-local CURRENT_DATA_VERSION = 8
+local CURRENT_DATA_VERSION = 9
 
 local MAX_RETRIES = 3
 local RETRY_DELAY_SECONDS = 2
@@ -65,6 +65,7 @@ local DEFAULT_PROFILE = {
 	Version = CURRENT_DATA_VERSION,
 
 	Cash = 0,
+	TutorialCompleted = false,
 
 	CustomerVisits = {
 		Regular = 0,
@@ -145,6 +146,8 @@ type SavedPlacedBusiness = {
 type PlayerProfile = {
 	Version: number,
 	Cash: number,
+
+	TutorialCompleted: boolean,
 
 	CustomerVisits: {
 		[string]: number,
@@ -1346,6 +1349,51 @@ function DataService.GetProfile(
 	player: Player
 ): PlayerProfile?
 	return profiles[player]
+end
+
+function DataService.GetTutorialCompleted(
+	player: Player
+): boolean
+
+	local profile =
+		profiles[player]
+
+
+	if not profile then
+		return false
+	end
+
+
+	return profile.TutorialCompleted
+		== true
+end
+
+
+function DataService.SetTutorialCompleted(
+	player: Player,
+	completed: boolean
+): boolean
+
+	local profile =
+		profiles[player]
+
+
+	if not profile then
+		return false
+	end
+
+
+	profile.TutorialCompleted =
+		completed == true
+
+
+	player:SetAttribute(
+		"TutorialCompleted",
+		profile.TutorialCompleted
+	)
+
+
+	return true
 end
 
 function DataService.GetMarketingLevel(
