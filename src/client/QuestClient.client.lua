@@ -187,14 +187,6 @@ local cards: {
 	[string]: QuestCard
 } = {}
 
-local previousCompletionState: {
-	[string]: boolean
-} = {}
-
-local hasReceivedInitialState =
-	false
-
-
 --==================================================
 -- DRAWER POSITIONS
 --==================================================
@@ -289,13 +281,6 @@ local function openDrawer()
 	if menuOpen then
 		return
 	end
-
-
-	-- The player has opened the quest menu,
-	-- so the new-completion notification has been seen.
-	updateFrame.Visible =
-		false
-
 
 	menuOpen =
 		true
@@ -906,9 +891,7 @@ end
 local function applyState(
 	state
 )
-	if typeof(state)
-		~= "table" then
-
+	if typeof(state) ~= "table" then
 		return
 	end
 
@@ -918,15 +901,13 @@ local function applyState(
 	} = {}
 
 
-	local newlyCompletedQuest =
+	local hasClaimableQuest =
 		false
 
 
 	for index, quest in state do
-		if typeof(quest)
-				~= "table"
-			or typeof(quest.Id)
-				~= "string" then
+		if typeof(quest) ~= "table"
+			or typeof(quest.Id) ~= "string" then
 
 			continue
 		end
@@ -934,42 +915,17 @@ local function applyState(
 
 		seen[
 			quest.Id
-		] =
-			true
+		] = true
 
 
 		local isCompleted =
 			quest.Completed == true
 
 
-		local previousCompleted =
-			previousCompletionState[
-				quest.Id
-			]
-
-
-		--
-		-- Only show the notification if this quest
-		-- changed from incomplete -> complete.
-		--
-		-- We intentionally ignore completed quests
-		-- from the initial state load so players do
-		-- not get a fake "new quest" notification
-		-- when they first join.
-		--
-		if hasReceivedInitialState
-			and isCompleted
-			and previousCompleted == false then
-
-			newlyCompletedQuest =
+		if isCompleted then
+			hasClaimableQuest =
 				true
 		end
-
-
-		previousCompletionState[
-			quest.Id
-		] =
-			isCompleted
 
 
 		local card =
@@ -998,27 +954,8 @@ local function applyState(
 	end
 
 
-	--
-	-- Remove completion history for quests that
-	-- disappeared after being claimed/replaced.
-	--
-	for questId in previousCompletionState do
-		if not seen[
-			questId
-		] then
-
-			previousCompletionState[
-				questId
-			] =
-				nil
-		end
-	end
-
-
-	--
-	-- This removes the claimed quest card when
-	-- the server replaces it with the next quest.
-	--
+	-- Remove quest cards that disappeared
+	-- after being claimed/replaced.
 	for questId, card in cards do
 		if not seen[
 			questId
@@ -1026,30 +963,17 @@ local function applyState(
 
 			card.Root:Destroy()
 
-
 			cards[
 				questId
-			] =
-				nil
+			] = nil
 		end
 	end
 
 
-	--
-	-- Don't display the notification while the
-	-- quest drawer is already open. The player can
-	-- already see that the quest is complete.
-	--
-	if newlyCompletedQuest
-		and not menuOpen then
-
-		updateFrame.Visible =
-			true
-	end
-
-
-	hasReceivedInitialState =
-		true
+	-- Keep the indicator visible for as long as
+	-- at least one quest reward is ready to claim.
+	updateFrame.Visible =
+		hasClaimableQuest
 end
 
 --==================================================
