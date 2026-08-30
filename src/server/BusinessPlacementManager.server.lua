@@ -240,6 +240,177 @@ local function getPlacementBoundsAtCFrame(
 	return boundsCFrame, boundsSize
 end
 
+local function getLargestStandTemplate(
+	businessName: string
+): Model?
+
+	local config =
+		getBusinessConfig(
+			businessName
+		)
+
+	if not config
+		or type(config.StandLevels)
+			~= "table" then
+
+		return nil
+	end
+
+	local highestLevel =
+		-math.huge
+
+	local largestTemplate:
+		Model? =
+		nil
+
+	for level, levelConfig in
+		config.StandLevels do
+
+		if typeof(level) ~= "number"
+			or type(levelConfig)
+				~= "table" then
+
+			continue
+		end
+
+		local templateName =
+			levelConfig.TemplateName
+
+		if typeof(templateName)
+			~= "string" then
+
+			continue
+		end
+
+		local template =
+			businessModels:FindFirstChild(
+				templateName
+			)
+
+		if not template
+			or not template:IsA(
+				"Model"
+			) then
+
+			continue
+		end
+
+		local placementOrigin =
+			template:FindFirstChild(
+				"PlacementOrigin",
+				true
+			)
+
+		local placementBounds =
+			template:FindFirstChild(
+				"PlacementBounds",
+				true
+			)
+
+		if not placementOrigin
+			or not placementOrigin:IsA(
+				"BasePart"
+			)
+			or not placementBounds
+			or not placementBounds:IsA(
+				"BasePart"
+			) then
+
+			continue
+		end
+
+		if level > highestLevel then
+			highestLevel =
+				level
+
+			largestTemplate =
+				template
+		end
+	end
+
+	return largestTemplate
+end
+
+
+local function getAlignedMaximumBounds(
+	businessName: string,
+	targetOriginCFrame: CFrame
+): (CFrame?, Vector3?)
+
+	local template =
+		getLargestStandTemplate(
+			businessName
+		)
+
+	if not template then
+		return nil, nil
+	end
+
+	local sourceOrigin =
+		template:FindFirstChild(
+			"PlacementOrigin",
+			true
+		)
+
+	local sourceBounds =
+		template:FindFirstChild(
+			"PlacementBounds",
+			true
+		)
+
+	if not sourceOrigin
+		or not sourceOrigin:IsA(
+			"BasePart"
+		)
+		or not sourceBounds
+		or not sourceBounds:IsA(
+			"BasePart"
+		) then
+
+		return nil, nil
+	end
+
+	local _sourceX,
+		sourceYaw,
+		_sourceZ =
+		sourceOrigin.CFrame
+			:ToOrientation()
+
+	local _targetX,
+		targetYaw,
+		_targetZ =
+		targetOriginCFrame
+			:ToOrientation()
+
+	local cleanSource =
+		CFrame.new(
+			sourceOrigin.Position
+		)
+		* CFrame.Angles(
+			0,
+			sourceYaw,
+			0
+		)
+
+	local cleanTarget =
+		CFrame.new(
+			targetOriginCFrame.Position
+		)
+		* CFrame.Angles(
+			0,
+			targetYaw,
+			0
+		)
+
+	local transform =
+		cleanTarget
+			* cleanSource:Inverse()
+
+	return transform
+			* sourceBounds.CFrame,
+		sourceBounds.Size
+end
+
 local function isBoundingBoxInsideGround(
 	ground: BasePart,
 	boxCFrame: CFrame,
@@ -390,6 +561,116 @@ local function rectanglesOverlapXZ(
 	end
 
 	return true
+end
+
+local function overlapsReservedBusinessSpace(
+	plot: Model,
+	candidateBusinessName: string,
+	candidateOriginCFrame: CFrame,
+	ignoredBusiness: Model?
+): boolean
+
+	local placedBusinesses =
+		getPlacedBusinesses(
+			plot
+		)
+
+	if not placedBusinesses then
+		return false
+	end
+
+	local candidateCFrame,
+		candidateSize =
+		getAlignedMaximumBounds(
+			candidateBusinessName,
+			candidateOriginCFrame
+		)
+
+	if not candidateCFrame
+		or not candidateSize then
+
+		return true
+	end
+
+	for _, business in
+		placedBusinesses:GetChildren() do
+
+		if not business:IsA("Model")
+			or business == ignoredBusiness then
+
+			continue
+		end
+
+		local existingBusinessName =
+			getBusinessType(
+				business
+			)
+
+		local existingOrigin =
+			business:FindFirstChild(
+				"PlacementOrigin",
+				true
+			)
+
+		if not existingOrigin
+			or not existingOrigin:IsA(
+				"BasePart"
+			) then
+
+			continue
+		end
+
+		local existingCFrame,
+			existingSize =
+			getAlignedMaximumBounds(
+				existingBusinessName,
+				existingOrigin.CFrame
+			)
+
+		--
+		-- Fallback for old/malformed stands.
+		--
+		if not existingCFrame
+			or not existingSize then
+
+			local existingBounds =
+				business:FindFirstChild(
+					"PlacementBounds",
+					true
+				)
+
+			if existingBounds
+				and existingBounds:IsA(
+					"BasePart"
+				) then
+
+				existingCFrame =
+					existingBounds.CFrame
+
+				existingSize =
+					existingBounds.Size
+			end
+		end
+
+		if not existingCFrame
+			or not existingSize then
+
+			continue
+		end
+
+		if rectanglesOverlapXZ(
+			candidateCFrame,
+			candidateSize,
+
+			existingCFrame,
+			existingSize
+		) then
+
+			return true
+		end
+	end
+
+	return false
 end
 
 local function overlapsExistingBusiness(
@@ -666,6 +947,75 @@ end
 ) then
 	return false,
 		"Businesses cannot overlap."
+end
+
+local targetOriginCFrame =
+	placementCFrame
+
+--
+-- When moving an existing upgraded business,
+-- placementCFrame represents its model pivot.
+-- Get the preview target origin using the
+-- actual model's PlacementOrigin relationship.
+--
+if editedStand then
+
+	local editedOrigin =
+		editedStand:FindFirstChild(
+			"PlacementOrigin",
+			true
+		)
+
+	if editedOrigin
+		and editedOrigin:IsA(
+			"BasePart"
+		) then
+
+		local pivotToOrigin =
+			editedStand:GetPivot()
+				:ToObjectSpace(
+					editedOrigin.CFrame
+				)
+
+		targetOriginCFrame =
+			placementCFrame
+				* pivotToOrigin
+	end
+end
+
+local maximumBoundsCFrame,
+	maximumBoundsSize =
+	getAlignedMaximumBounds(
+		businessName,
+		targetOriginCFrame
+	)
+
+if not maximumBoundsCFrame
+	or not maximumBoundsSize then
+
+	return false,
+		"The maximum upgrade footprint could not be calculated."
+end
+
+if not isBoundingBoxInsideGround(
+	ground,
+	maximumBoundsCFrame,
+	maximumBoundsSize
+) then
+
+	return false,
+		"Leave enough space for this business to reach its maximum size."
+end
+
+if overlapsReservedBusinessSpace(
+	plot,
+	businessName,
+	targetOriginCFrame,
+	editedStand
+) then
+
+	return false,
+		"This space is reserved for another business's future upgrades."
 end
 
 	return true, ""

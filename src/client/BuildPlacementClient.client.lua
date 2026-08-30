@@ -2317,60 +2317,84 @@ local function isFutureFootprintOverlappingBusiness(
 		return false
 	end
 
-
 	local placedBusinesses =
 		ownedPlot:FindFirstChild(
 			"PlacedBusinesses"
 		)
 
-
 	if not placedBusinesses then
 		return false
 	end
 
-
 	for _, business in
-		placedBusinesses:GetChildren()
-	do
+		placedBusinesses:GetChildren() do
 
-		if not business:IsA(
-			"Model"
-		)
-			or business
-				== originalStand then
+		if not business:IsA("Model")
+			or business == originalStand then
 
 			continue
 		end
 
-
-		local existingBounds =
-			business:FindFirstChild(
-				"PlacementBounds",
-				true
+		local businessName =
+			getBusinessType(
+				business
 			)
 
+		--
+		-- IMPORTANT:
+		-- Compare against the OTHER business's
+		-- maximum possible upgrade footprint,
+		-- not just what it occupies right now.
+		--
+		local reservedCFrame,
+			reservedSize =
+			getAlignedFutureBounds(
+				businessName,
+				business
+			)
 
-		if not existingBounds
-			or not existingBounds:IsA(
-				"BasePart"
-			) then
+		--
+		-- Fallback for a malformed/legacy business.
+		--
+		if not reservedCFrame
+			or not reservedSize then
+
+			local existingBounds =
+				business:FindFirstChild(
+					"PlacementBounds",
+					true
+				)
+
+			if existingBounds
+				and existingBounds:IsA(
+					"BasePart"
+				) then
+
+				reservedCFrame =
+					existingBounds.CFrame
+
+				reservedSize =
+					existingBounds.Size
+			end
+		end
+
+		if not reservedCFrame
+			or not reservedSize then
 
 			continue
 		end
-
 
 		if rectanglesOverlapXZ(
 			boundsCFrame,
 			boundsSize,
 
-			existingBounds.CFrame,
-			existingBounds.Size
+			reservedCFrame,
+			reservedSize
 		) then
 
 			return true
 		end
 	end
-
 
 	return false
 end
@@ -3268,78 +3292,127 @@ local function isPreviewOverlappingBusiness(
 		return false
 	end
 
-
 	local placedBusinesses =
 		ownedPlot:FindFirstChild(
 			"PlacedBusinesses"
 		)
 
-
 	if not placedBusinesses then
 		return false
 	end
 
-
-	local previewBounds =
-		model:FindFirstChild(
-			"PlacementBounds",
-			true
+	--
+	-- Reserve the NEW business's maximum
+	-- appearance footprint immediately.
+	--
+	local previewReservedCFrame,
+		previewReservedSize =
+		getAlignedFutureBounds(
+			selectedBusinessName,
+			model
 		)
 
+	--
+	-- Fallback to its current bounds if something
+	-- is configured incorrectly.
+	--
+	if not previewReservedCFrame
+		or not previewReservedSize then
 
-	if not previewBounds
-		or not previewBounds:IsA(
-			"BasePart"
-		) then
-
-		return true
-	end
-
-
-	for _, business in
-		placedBusinesses:GetChildren() do
-
-		if not business:IsA(
-			"Model"
-		)
-			or business
-				== originalStand then
-
-			continue
-		end
-
-
-		local existingBounds =
-			business:FindFirstChild(
+		local previewBounds =
+			model:FindFirstChild(
 				"PlacementBounds",
 				true
 			)
 
-
-		if not existingBounds
-			or not existingBounds:IsA(
+		if not previewBounds
+			or not previewBounds:IsA(
 				"BasePart"
 			) then
+
+			return true
+		end
+
+		previewReservedCFrame =
+			previewBounds.CFrame
+
+		previewReservedSize =
+			previewBounds.Size
+	end
+
+	for _, business in
+		placedBusinesses:GetChildren() do
+
+		if not business:IsA("Model")
+			or business == originalStand then
 
 			continue
 		end
 
+		local existingBusinessName =
+			getBusinessType(
+				business
+			)
 
+		--
+		-- Get the OTHER stand's maximum
+		-- appearance footprint too.
+		--
+		local existingReservedCFrame,
+			existingReservedSize =
+			getAlignedFutureBounds(
+				existingBusinessName,
+				business
+			)
+
+		--
+		-- Legacy/config fallback.
+		--
+		if not existingReservedCFrame
+			or not existingReservedSize then
+
+			local existingBounds =
+				business:FindFirstChild(
+					"PlacementBounds",
+					true
+				)
+
+			if existingBounds
+				and existingBounds:IsA(
+					"BasePart"
+				) then
+
+				existingReservedCFrame =
+					existingBounds.CFrame
+
+				existingReservedSize =
+					existingBounds.Size
+			end
+		end
+
+		if not existingReservedCFrame
+			or not existingReservedSize then
+
+			continue
+		end
+
+		--
+		-- MAX vs MAX.
+		--
 		if rectanglesOverlapXZ(
-			previewBounds.CFrame,
-			previewBounds.Size,
-			existingBounds.CFrame,
-			existingBounds.Size
+			previewReservedCFrame,
+			previewReservedSize,
+
+			existingReservedCFrame,
+			existingReservedSize
 		) then
 
 			return true
 		end
 	end
 
-
 	return false
 end
-
 
 --==================================================
 -- PLACEMENT STATE
@@ -3780,18 +3853,15 @@ local function addOccupiedGridAreas()
 		return
 	end
 
-
 	local ground =
 		ownedPlot:FindFirstChild(
 			"Ground"
 		)
 
-
 	local placedBusinesses =
 		ownedPlot:FindFirstChild(
 			"PlacedBusinesses"
 		)
-
 
 	if not ground
 		or not ground:IsA("BasePart")
@@ -3799,7 +3869,6 @@ local function addOccupiedGridAreas()
 
 		return
 	end
-
 
 	for _, business in
 		placedBusinesses:GetChildren() do
@@ -3810,104 +3879,207 @@ local function addOccupiedGridAreas()
 			continue
 		end
 
+		local businessName =
+			getBusinessType(
+				business
+			)
 
-		local bounds =
+		--
+		-- ==================================================
+		-- CURRENT PHYSICAL BUSINESS AREA
+		-- ==================================================
+		--
+
+		local currentBounds =
 			business:FindFirstChild(
 				"PlacementBounds",
 				true
 			)
 
-
-		if not bounds
-			or not bounds:IsA(
+		if currentBounds
+			and currentBounds:IsA(
 				"BasePart"
 			) then
+
+			local currentGroundSpace =
+				ground.CFrame
+					:ToObjectSpace(
+						currentBounds.CFrame
+					)
+
+			local currentSize =
+				Vector3.new(
+					currentBounds.Size.X,
+					GRID_LINE_HEIGHT,
+					currentBounds.Size.Z
+				)
+
+			local currentPart =
+				createGridPart(
+					placementGridFolder,
+
+					Vector3.new(
+						math.max(
+							0.1,
+							currentBounds.Size.X
+								* 0.85
+						),
+
+						GRID_LINE_HEIGHT,
+
+						math.max(
+							0.1,
+							currentBounds.Size.Z
+								* 0.85
+						)
+					),
+
+					ground.CFrame
+						* CFrame.new(
+							currentGroundSpace.Position.X,
+
+							ground.Size.Y / 2
+								+ GRID_LINE_HEIGHT
+								+ 0.015,
+
+							currentGroundSpace.Position.Z
+						)
+						* CFrame.Angles(
+							0,
+
+							select(
+								2,
+								currentGroundSpace
+									:ToOrientation()
+							),
+
+							0
+						),
+
+					GRID_OCCUPIED_COLOR,
+					1
+				)
+
+			currentPart.Name =
+				"Occupied"
+
+			TweenService:Create(
+				currentPart,
+
+				TweenInfo.new(
+					0.22,
+					Enum.EasingStyle.Back,
+					Enum.EasingDirection.Out
+				),
+
+				{
+					Size =
+						currentSize,
+
+					Transparency =
+						0.72,
+				}
+			):Play()
+		end
+
+		--
+		-- ==================================================
+		-- MAXIMUM FUTURE UPGRADE RESERVATION
+		-- ==================================================
+		--
+
+		local reservedCFrame,
+			reservedSize =
+			getAlignedFutureBounds(
+				businessName,
+				business
+			)
+
+		if not reservedCFrame
+			or not reservedSize then
 
 			continue
 		end
 
-
-		local groundSpace =
+		local reservedGroundSpace =
 			ground.CFrame
 				:ToObjectSpace(
-					bounds.CFrame
+					reservedCFrame
 				)
 
-
-		local finalSize =
-	Vector3.new(
-		bounds.Size.X,
-		GRID_LINE_HEIGHT,
-		bounds.Size.Z
-	)
-
-
-local occupiedPart =
-	createGridPart(
-		placementGridFolder,
-
-		Vector3.new(
-			math.max(
-				0.1,
-				bounds.Size.X * 0.85
-			),
-
-			GRID_LINE_HEIGHT,
-
-			math.max(
-				0.1,
-				bounds.Size.Z * 0.85
+		local reservedFinalSize =
+			Vector3.new(
+				reservedSize.X,
+				GRID_LINE_HEIGHT,
+				reservedSize.Z
 			)
-		),
 
-		ground.CFrame
-			* CFrame.new(
-				groundSpace.Position.X,
+		local reservedPart =
+			createGridPart(
+				placementGridFolder,
 
-				ground.Size.Y / 2
-					+ GRID_LINE_HEIGHT
-					+ 0.01,
+				Vector3.new(
+					math.max(
+						0.1,
+						reservedSize.X
+							* 0.85
+					),
 
-				groundSpace.Position.Z
-			)
-			* CFrame.Angles(
-				0,
+					GRID_LINE_HEIGHT,
 
-				select(
-					2,
-					groundSpace
-						:ToOrientation()
+					math.max(
+						0.1,
+						reservedSize.Z
+							* 0.85
+					)
 				),
 
-				0
+				ground.CFrame
+					* CFrame.new(
+						reservedGroundSpace.Position.X,
+
+						ground.Size.Y / 2
+							+ GRID_LINE_HEIGHT
+							+ 0.025,
+
+						reservedGroundSpace.Position.Z
+					)
+					* CFrame.Angles(
+						0,
+
+						select(
+							2,
+							reservedGroundSpace
+								:ToOrientation()
+						),
+
+						0
+					),
+
+				FUTURE_CLEAR_COLOR,
+				1
+			)
+
+		reservedPart.Name =
+			"Occupied"
+
+		TweenService:Create(
+			reservedPart,
+
+			TweenInfo.new(
+				0.26,
+				Enum.EasingStyle.Back,
+				Enum.EasingDirection.Out
 			),
 
-		GRID_OCCUPIED_COLOR,
-		1
-	)
+			{
+				Size =
+					reservedFinalSize,
 
-
-occupiedPart.Name =
-	"Occupied"
-
-
-TweenService:Create(
-	occupiedPart,
-
-	TweenInfo.new(
-		0.22,
-		Enum.EasingStyle.Back,
-		Enum.EasingDirection.Out
-	),
-
-	{
-		Size =
-			finalSize,
-
-		Transparency =
-			0.72,
-	}
-):Play()
+				Transparency =
+					0.86,
+			}
+		):Play()
 	end
 end
 
@@ -4314,31 +4486,13 @@ local function requestCurrentPlacement()
 		or not currentPlacementCFrame then
 
 		Notification.Warning(
-			"Keep the business inside your plot and away from other businesses.",
-			{
-				Title = "Can't Place Here",
-			}
-		)
+	"Leave enough room for this business and nearby businesses to reach their maximum size.",
+	{
+		Title = "Not Enough Upgrade Space",
+	}
+)
 
 		return
-	end
-
-
-	--
-	-- The current stand fits, so placement is allowed.
-	-- However, warn the player if its maximum
-	-- appearance upgrade will not fit here later.
-	--
-	if futureFootprintAvailable
-		and not futureFootprintClear then
-
-		Notification.Warning(
-			"This fits now, but its max upgrade would be blocked here. Leave more room if you want to fully upgrade it later.",
-			{
-				Title =
-					"Future Upgrade Space",
-			}
-		)
 	end
 
 
@@ -4815,8 +4969,9 @@ updateFutureFootprint(
 
 
 		placementValid =
-			insideGround
-			and not overlapping
+	insideGround
+	and not overlapping
+	and futureFootprintClear
 
 
 		setPreviewColor(

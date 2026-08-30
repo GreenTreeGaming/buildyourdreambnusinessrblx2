@@ -10,13 +10,14 @@ local BusinessConfig = {
 
 		FirstStandFree = true,
 
-		-- Additional lemonade stands should be an investment,
-		-- but still accessible during the early game.
 		AdditionalStandCost = 750,
 
 		MaximumPlaced = 15,
 
-		BaseSaleValue = 8,
+		-- Base income is still modest so the beginning
+		-- of the game does not become instant money.
+		BaseSaleValue = 10,
+
 		BaseServingCooldown = 5,
 
 		StandLevels = {
@@ -27,11 +28,8 @@ local BusinessConfig = {
 				CustomerAttraction = 1.00,
 				CustomerRateMultiplier = 1.00,
 
-				-- Appearance levels now also improve income.
 				SaleValueMultiplier = 1.00,
 
-				-- Makes valuable customers increasingly prefer
-				-- upgraded stands.
 				PremiumCustomerAttraction = 1.00,
 			},
 
@@ -42,7 +40,10 @@ local BusinessConfig = {
 				CustomerAttraction = 1.15,
 				CustomerRateMultiplier = 1.10,
 
-				SaleValueMultiplier = 1.20,
+				-- Appearance upgrades now have a much
+				-- more noticeable effect on income.
+				SaleValueMultiplier = 1.35,
+
 				PremiumCustomerAttraction = 1.10,
 			},
 
@@ -53,7 +54,8 @@ local BusinessConfig = {
 				CustomerAttraction = 1.35,
 				CustomerRateMultiplier = 1.25,
 
-				SaleValueMultiplier = 1.50,
+				SaleValueMultiplier = 1.90,
+
 				PremiumCustomerAttraction = 1.25,
 			},
 
@@ -64,7 +66,8 @@ local BusinessConfig = {
 				CustomerAttraction = 1.60,
 				CustomerRateMultiplier = 1.45,
 
-				SaleValueMultiplier = 1.90,
+				SaleValueMultiplier = 2.80,
+
 				PremiumCustomerAttraction = 1.45,
 			},
 
@@ -75,7 +78,8 @@ local BusinessConfig = {
 				CustomerAttraction = 1.90,
 				CustomerRateMultiplier = 1.70,
 
-				SaleValueMultiplier = 2.40,
+				SaleValueMultiplier = 4.20,
+
 				PremiumCustomerAttraction = 1.75,
 			},
 		},
@@ -193,67 +197,67 @@ local BusinessConfig = {
 					{
 						Level = 0,
 						Cost = 0,
-						SaleValue = 8,
+						SaleValue = 10,
 					},
 
 					{
 						Level = 1,
 						Cost = 100,
-						SaleValue = 12,
+						SaleValue = 16,
 					},
 
 					{
 						Level = 2,
 						Cost = 350,
-						SaleValue = 18,
+						SaleValue = 26,
 					},
 
 					{
 						Level = 3,
 						Cost = 1000,
-						SaleValue = 28,
+						SaleValue = 45,
 					},
 
 					{
 						Level = 4,
 						Cost = 3000,
-						SaleValue = 42,
+						SaleValue = 80,
 					},
 
 					{
 						Level = 5,
 						Cost = 8000,
-						SaleValue = 65,
+						SaleValue = 140,
 					},
 
 					{
 						Level = 6,
 						Cost = 20000,
-						SaleValue = 100,
+						SaleValue = 240,
 					},
 
 					{
 						Level = 7,
 						Cost = 50000,
-						SaleValue = 155,
+						SaleValue = 400,
 					},
 
 					{
 						Level = 8,
 						Cost = 125000,
-						SaleValue = 240,
+						SaleValue = 650,
 					},
 
 					{
 						Level = 9,
 						Cost = 300000,
-						SaleValue = 360,
+						SaleValue = 1050,
 					},
 
 					{
 						Level = 10,
 						Cost = 700000,
-						SaleValue = 500,
+						SaleValue = 1700,
 					},
 				},
 			},
@@ -280,13 +284,12 @@ local BusinessConfig = {
 
 		FirstStandFree = false,
 
-		-- Hotdogs now require a meaningful investment,
-		-- because their earning ceiling is much higher.
 		AdditionalStandCost = 3000,
 
 		MaximumPlaced = 12,
 
-		BaseSaleValue = 30,
+		BaseSaleValue = 35,
+
 		BaseServingCooldown = 5,
 
 		StandLevels = {
@@ -298,6 +301,7 @@ local BusinessConfig = {
 				CustomerRateMultiplier = 1.00,
 
 				SaleValueMultiplier = 1.00,
+
 				PremiumCustomerAttraction = 1.00,
 			},
 
@@ -308,7 +312,8 @@ local BusinessConfig = {
 				CustomerAttraction = 1.15,
 				CustomerRateMultiplier = 1.10,
 
-				SaleValueMultiplier = 1.20,
+				SaleValueMultiplier = 1.35,
+
 				PremiumCustomerAttraction = 1.10,
 			},
 
@@ -319,7 +324,8 @@ local BusinessConfig = {
 				CustomerAttraction = 1.35,
 				CustomerRateMultiplier = 1.25,
 
-				SaleValueMultiplier = 1.50,
+				SaleValueMultiplier = 1.90,
+
 				PremiumCustomerAttraction = 1.25,
 			},
 
@@ -330,7 +336,8 @@ local BusinessConfig = {
 				CustomerAttraction = 1.60,
 				CustomerRateMultiplier = 1.45,
 
-				SaleValueMultiplier = 1.90,
+				SaleValueMultiplier = 2.80,
+
 				PremiumCustomerAttraction = 1.45,
 			},
 
@@ -341,7 +348,8 @@ local BusinessConfig = {
 				CustomerAttraction = 1.90,
 				CustomerRateMultiplier = 1.70,
 
-				SaleValueMultiplier = 2.40,
+				SaleValueMultiplier = 4.20,
+
 				PremiumCustomerAttraction = 1.75,
 			},
 		},
@@ -459,67 +467,67 @@ local BusinessConfig = {
 					{
 						Level = 0,
 						Cost = 0,
-						SaleValue = 30,
+						SaleValue = 35,
 					},
 
 					{
 						Level = 1,
 						Cost = 400,
-						SaleValue = 45,
+						SaleValue = 60,
 					},
 
 					{
 						Level = 2,
 						Cost = 1300,
-						SaleValue = 68,
+						SaleValue = 105,
 					},
 
 					{
 						Level = 3,
 						Cost = 4000,
-						SaleValue = 105,
+						SaleValue = 180,
 					},
 
 					{
 						Level = 4,
 						Cost = 12000,
-						SaleValue = 160,
+						SaleValue = 310,
 					},
 
 					{
 						Level = 5,
 						Cost = 32000,
-						SaleValue = 245,
+						SaleValue = 525,
 					},
 
 					{
 						Level = 6,
 						Cost = 80000,
-						SaleValue = 375,
+						SaleValue = 900,
 					},
 
 					{
 						Level = 7,
 						Cost = 200000,
-						SaleValue = 575,
+						SaleValue = 1500,
 					},
 
 					{
 						Level = 8,
 						Cost = 500000,
-						SaleValue = 875,
+						SaleValue = 2500,
 					},
 
 					{
 						Level = 9,
 						Cost = 1200000,
-						SaleValue = 1300,
+						SaleValue = 4000,
 					},
 
 					{
 						Level = 10,
 						Cost = 2800000,
-						SaleValue = 1800,
+						SaleValue = 6500,
 					},
 				},
 			},
@@ -550,7 +558,8 @@ local BusinessConfig = {
 
 		MaximumPlaced = 10,
 
-		BaseSaleValue = 120,
+		BaseSaleValue = 140,
+
 		BaseServingCooldown = 6,
 
 		StandLevels = {
@@ -562,6 +571,7 @@ local BusinessConfig = {
 				CustomerRateMultiplier = 1.00,
 
 				SaleValueMultiplier = 1.00,
+
 				PremiumCustomerAttraction = 1.00,
 			},
 
@@ -572,7 +582,8 @@ local BusinessConfig = {
 				CustomerAttraction = 1.15,
 				CustomerRateMultiplier = 1.10,
 
-				SaleValueMultiplier = 1.20,
+				SaleValueMultiplier = 1.35,
+
 				PremiumCustomerAttraction = 1.10,
 			},
 
@@ -583,7 +594,8 @@ local BusinessConfig = {
 				CustomerAttraction = 1.35,
 				CustomerRateMultiplier = 1.25,
 
-				SaleValueMultiplier = 1.50,
+				SaleValueMultiplier = 1.90,
+
 				PremiumCustomerAttraction = 1.25,
 			},
 
@@ -594,7 +606,8 @@ local BusinessConfig = {
 				CustomerAttraction = 1.60,
 				CustomerRateMultiplier = 1.45,
 
-				SaleValueMultiplier = 1.90,
+				SaleValueMultiplier = 2.80,
+
 				PremiumCustomerAttraction = 1.45,
 			},
 
@@ -605,7 +618,8 @@ local BusinessConfig = {
 				CustomerAttraction = 1.90,
 				CustomerRateMultiplier = 1.70,
 
-				SaleValueMultiplier = 2.40,
+				SaleValueMultiplier = 4.20,
+
 				PremiumCustomerAttraction = 1.75,
 			},
 		},
@@ -723,67 +737,67 @@ local BusinessConfig = {
 					{
 						Level = 0,
 						Cost = 0,
-						SaleValue = 120,
+						SaleValue = 140,
 					},
 
 					{
 						Level = 1,
 						Cost = 2000,
-						SaleValue = 180,
+						SaleValue = 240,
 					},
 
 					{
 						Level = 2,
 						Cost = 6500,
-						SaleValue = 275,
+						SaleValue = 410,
 					},
 
 					{
 						Level = 3,
 						Cost = 20000,
-						SaleValue = 420,
+						SaleValue = 700,
 					},
 
 					{
 						Level = 4,
 						Cost = 60000,
-						SaleValue = 650,
+						SaleValue = 1200,
 					},
 
 					{
 						Level = 5,
 						Cost = 160000,
-						SaleValue = 1000,
+						SaleValue = 2050,
 					},
 
 					{
 						Level = 6,
 						Cost = 400000,
-						SaleValue = 1550,
+						SaleValue = 3500,
 					},
 
 					{
 						Level = 7,
 						Cost = 1000000,
-						SaleValue = 2400,
+						SaleValue = 5900,
 					},
 
 					{
 						Level = 8,
 						Cost = 2500000,
-						SaleValue = 3700,
+						SaleValue = 9800,
 					},
 
 					{
 						Level = 9,
 						Cost = 6000000,
-						SaleValue = 5600,
+						SaleValue = 16000,
 					},
 
 					{
 						Level = 10,
 						Cost = 14000000,
-						SaleValue = 8000,
+						SaleValue = 26000,
 					},
 				},
 			},

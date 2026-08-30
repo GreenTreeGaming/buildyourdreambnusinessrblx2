@@ -4,13 +4,15 @@ ShopConfig.GamePasses = {
 	x2Cash = {
 		FrameName = "x2Cash",
 
-		Id = 1947903714,
+		-- Id = 1947903714,
+		Id = 1,
 	},
 
 	VIP = {
 		FrameName = "VIP",
 
-		Id = 1947879804,
+		-- Id = 1947879804,
+		Id = 1,
 	},
 }
 
