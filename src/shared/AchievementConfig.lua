@@ -59,31 +59,31 @@ AchievementConfig.Achievements = {
 		Tiers = {
 			{
 				Goal = 100,
-				Reward = 500,
+				Reward = 350,
 				Description = "Serve 100 customers!",
 			},
 
 			{
 				Goal = 500,
-				Reward = 2500,
+				Reward = 1750,
 				Description = "Serve 500 customers!",
 			},
 
 			{
 				Goal = 2500,
-				Reward = 15000,
+				Reward = 10000,
 				Description = "Serve 2,500 customers!",
 			},
 
 			{
 				Goal = 10000,
-				Reward = 60000,
+				Reward = 45000,
 				Description = "Serve 10,000 customers!",
 			},
 
 			{
 				Goal = 50000,
-				Reward = 250000,
+				Reward = 225000,
 				Description = "Serve 50,000 customers!",
 			},
 		},
@@ -105,21 +105,24 @@ AchievementConfig.Achievements = {
 		Tiers = {
 			{
 				Goal = 3,
-				Reward = 2000,
+				Reward = 500,
+
 				Description =
 					"Discover 3 different customer types!",
 			},
 
 			{
 				Goal = 5,
-				Reward = 10000,
+				Reward = 3000,
+
 				Description =
 					"Discover 5 different customer types!",
 			},
 
 			{
 				Goal = 8,
-				Reward = 50000,
+				Reward = 30000,
+
 				Description =
 					"Discover every customer type!",
 			},
@@ -147,31 +150,31 @@ AchievementConfig.Achievements = {
 		Tiers = {
 			{
 				Goal = 1,
-				Reward = 1000,
+				Reward = 500,
 				Description = "Serve your first VIP customer!",
 			},
 
 			{
 				Goal = 10,
-				Reward = 8500,
+				Reward = 3000,
 				Description = "Serve 10 VIP customers!",
 			},
 
 			{
 				Goal = 50,
-				Reward = 30000,
+				Reward = 15000,
 				Description = "Serve 50 VIP customers!",
 			},
 
 			{
 				Goal = 250,
-				Reward = 125000,
+				Reward = 75000,
 				Description = "Serve 250 VIP customers!",
 			},
 
 			{
 				Goal = 1000,
-				Reward = 500000,
+				Reward = 350000,
 				Description = "Serve 1,000 VIP customers!",
 			},
 		},
@@ -194,28 +197,32 @@ AchievementConfig.Achievements = {
 		Tiers = {
 			{
 				Goal = 1,
-				Reward = 2500,
+				Reward = 1000,
+
 				Description =
 					"Serve your first Celebrity customer!",
 			},
 
 			{
 				Goal = 10,
-				Reward = 20000,
+				Reward = 7500,
+
 				Description =
 					"Serve 10 Celebrity customers!",
 			},
 
 			{
 				Goal = 50,
-				Reward = 80000,
+				Reward = 40000,
+
 				Description =
 					"Serve 50 Celebrity customers!",
 			},
 
 			{
 				Goal = 250,
-				Reward = 300000,
+				Reward = 200000,
+
 				Description =
 					"Serve 250 Celebrity customers!",
 			},
@@ -239,28 +246,32 @@ AchievementConfig.Achievements = {
 		Tiers = {
 			{
 				Goal = 1,
-				Reward = 10000,
+				Reward = 5000,
+
 				Description =
 					"Serve your first Billionaire customer!",
 			},
 
 			{
 				Goal = 5,
-				Reward = 40000,
+				Reward = 25000,
+
 				Description =
 					"Serve 5 Billionaire customers!",
 			},
 
 			{
 				Goal = 25,
-				Reward = 175000,
+				Reward = 125000,
+
 				Description =
 					"Serve 25 Billionaire customers!",
 			},
 
 			{
 				Goal = 100,
-				Reward = 600000,
+				Reward = 500000,
+
 				Description =
 					"Serve 100 Billionaire customers!",
 			},
@@ -284,28 +295,32 @@ AchievementConfig.Achievements = {
 		Tiers = {
 			{
 				Goal = 1,
-				Reward = 25000,
+				Reward = 12500,
+
 				Description =
 					"Serve your first Golden customer!",
 			},
 
 			{
 				Goal = 3,
-				Reward = 75000,
+				Reward = 50000,
+
 				Description =
 					"Serve 3 Golden customers!",
 			},
 
 			{
 				Goal = 10,
-				Reward = 250000,
+				Reward = 200000,
+
 				Description =
 					"Serve 10 Golden customers!",
 			},
 
 			{
 				Goal = 25,
-				Reward = 600000,
+				Reward = 500000,
+
 				Description =
 					"Serve 25 Golden customers!",
 			},
@@ -333,21 +348,24 @@ AchievementConfig.Achievements = {
 		Tiers = {
 			{
 				Goal = 2,
-				Reward = 500,
+				Reward = 350,
+
 				Description =
 					"Upgrade a Lemonade Stand to Tier 2!",
 			},
 
 			{
 				Goal = 3,
-				Reward = 2500,
+				Reward = 1500,
+
 				Description =
 					"Upgrade a Lemonade Stand to Tier 3!",
 			},
 
 			{
 				Goal = 5,
-				Reward = 15000,
+				Reward = 10000,
+
 				Description =
 					"Upgrade a Lemonade Stand to Tier 5!",
 			},
@@ -371,28 +389,32 @@ AchievementConfig.Achievements = {
 		Tiers = {
 			{
 				Goal = 1,
-				Reward = 2000,
+				Reward = 1000,
+
 				Description =
 					"Own your first Hotdog Stand!",
 			},
 
 			{
 				Goal = 3,
-				Reward = 8000,
+				Reward = 5000,
+
 				Description =
 					"Own 3 Hotdog Stands!",
 			},
 
 			{
 				Goal = 6,
-				Reward = 30000,
+				Reward = 20000,
+
 				Description =
 					"Own 6 Hotdog Stands!",
 			},
 
 			{
 				Goal = 12,
-				Reward = 125000,
+				Reward = 90000,
+
 				Description =
 					"Own 12 Hotdog Stands!",
 			},
@@ -416,7 +438,8 @@ AchievementConfig.Achievements = {
 		Tiers = {
 			{
 				Goal = 1,
-				Reward = 12000,
+				Reward = 7500,
+
 				Description =
 					"Unlock the Haircut Stand!",
 			},
@@ -439,21 +462,24 @@ AchievementConfig.Achievements = {
 		Tiers = {
 			{
 				Goal = 1,
-				Reward = 18000,
+				Reward = 15000,
+
 				Description =
 					"Fully upgrade one business!",
 			},
 
 			{
 				Goal = 3,
-				Reward = 75000,
+				Reward = 65000,
+
 				Description =
 					"Fully upgrade 3 businesses!",
 			},
 
 			{
 				Goal = 10,
-				Reward = 300000,
+				Reward = 275000,
+
 				Description =
 					"Fully upgrade 10 businesses!",
 			},
@@ -480,35 +506,40 @@ AchievementConfig.Achievements = {
 		Tiers = {
 			{
 				Goal = 10000,
-				Reward = 1000,
+				Reward = 750,
+
 				Description =
 					"Earn $10,000 from your businesses!",
 			},
 
 			{
 				Goal = 100000,
-				Reward = 7500,
+				Reward = 5000,
+
 				Description =
 					"Earn $100,000 from your businesses!",
 			},
 
 			{
 				Goal = 1000000,
-				Reward = 40000,
+				Reward = 30000,
+
 				Description =
 					"Earn $1,000,000 from your businesses!",
 			},
 
 			{
 				Goal = 10000000,
-				Reward = 150000,
+				Reward = 125000,
+
 				Description =
 					"Earn $10,000,000 from your businesses!",
 			},
 
 			{
 				Goal = 100000000,
-				Reward = 600000,
+				Reward = 500000,
+
 				Description =
 					"Earn $100,000,000 from your businesses!",
 			},
