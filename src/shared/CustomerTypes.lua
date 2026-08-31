@@ -27,143 +27,143 @@ export type CustomerTypeConfig = {
 
 CustomerTypes.Types = {
 	Regular = {
-		DisplayName =
-			"Regular",
+	DisplayName =
+		"Regular",
 
-		Weight =
-			720,
+	Weight =
+		760,
 
-		PaymentMultiplier =
-			1,
+	PaymentMultiplier =
+		1,
 
-		TrafficMultiplier =
-			1,
+	TrafficMultiplier =
+		1,
 
-		TextColor =
-			Color3.fromRGB(
-				88,
-				255,
-				103
-			),
+	TextColor =
+		Color3.fromRGB(
+			88,
+			255,
+			103
+		),
 
-		BusinessPreferences = {
-	LemonadeStand = 1.00,
-	HotdogStand = 1.00,
-	HaircutStand = 1.00,
-},
-
-		StrokeColor =
-			Color3.fromRGB(
-				25,
-				112,
-				35
-			),
+	BusinessPreferences = {
+		LemonadeStand = 1.00,
+		HotdogStand = 1.00,
+		HaircutStand = 1.00,
 	},
 
-
-	Generous = {
-		DisplayName =
-			"Generous",
-
-		Weight =
-			140,
-
-		PaymentMultiplier =
-			1.5,
-
-		TrafficMultiplier =
-			1,
-
-		TextColor =
-			Color3.fromRGB(
-				105,
-				220,
-				255
-			),
-
-		BusinessPreferences = {
-	LemonadeStand = 1.00,
-	HotdogStand = 1.10,
-	HaircutStand = 1.05,
+	StrokeColor =
+		Color3.fromRGB(
+			25,
+			112,
+			35
+		),
 },
 
-		StrokeColor =
-			Color3.fromRGB(
-				30,
-				110,
-				160
-			),
+
+Generous = {
+	DisplayName =
+		"Generous",
+
+	Weight =
+		120,
+
+	PaymentMultiplier =
+		1.5,
+
+	TrafficMultiplier =
+		1,
+
+	TextColor =
+		Color3.fromRGB(
+			105,
+			220,
+			255
+		),
+
+	BusinessPreferences = {
+		LemonadeStand = 1.00,
+		HotdogStand = 1.10,
+		HaircutStand = 1.05,
 	},
 
-
-	Rich = {
-		DisplayName =
-			"Rich",
-
-		Weight =
-			80,
-
-		PaymentMultiplier =
-			2,
-
-		TrafficMultiplier =
-			1,
-
-		TextColor =
-			Color3.fromRGB(
-				93,
-				255,
-				181
-			),
-
-		BusinessPreferences = {
-	LemonadeStand = 0.90,
-	HotdogStand = 1.05,
-	HaircutStand = 1.35,
+	StrokeColor =
+		Color3.fromRGB(
+			30,
+			110,
+			160
+		),
 },
 
-		StrokeColor =
-			Color3.fromRGB(
-				24,
-				128,
-				85
-			),
+
+Rich = {
+	DisplayName =
+		"Rich",
+
+	Weight =
+		65,
+
+	PaymentMultiplier =
+		2,
+
+	TrafficMultiplier =
+		1,
+
+	TextColor =
+		Color3.fromRGB(
+			93,
+			255,
+			181
+		),
+
+	BusinessPreferences = {
+		LemonadeStand = 0.90,
+		HotdogStand = 1.05,
+		HaircutStand = 1.35,
 	},
 
-
-	VIP = {
-		DisplayName =
-			"VIP",
-
-		Weight =
-			35,
-
-		PaymentMultiplier =
-			3,
-
-		TrafficMultiplier =
-			1,
-
-		TextColor =
-			Color3.fromRGB(
-				255,
-				226,
-				52
-			),
-
-		BusinessPreferences = {
-	LemonadeStand = 0.75,
-	HotdogStand = 1.05,
-	HaircutStand = 1.80,
+	StrokeColor =
+		Color3.fromRGB(
+			24,
+			128,
+			85
+		),
 },
 
-		StrokeColor =
-			Color3.fromRGB(
-				165,
-				112,
-				10
-			),
+
+VIP = {
+	DisplayName =
+		"VIP",
+
+	Weight =
+		30,
+
+	PaymentMultiplier =
+		3,
+
+	TrafficMultiplier =
+		1,
+
+	TextColor =
+		Color3.fromRGB(
+			255,
+			226,
+			52
+		),
+
+	BusinessPreferences = {
+		LemonadeStand = 0.75,
+		HotdogStand = 1.05,
+		HaircutStand = 1.80,
 	},
+
+	StrokeColor =
+		Color3.fromRGB(
+			165,
+			112,
+			10
+		),
+},
 
 
 	Celebrity = {
