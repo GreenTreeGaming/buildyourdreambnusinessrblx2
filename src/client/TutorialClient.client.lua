@@ -1068,7 +1068,7 @@ local function runTutorial()
 	--==================================================
 
 	showTimedMessage(
-		"Welcome to Build Your Dream Business!",
+		"Welcome to From Broke To Boss!",
 		NORMAL_MESSAGE_TIME
 	)
 

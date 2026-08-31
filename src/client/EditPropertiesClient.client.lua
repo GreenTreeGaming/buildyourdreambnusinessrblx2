@@ -87,6 +87,11 @@ local TAP_MOVEMENT_THRESHOLD =
 local TAP_TIME_THRESHOLD =
 	0.35
 
+-- Extra tap padding around businesses on touch devices.
+-- This is screen-space pixels, not studs.
+local MOBILE_SELECTION_PADDING =
+	34
+
 
 --==================================================
 -- UI
@@ -1138,9 +1143,326 @@ local function raycastBusiness(
 	)
 end
 
+local function getBusinessScreenBounds(
+	stand: Model
+): (
+	number,
+	number,
+	number,
+	number,
+	Vector2
+)
+	local boundsCFrame,
+		boundsSize =
+		stand:GetBoundingBox()
+
+
+	local halfSize =
+		boundsSize * 0.5
+
+
+	local corners = {
+		Vector3.new(
+			-halfSize.X,
+			-halfSize.Y,
+			-halfSize.Z
+		),
+
+		Vector3.new(
+			-halfSize.X,
+			-halfSize.Y,
+			halfSize.Z
+		),
+
+		Vector3.new(
+			-halfSize.X,
+			halfSize.Y,
+			-halfSize.Z
+		),
+
+		Vector3.new(
+			-halfSize.X,
+			halfSize.Y,
+			halfSize.Z
+		),
+
+		Vector3.new(
+			halfSize.X,
+			-halfSize.Y,
+			-halfSize.Z
+		),
+
+		Vector3.new(
+			halfSize.X,
+			-halfSize.Y,
+			halfSize.Z
+		),
+
+		Vector3.new(
+			halfSize.X,
+			halfSize.Y,
+			-halfSize.Z
+		),
+
+		Vector3.new(
+			halfSize.X,
+			halfSize.Y,
+			halfSize.Z
+		),
+	}
+
+
+	local minimumX =
+		math.huge
+
+	local minimumY =
+		math.huge
+
+	local maximumX =
+		-math.huge
+
+	local maximumY =
+		-math.huge
+
+
+	local visibleCornerCount =
+		0
+
+
+	for _, localCorner in corners do
+
+		local worldCorner =
+			boundsCFrame:PointToWorldSpace(
+				localCorner
+			)
+
+
+		local screenPoint,
+			onScreen =
+			camera:WorldToViewportPoint(
+				worldCorner
+			)
+
+
+		-- Z <= 0 means the point is behind the camera.
+		if screenPoint.Z <= 0 then
+			continue
+		end
+
+
+		if onScreen then
+			visibleCornerCount +=
+				1
+		end
+
+
+		minimumX =
+			math.min(
+				minimumX,
+				screenPoint.X
+			)
+
+		minimumY =
+			math.min(
+				minimumY,
+				screenPoint.Y
+			)
+
+		maximumX =
+			math.max(
+				maximumX,
+				screenPoint.X
+			)
+
+		maximumY =
+			math.max(
+				maximumY,
+				screenPoint.Y
+			)
+	end
+
+
+	if visibleCornerCount <= 0
+		or minimumX == math.huge then
+
+		return nil
+	end
+
+
+	local centerWorld =
+		boundsCFrame.Position
+
+
+	local centerScreen =
+		camera:WorldToViewportPoint(
+			centerWorld
+		)
+
+
+	if centerScreen.Z <= 0 then
+		return nil
+	end
+
+
+	return minimumX,
+		minimumY,
+		maximumX,
+		maximumY,
+		Vector2.new(
+			centerScreen.X,
+			centerScreen.Y
+		)
+end
+
+local function findNearbyBusinessForTouch(
+	screenPosition: Vector2
+): Model?
+
+	if not ownedPlot then
+		return nil
+	end
+
+
+	local placedBusinesses =
+		getPlacedBusinesses(
+			ownedPlot
+		)
+
+
+	if not placedBusinesses then
+		return nil
+	end
+
+
+	local bestStand:
+		Model? =
+		nil
+
+
+	local bestScore =
+		math.huge
+
+
+	for _, child in
+		placedBusinesses:GetChildren() do
+
+		if not child:IsA(
+			"Model"
+		) then
+
+			continue
+		end
+
+
+		if child:GetAttribute(
+			"OwnerUserId"
+		) ~= player.UserId then
+
+			continue
+		end
+
+
+		local minimumX,
+			minimumY,
+			maximumX,
+			maximumY,
+			center =
+			getBusinessScreenBounds(
+				child
+			)
+
+
+		if not minimumX
+			or not minimumY
+			or not maximumX
+			or not maximumY
+			or not center then
+
+			continue
+		end
+
+
+		-- Expand the business's visible screen rectangle
+		-- so fingers don't need pixel-perfect accuracy.
+		minimumX -=
+			MOBILE_SELECTION_PADDING
+
+		minimumY -=
+			MOBILE_SELECTION_PADDING
+
+		maximumX +=
+			MOBILE_SELECTION_PADDING
+
+		maximumY +=
+			MOBILE_SELECTION_PADDING
+
+
+		local inside =
+			screenPosition.X >= minimumX
+			and screenPosition.X <= maximumX
+			and screenPosition.Y >= minimumY
+			and screenPosition.Y <= maximumY
+
+
+		if not inside then
+			continue
+		end
+
+
+		-- If multiple padded areas overlap, select the
+		-- business whose visual center is closest.
+		local distance =
+			(
+				screenPosition
+				- center
+			).Magnitude
+
+
+		-- Slightly favor physically smaller screen bounds.
+		-- This helps prevent a huge nearby business from
+		-- swallowing taps intended for a smaller one.
+		local width =
+			math.max(
+				maximumX - minimumX,
+				1
+			)
+
+		local height =
+			math.max(
+				maximumY - minimumY,
+				1
+			)
+
+
+		local normalizedDistance =
+			distance
+			/ math.max(
+				math.min(
+					width,
+					height
+				),
+				1
+			)
+
+
+		if normalizedDistance
+			< bestScore then
+
+			bestScore =
+				normalizedDistance
+
+			bestStand =
+				child
+		end
+	end
+
+
+	return bestStand
+end
 
 local function selectAtScreenPosition(
-	position: Vector2
+	position: Vector2,
+	useForgivingTouchSelection: boolean?
 )
 
 	if player:GetAttribute(
@@ -1151,10 +1473,25 @@ local function selectAtScreenPosition(
 	end
 
 
+	-- Always try the precise raycast first.
+	-- This preserves the existing behavior whenever
+	-- the player actually tapped the business.
 	local stand =
 		raycastBusiness(
 			position
 		)
+
+
+	-- Touch devices get a much larger screen-space
+	-- fallback target if the exact raycast missed.
+	if not stand
+		and useForgivingTouchSelection then
+
+		stand =
+			findNearbyBusinessForTouch(
+				position
+			)
+	end
 
 
 	if stand then
@@ -1164,10 +1501,10 @@ local function selectAtScreenPosition(
 		)
 
 	else
+
 		clearSelection()
 	end
 end
-
 
 --==================================================
 -- PAN
@@ -2447,7 +2784,8 @@ UserInputService.TouchEnded:Connect(
 				<= TAP_TIME_THRESHOLD then
 
 			selectAtScreenPosition(
-				endPosition
+				endPosition,
+				true
 			)
 		end
 	end
