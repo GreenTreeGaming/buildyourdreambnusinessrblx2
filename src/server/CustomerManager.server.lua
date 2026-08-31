@@ -1255,21 +1255,28 @@ local function getStandCustomerAttraction(
 			stand
 		)
 
-
 	if not levelConfig then
 		return 1
 	end
 
 
+	--==================================================
+	-- BASE ATTRACTION
+	--==================================================
+
 	local attraction =
 		levelConfig.CustomerAttraction
-
 
 	if typeof(attraction)
 			~= "number"
 		or attraction <= 0 then
 
 		attraction = 1
+	end
+
+
+	if not customer then
+		return attraction
 	end
 
 
@@ -1280,7 +1287,6 @@ local function getStandCustomerAttraction(
 	local premiumAttraction =
 		levelConfig.PremiumCustomerAttraction
 
-
 	if typeof(premiumAttraction)
 			~= "number"
 		or premiumAttraction < 1 then
@@ -1289,32 +1295,22 @@ local function getStandCustomerAttraction(
 	end
 
 
-	if not customer then
-		return attraction
-	end
-
-
 	local paymentMultiplier =
 		customer:GetAttribute(
 			"PaymentMultiplier"
 		)
 
-
 	if typeof(paymentMultiplier)
-			~= "number"
-		or paymentMultiplier <= 1 then
+		~= "number" then
 
-		return attraction
+		paymentMultiplier = 1
 	end
 
 
-	-- Regular customers get no premium attraction bonus.
+	-- Regular customers get none of this bonus.
 	--
-	-- As payment multiplier increases, the customer becomes
-	-- increasingly interested in higher-level stands.
-	--
-	-- At roughly a 7x payment multiplier, the full premium
-	-- attraction value is being applied.
+	-- Higher-value customers increasingly care about
+	-- premium-looking businesses.
 	local premiumStrength =
 		math.clamp(
 			(paymentMultiplier - 1) / 6,
@@ -1331,10 +1327,97 @@ local function getStandCustomerAttraction(
 		)
 
 
+	--==================================================
+	-- CUSTOMER BUSINESS PREFERENCE
+	--==================================================
+
+	local businessPreference =
+		1
+
+
+	local customerType =
+		customer:GetAttribute(
+			"CustomerType"
+		)
+
+
+	if typeof(customerType)
+		== "string" then
+
+		local customerConfig =
+			CustomerTypes.Get(
+				customerType
+			)
+
+
+		if customerConfig then
+
+			local preferences =
+				customerConfig.BusinessPreferences
+
+
+			if type(preferences)
+				== "table" then
+
+				local businessType =
+					stand:GetAttribute(
+						"BusinessType"
+					)
+
+
+				if typeof(businessType)
+					~= "string"
+					or businessType == "" then
+
+					for configuredBusinessType in
+						BusinessConfig do
+
+						if stand.Name
+								== configuredBusinessType
+							or string.match(
+								stand.Name,
+								`^{configuredBusinessType}_`
+							) then
+
+							businessType =
+								configuredBusinessType
+
+							break
+						end
+					end
+				end
+
+
+				if typeof(businessType)
+					== "string" then
+
+					local configuredPreference =
+						preferences[
+							businessType
+						]
+
+
+					if typeof(configuredPreference)
+							== "number"
+						and configuredPreference > 0 then
+
+						businessPreference =
+							configuredPreference
+					end
+				end
+			end
+		end
+	end
+
+
+	--==================================================
+	-- FINAL ATTRACTION
+	--==================================================
+
 	return attraction
 		* premiumMultiplier
+		* businessPreference
 end
-
 
 local function getStandCustomerRateMultiplier(
 	stand: Model
@@ -2131,9 +2214,9 @@ end
 --==================================================
 
 local function chooseStandForCustomer(
-	plot: Model
+	plot: Model,
+	customer: Model
 ): Model?
-
 	type WeightedStand = {
 		Stand: Model,
 		Weight: number,
@@ -4920,7 +5003,8 @@ while true do
 
 		local selectedStand =
 			chooseStandForCustomer(
-				plot
+				plot,
+				customer
 			)
 
 

@@ -21,69 +21,69 @@ local BusinessConfig = {
 		BaseServingCooldown = 5,
 
 		StandLevels = {
-			[1] = {
-				TemplateName = "LemonadeStand",
-				UpgradeCost = 150,
+	[1] = {
+		TemplateName = "LemonadeStand",
+		UpgradeCost = 150,
 
-				CustomerAttraction = 1.00,
-				CustomerRateMultiplier = 1.00,
+		-- Lemonade is a high-volume business.
+		CustomerAttraction = 1.00,
+		CustomerRateMultiplier = 1.00,
 
-				SaleValueMultiplier = 1.00,
+		SaleValueMultiplier = 1.00,
 
-				PremiumCustomerAttraction = 1.00,
-			},
+		-- Wealthy customers are only slightly more
+		-- interested in upgraded Lemonade Stands.
+		PremiumCustomerAttraction = 1.00,
+	},
 
-			[2] = {
-				TemplateName = "LemonadeStand2",
-				UpgradeCost = 800,
+	[2] = {
+		TemplateName = "LemonadeStand2",
+		UpgradeCost = 800,
 
-				CustomerAttraction = 1.15,
-				CustomerRateMultiplier = 1.10,
+		CustomerAttraction = 1.10,
+		CustomerRateMultiplier = 1.15,
 
-				-- Appearance upgrades now have a much
-				-- more noticeable effect on income.
-				SaleValueMultiplier = 1.35,
+		SaleValueMultiplier = 1.35,
 
-				PremiumCustomerAttraction = 1.10,
-			},
+		PremiumCustomerAttraction = 1.03,
+	},
 
-			[3] = {
-				TemplateName = "LemonadeStand3",
-				UpgradeCost = 3500,
+	[3] = {
+		TemplateName = "LemonadeStand3",
+		UpgradeCost = 3500,
 
-				CustomerAttraction = 1.35,
-				CustomerRateMultiplier = 1.25,
+		CustomerAttraction = 1.20,
+		CustomerRateMultiplier = 1.35,
 
-				SaleValueMultiplier = 1.90,
+		SaleValueMultiplier = 1.90,
 
-				PremiumCustomerAttraction = 1.25,
-			},
+		PremiumCustomerAttraction = 1.07,
+	},
 
-			[4] = {
-				TemplateName = "LemonadeStand4",
-				UpgradeCost = 12000,
+	[4] = {
+		TemplateName = "LemonadeStand4",
+		UpgradeCost = 12000,
 
-				CustomerAttraction = 1.60,
-				CustomerRateMultiplier = 1.45,
+		CustomerAttraction = 1.35,
+		CustomerRateMultiplier = 1.60,
 
-				SaleValueMultiplier = 2.80,
+		SaleValueMultiplier = 2.80,
 
-				PremiumCustomerAttraction = 1.45,
-			},
+		PremiumCustomerAttraction = 1.12,
+	},
 
-			[5] = {
-				TemplateName = "LemonadeStand5",
-				UpgradeCost = nil,
+	[5] = {
+		TemplateName = "LemonadeStand5",
+		UpgradeCost = nil,
 
-				CustomerAttraction = 1.90,
-				CustomerRateMultiplier = 1.70,
+		CustomerAttraction = 1.50,
+		CustomerRateMultiplier = 1.90,
 
-				SaleValueMultiplier = 4.20,
+		SaleValueMultiplier = 4.20,
 
-				PremiumCustomerAttraction = 1.75,
-			},
-		},
-
+		PremiumCustomerAttraction = 1.20,
+	},
+},
 		Upgrades = {
 			ServingSpeed = {
 				DisplayName = "Faster Service",
@@ -293,66 +293,66 @@ local BusinessConfig = {
 		BaseServingCooldown = 5,
 
 		StandLevels = {
-			[1] = {
-				TemplateName = "HotdogStand",
-				UpgradeCost = 800,
+	[1] = {
+		TemplateName = "HotdogStand",
+		UpgradeCost = 800,
 
-				CustomerAttraction = 1.00,
-				CustomerRateMultiplier = 1.00,
+		CustomerAttraction = 1.00,
+		CustomerRateMultiplier = 1.00,
 
-				SaleValueMultiplier = 1.00,
+		SaleValueMultiplier = 1.00,
 
-				PremiumCustomerAttraction = 1.00,
-			},
+		PremiumCustomerAttraction = 1.00,
+	},
 
-			[2] = {
-				TemplateName = "HotdogStand2",
-				UpgradeCost = 3500,
+	[2] = {
+		TemplateName = "HotdogStand2",
+		UpgradeCost = 3500,
 
-				CustomerAttraction = 1.15,
-				CustomerRateMultiplier = 1.10,
+		CustomerAttraction = 1.15,
+		CustomerRateMultiplier = 1.10,
 
-				SaleValueMultiplier = 1.35,
+		SaleValueMultiplier = 1.35,
 
-				PremiumCustomerAttraction = 1.10,
-			},
+		PremiumCustomerAttraction = 1.10,
+	},
 
-			[3] = {
-				TemplateName = "HotdogStand3",
-				UpgradeCost = 14000,
+	[3] = {
+		TemplateName = "HotdogStand3",
+		UpgradeCost = 14000,
 
-				CustomerAttraction = 1.35,
-				CustomerRateMultiplier = 1.25,
+		CustomerAttraction = 1.35,
+		CustomerRateMultiplier = 1.25,
 
-				SaleValueMultiplier = 1.90,
+		SaleValueMultiplier = 1.90,
 
-				PremiumCustomerAttraction = 1.25,
-			},
+		PremiumCustomerAttraction = 1.25,
+	},
 
-			[4] = {
-				TemplateName = "HotdogStand4",
-				UpgradeCost = 50000,
+	[4] = {
+		TemplateName = "HotdogStand4",
+		UpgradeCost = 50000,
 
-				CustomerAttraction = 1.60,
-				CustomerRateMultiplier = 1.45,
+		CustomerAttraction = 1.60,
+		CustomerRateMultiplier = 1.45,
 
-				SaleValueMultiplier = 2.80,
+		SaleValueMultiplier = 2.80,
 
-				PremiumCustomerAttraction = 1.45,
-			},
+		PremiumCustomerAttraction = 1.50,
+	},
 
-			[5] = {
-				TemplateName = "HotdogStand5",
-				UpgradeCost = nil,
+	[5] = {
+		TemplateName = "HotdogStand5",
+		UpgradeCost = nil,
 
-				CustomerAttraction = 1.90,
-				CustomerRateMultiplier = 1.70,
+		CustomerAttraction = 1.90,
+		CustomerRateMultiplier = 1.70,
 
-				SaleValueMultiplier = 4.20,
+		SaleValueMultiplier = 4.20,
 
-				PremiumCustomerAttraction = 1.75,
-			},
-		},
+		PremiumCustomerAttraction = 1.80,
+	},
+},
 
 		Upgrades = {
 			ServingSpeed = {
@@ -563,66 +563,70 @@ local BusinessConfig = {
 		BaseServingCooldown = 6,
 
 		StandLevels = {
-			[1] = {
-				TemplateName = "HaircutStand",
-				UpgradeCost = 5000,
+	[1] = {
+		TemplateName = "HaircutStand",
+		UpgradeCost = 5000,
 
-				CustomerAttraction = 1.00,
-				CustomerRateMultiplier = 1.00,
+		-- Haircuts focus on valuable customers rather
+		-- than generating massive customer volume.
+		CustomerAttraction = 1.05,
+		CustomerRateMultiplier = 1.00,
 
-				SaleValueMultiplier = 1.00,
+		SaleValueMultiplier = 1.00,
 
-				PremiumCustomerAttraction = 1.00,
-			},
+		PremiumCustomerAttraction = 1.10,
+	},
 
-			[2] = {
-				TemplateName = "HaircutStand2",
-				UpgradeCost = 20000,
+	[2] = {
+		TemplateName = "HaircutStand2",
+		UpgradeCost = 20000,
 
-				CustomerAttraction = 1.15,
-				CustomerRateMultiplier = 1.10,
+		CustomerAttraction = 1.20,
+		CustomerRateMultiplier = 1.05,
 
-				SaleValueMultiplier = 1.35,
+		SaleValueMultiplier = 1.35,
 
-				PremiumCustomerAttraction = 1.10,
-			},
+		PremiumCustomerAttraction = 1.35,
+	},
 
-			[3] = {
-				TemplateName = "HaircutStand3",
-				UpgradeCost = 75000,
+	[3] = {
+		TemplateName = "HaircutStand3",
+		UpgradeCost = 75000,
 
-				CustomerAttraction = 1.35,
-				CustomerRateMultiplier = 1.25,
+		CustomerAttraction = 1.45,
+		CustomerRateMultiplier = 1.10,
 
-				SaleValueMultiplier = 1.90,
+		SaleValueMultiplier = 1.90,
 
-				PremiumCustomerAttraction = 1.25,
-			},
+		PremiumCustomerAttraction = 1.70,
+	},
 
-			[4] = {
-				TemplateName = "HaircutStand4",
-				UpgradeCost = 275000,
+	[4] = {
+		TemplateName = "HaircutStand4",
+		UpgradeCost = 275000,
 
-				CustomerAttraction = 1.60,
-				CustomerRateMultiplier = 1.45,
+		CustomerAttraction = 1.80,
+		CustomerRateMultiplier = 1.18,
 
-				SaleValueMultiplier = 2.80,
+		SaleValueMultiplier = 2.80,
 
-				PremiumCustomerAttraction = 1.45,
-			},
+		PremiumCustomerAttraction = 2.20,
+	},
 
-			[5] = {
-				TemplateName = "HaircutStand5",
-				UpgradeCost = nil,
+	[5] = {
+		TemplateName = "HaircutStand5",
+		UpgradeCost = nil,
 
-				CustomerAttraction = 1.90,
-				CustomerRateMultiplier = 1.70,
+		CustomerAttraction = 2.30,
+		CustomerRateMultiplier = 1.25,
 
-				SaleValueMultiplier = 4.20,
+		SaleValueMultiplier = 4.20,
 
-				PremiumCustomerAttraction = 1.75,
-			},
-		},
+		-- Rich customers should noticeably prefer a
+		-- high-end barbershop.
+		PremiumCustomerAttraction = 3.00,
+	},
+},
 
 		Upgrades = {
 			ServingSpeed = {

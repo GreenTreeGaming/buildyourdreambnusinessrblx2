@@ -13,10 +13,13 @@ export type CustomerTypeConfig = {
 	PaymentMultiplier: number,
 	TrafficMultiplier: number,
 
+	BusinessPreferences: {
+		[string]: number
+	}?,
+
 	TextColor: Color3,
 	StrokeColor: Color3,
 }
-
 
 --==================================================
 -- CONFIG
@@ -42,6 +45,12 @@ CustomerTypes.Types = {
 				255,
 				103
 			),
+
+		BusinessPreferences = {
+	LemonadeStand = 1.00,
+	HotdogStand = 1.00,
+	HaircutStand = 1.00,
+},
 
 		StrokeColor =
 			Color3.fromRGB(
@@ -72,6 +81,12 @@ CustomerTypes.Types = {
 				255
 			),
 
+		BusinessPreferences = {
+	LemonadeStand = 1.00,
+	HotdogStand = 1.10,
+	HaircutStand = 1.05,
+},
+
 		StrokeColor =
 			Color3.fromRGB(
 				30,
@@ -100,6 +115,12 @@ CustomerTypes.Types = {
 				255,
 				181
 			),
+
+		BusinessPreferences = {
+	LemonadeStand = 0.90,
+	HotdogStand = 1.05,
+	HaircutStand = 1.35,
+},
 
 		StrokeColor =
 			Color3.fromRGB(
@@ -130,6 +151,12 @@ CustomerTypes.Types = {
 				52
 			),
 
+		BusinessPreferences = {
+	LemonadeStand = 0.75,
+	HotdogStand = 1.05,
+	HaircutStand = 1.80,
+},
+
 		StrokeColor =
 			Color3.fromRGB(
 				165,
@@ -158,6 +185,12 @@ CustomerTypes.Types = {
 				118,
 				218
 			),
+
+		BusinessPreferences = {
+	LemonadeStand = 0.80,
+	HotdogStand = 1.10,
+	HaircutStand = 1.65,
+},
 
 		StrokeColor =
 			Color3.fromRGB(
@@ -188,6 +221,12 @@ CustomerTypes.Types = {
 				255
 			),
 
+		BusinessPreferences = {
+	LemonadeStand = 0.85,
+	HotdogStand = 1.30,
+	HaircutStand = 1.45,
+},
+
 		StrokeColor =
 			Color3.fromRGB(
 				93,
@@ -217,6 +256,12 @@ CustomerTypes.Types = {
 				255
 			),
 
+		BusinessPreferences = {
+	LemonadeStand = 0.60,
+	HotdogStand = 0.95,
+	HaircutStand = 2.30,
+},
+
 		StrokeColor =
 			Color3.fromRGB(
 				18,
@@ -245,6 +290,12 @@ CustomerTypes.Types = {
 				206,
 				36
 			),
+
+		BusinessPreferences = {
+	LemonadeStand = 0.75,
+	HotdogStand = 1.10,
+	HaircutStand = 2.00,
+},
 
 		StrokeColor =
 			Color3.fromRGB(
