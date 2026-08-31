@@ -20,6 +20,7 @@ local PlotService =
 			:WaitForChild("PlotService")
 	)
 
+
 local customersFolder =
 	Workspace:WaitForChild(
 		"Customers"
@@ -32,6 +33,27 @@ local plotsFolder =
 	)
 
 
+--==================================================
+-- SETTINGS
+--==================================================
+
+local EXPECTED_PLOT_COUNT =
+	6
+
+
+local REQUIRED_PLOT_CHILDREN = {
+	"PlotOrigin",
+	"Ground",
+	"PlayerSpawn",
+	"CustomerSpawn",
+	"PlacedBusinesses",
+}
+
+
+--==================================================
+-- STATE
+--==================================================
+
 local assignedPlots: {
 	[Player]: Model
 } = {}
@@ -42,24 +64,195 @@ local releasingPlayers: {
 } = {}
 
 
+--==================================================
+-- PLOT NUMBER
+--==================================================
+
+local function getPlotNumber(
+	plot: Model
+): number
+
+	local number =
+		tonumber(
+			string.match(
+				plot.Name,
+				"^Plot(%d+)$"
+			)
+		)
+
+
+	return number
+		or math.huge
+end
+
+
+--==================================================
+-- PLOT VALIDATION
+--==================================================
+
+local function validatePlot(
+	plot: Model
+): boolean
+
+	for _, childName in
+		REQUIRED_PLOT_CHILDREN do
+
+		local child =
+			plot:FindFirstChild(
+				childName
+			)
+
+
+		if not child then
+
+			warn(
+				`[PlotManager] {plot:GetFullName()} is missing {childName}.`
+			)
+
+
+			return false
+		end
+	end
+
+
+	local plotOrigin =
+		plot:FindFirstChild(
+			"PlotOrigin"
+		)
+
+
+	if not plotOrigin
+		or not plotOrigin:IsA(
+			"BasePart"
+		) then
+
+		warn(
+			`[PlotManager] {plot:GetFullName()}.PlotOrigin must be a BasePart.`
+		)
+
+
+		return false
+	end
+
+
+	local ground =
+		plot:FindFirstChild(
+			"Ground"
+		)
+
+
+	if not ground
+		or not ground:IsA(
+			"BasePart"
+		) then
+
+		warn(
+			`[PlotManager] {plot:GetFullName()}.Ground must be a BasePart.`
+		)
+
+
+		return false
+	end
+
+
+	local playerSpawn =
+		plot:FindFirstChild(
+			"PlayerSpawn"
+		)
+
+
+	if not playerSpawn
+		or not playerSpawn:IsA(
+			"BasePart"
+		) then
+
+		warn(
+			`[PlotManager] {plot:GetFullName()}.PlayerSpawn must be a BasePart.`
+		)
+
+
+		return false
+	end
+
+
+	local customerSpawn =
+		plot:FindFirstChild(
+			"CustomerSpawn"
+		)
+
+
+	if not customerSpawn
+		or not customerSpawn:IsA(
+			"BasePart"
+		) then
+
+		warn(
+			`[PlotManager] {plot:GetFullName()}.CustomerSpawn must be a BasePart.`
+		)
+
+
+		return false
+	end
+
+
+	local placedBusinesses =
+		plot:FindFirstChild(
+			"PlacedBusinesses"
+		)
+
+
+	if not placedBusinesses
+		or not placedBusinesses:IsA(
+			"Folder"
+		) then
+
+		warn(
+			`[PlotManager] {plot:GetFullName()}.PlacedBusinesses must be a Folder.`
+		)
+
+
+		return false
+	end
+
+
+	return true
+end
+
+
+--==================================================
+-- SORTED PLOTS
+--==================================================
+
 local function getSortedPlots(): {
 	Model
 }
+
 	local plots = {}
 
 
 	for _, instance in
 		plotsFolder:GetChildren() do
 
-		if instance:IsA(
+		if not instance:IsA(
 			"Model"
 		) then
 
-			table.insert(
-				plots,
-				instance
-			)
+			continue
 		end
+
+
+		if not validatePlot(
+			instance
+		) then
+
+			continue
+		end
+
+
+		table.insert(
+			plots,
+			instance
+		)
 	end
 
 
@@ -67,12 +260,15 @@ local function getSortedPlots(): {
 		plots,
 
 		function(
-			firstPlot,
-			secondPlot
-		)
+			firstPlot: Model,
+			secondPlot: Model
+		): boolean
 
-			return firstPlot.Name
-				< secondPlot.Name
+			return getPlotNumber(
+				firstPlot
+			) < getPlotNumber(
+				secondPlot
+			)
 		end
 	)
 
@@ -80,15 +276,102 @@ local function getSortedPlots(): {
 	return plots
 end
 
+
+--==================================================
+-- INITIALIZE PLOTS
+--==================================================
+
+local function initializePlots()
+
+	local plots =
+		getSortedPlots()
+
+
+	if #plots ~= EXPECTED_PLOT_COUNT then
+
+		warn(
+			`[PlotManager] Expected {EXPECTED_PLOT_COUNT} plots, but found {#plots} valid plots.`
+		)
+
+	end
+
+
+	for _, plot in plots do
+
+		-- Studio may contain old test attributes.
+		-- Always begin a fresh server with every physical
+		-- plot unclaimed.
+		plot:SetAttribute(
+			"OwnerUserId",
+			0
+		)
+
+
+		plot:SetAttribute(
+			"OwnerName",
+			""
+		)
+
+
+		plot:SetAttribute(
+			"StarterBusinessPlaced",
+			false
+		)
+
+
+		local origin =
+			plot:FindFirstChild(
+				"PlotOrigin"
+			)
+
+
+		if origin
+			and origin:IsA(
+				"BasePart"
+			) then
+
+			origin.Anchored =
+				true
+
+			origin.CanCollide =
+				false
+
+			origin.CanTouch =
+				false
+
+			origin.CanQuery =
+				false
+
+			origin.Transparency =
+				1
+		end
+	end
+
+
+	print(
+		`[PlotManager] Initialized {#plots} plot(s).`
+	)
+end
+
+
+--==================================================
+-- CUSTOMERS
+--==================================================
+
 local function clearPlotCustomers(
 	plot: Model
 )
+
 	for _, customer in
 		customersFolder:GetChildren() do
 
-		if not customer:IsA("Model") then
+		if not customer:IsA(
+			"Model"
+		) then
+
 			continue
 		end
+
 
 		if customer:GetAttribute(
 			"PlotName"
@@ -97,12 +380,18 @@ local function clearPlotCustomers(
 			continue
 		end
 
+
 		customer:Destroy()
 	end
 end
 
 
-local function getAvailablePlot(): Model?
+--==================================================
+-- AVAILABLE PLOT
+--==================================================
+
+local function getAvailablePlot():
+	Model?
 
 	for _, plot in
 		getSortedPlots() do
@@ -113,8 +402,9 @@ local function getAvailablePlot(): Model?
 			)
 
 
-		if ownerUserId == nil
-			or ownerUserId == 0 then
+		if typeof(ownerUserId)
+				~= "number"
+			or ownerUserId <= 0 then
 
 			return plot
 		end
@@ -125,58 +415,9 @@ local function getAvailablePlot(): Model?
 end
 
 
-local function teleportCharacterToPlot(
-	character: Model,
-	plot: Model
-)
-	local spawnPart =
-		plot:FindFirstChild(
-			"PlayerSpawn"
-		)
-
-
-	if not spawnPart
-		or not spawnPart:IsA(
-			"BasePart"
-		) then
-
-		warn(
-			`Plot "{plot.Name}" does not contain a valid PlayerSpawn part.`
-		)
-
-
-		return
-	end
-
-
-	local humanoidRootPart =
-		character:WaitForChild(
-			"HumanoidRootPart",
-			10
-		)
-
-
-	if not humanoidRootPart then
-
-		warn(
-			"HumanoidRootPart did not load for character."
-		)
-
-
-		return
-	end
-
-
-	character:PivotTo(
-		spawnPart.CFrame
-			* CFrame.new(
-				0,
-				3,
-				0
-			)
-	)
-end
-
+--==================================================
+-- PLACED BUSINESSES
+--==================================================
 
 local function getPlacedBusinesses(
 	plot: Model
@@ -198,7 +439,7 @@ local function getPlacedBusinesses(
 
 
 	warn(
-		`Plot "{plot.Name}" does not contain a valid PlacedBusinesses folder.`
+		`[PlotManager] {plot.Name} does not contain a valid PlacedBusinesses folder.`
 	)
 
 
@@ -206,40 +447,168 @@ local function getPlacedBusinesses(
 end
 
 
+--==================================================
+-- CHARACTER TELEPORT
+--==================================================
+
+local function teleportCharacterToPlot(
+	character: Model,
+	plot: Model
+)
+
+	if not character.Parent then
+		return
+	end
+
+
+	local spawnPart =
+		plot:FindFirstChild(
+			"PlayerSpawn"
+		)
+
+
+	if not spawnPart
+		or not spawnPart:IsA(
+			"BasePart"
+		) then
+
+		warn(
+			`[PlotManager] {plot.Name} does not contain a valid PlayerSpawn.`
+		)
+
+
+		return
+	end
+
+
+	local humanoidRootPart =
+		character:WaitForChild(
+			"HumanoidRootPart",
+			10
+		)
+
+
+	if not humanoidRootPart then
+
+		warn(
+			"[PlotManager] HumanoidRootPart did not load."
+		)
+
+
+		return
+	end
+
+
+	-- IMPORTANT:
+	-- This uses PlayerSpawn.CFrame rather than only
+	-- PlayerSpawn.Position.
+	--
+	-- Therefore Plot4–Plot6 may face the opposite
+	-- direction and the character will correctly spawn
+	-- facing toward their road.
+	character:PivotTo(
+		spawnPart.CFrame
+			* CFrame.new(
+				0,
+				3,
+				0
+			)
+	)
+end
+
+
+--==================================================
+-- CLEAR PLOT
+--==================================================
+
 local function clearPlot(
 	plot: Model
 )
-	-- Remove any NPCs that belong to this plot.
+
+	-- Remove every customer belonging to this plot.
 	clearPlotCustomers(
 		plot
 	)
 
+
+	-- Remove every business belonging to the old owner.
 	local placedBusinesses =
 		getPlacedBusinesses(
 			plot
 		)
 
+
 	if placedBusinesses then
+
 		for _, business in
 			placedBusinesses:GetChildren() do
+
 			business:Destroy()
+
 		end
 	end
 
+
+	-- Return the physical plot to its starting size.
 	PlotService.ResetPlot(
 		plot
 	)
+
+
+	--==================================================
+	-- RESET RUNTIME PLOT STATE
+	--==================================================
 
 	plot:SetAttribute(
 		"StarterBusinessPlaced",
 		false
 	)
+
+
+	plot:SetAttribute(
+		"MarketingLevel",
+		0
+	)
+
+
+	plot:SetAttribute(
+		"ReputationLevel",
+		1
+	)
+
+
+	plot:SetAttribute(
+		"ReputationRating",
+		3
+	)
+
+
+	plot:SetAttribute(
+		"ReputationCustomerRateMultiplier",
+		1
+	)
+
+
+	plot:SetAttribute(
+		"PlotCustomerRateMultiplier",
+		1
+	)
+
+
+	plot:SetAttribute(
+		"ActiveCustomerTrafficMultiplier",
+		nil
+	)
 end
 
+--==================================================
+-- RELEASE
+--==================================================
 
 local function releasePlot(
 	player: Player
 )
+
 	if releasingPlayers[
 		player
 	] then
@@ -250,7 +619,8 @@ local function releasePlot(
 
 	releasingPlayers[
 		player
-	] = true
+	] =
+		true
 
 
 	local plot =
@@ -275,7 +645,7 @@ local function releasePlot(
 	end
 
 
-	-- Save BEFORE resetting the plot.
+	-- Save before destroying physical businesses.
 	local saved =
 		DataService.SavePlayer(
 			player
@@ -285,26 +655,30 @@ local function releasePlot(
 	if not saved then
 
 		warn(
-			`Final save failed for {player.Name}.`
+			`[PlotManager] Final save failed for {player.Name}.`
 		)
+
 	end
 
 
-	clearPlot(
-		plot
-	)
+	-- Release ownership immediately after the save so
+-- no gameplay systems continue treating this plot
+-- as active while it is being cleaned.
+plot:SetAttribute(
+	"OwnerUserId",
+	0
+)
 
 
-	plot:SetAttribute(
-		"OwnerUserId",
-		0
-	)
+plot:SetAttribute(
+	"OwnerName",
+	""
+)
 
 
-	plot:SetAttribute(
-		"OwnerName",
-		""
-	)
+clearPlot(
+	plot
+)
 
 
 	player:SetAttribute(
@@ -326,12 +700,22 @@ local function releasePlot(
 	releasingPlayers[
 		player
 	] = nil
+
+
+	print(
+		`[PlotManager] Released {plot.Name} from {player.Name}.`
+	)
 end
 
+
+--==================================================
+-- ASSIGN
+--==================================================
 
 local function assignPlot(
 	player: Player
 )
+
 	if assignedPlots[
 		player
 	] then
@@ -354,6 +738,7 @@ local function assignPlot(
 			player:Kick(
 				"Your saved data did not finish loading. Please rejoin."
 			)
+
 		end
 
 
@@ -381,6 +766,8 @@ local function assignPlot(
 	end
 
 
+	-- Claim immediately. There are no yields between
+	-- finding the available plot and claiming it.
 	plot:SetAttribute(
 		"OwnerUserId",
 		player.UserId
@@ -395,7 +782,8 @@ local function assignPlot(
 
 	assignedPlots[
 		player
-	] = plot
+	] =
+		plot
 
 
 	player:SetAttribute(
@@ -409,7 +797,7 @@ local function assignPlot(
 	)
 
 
-	-- Restore saved plot size FIRST.
+	-- Restore plot expansion before businesses.
 	local plotApplied =
 		PlotService.ApplyToPlot(
 			player,
@@ -421,13 +809,15 @@ local function assignPlot(
 	if not plotApplied then
 
 		warn(
-			`Could not restore {player.Name}'s plot size.`
+			`[PlotManager] Could not restore {player.Name}'s plot size.`
 		)
+
 	end
 
 
-	-- Restore businesses after Ground has reached
-	-- its saved size.
+	-- Businesses use plot-relative coordinates,
+	-- therefore the same saved layout can load on
+	-- Plot1, Plot4, Plot6, etc.
 	local restored =
 		DataService.RestorePlot(
 			player,
@@ -438,14 +828,15 @@ local function assignPlot(
 	if not restored then
 
 		warn(
-			`Could not fully restore {player.Name}'s plot.`
+			`[PlotManager] Could not fully restore {player.Name}'s plot.`
 		)
+
 	end
 
 
 	player.CharacterAdded:Connect(
 		function(
-			character
+			character: Model
 		)
 
 			teleportCharacterToPlot(
@@ -462,18 +853,26 @@ local function assignPlot(
 			player.Character,
 			plot
 		)
+
 	end
 
 
 	print(
-		`Assigned {plot.Name} to {player.Name}`
+		`[PlotManager] Assigned {plot.Name} to {player.Name}.`
 	)
 end
 
 
+--==================================================
+-- STARTUP
+--==================================================
+
+initializePlots()
+
+
 Players.PlayerAdded:Connect(
 	function(
-		player
+		player: Player
 	)
 
 		task.spawn(
@@ -496,4 +895,5 @@ for _, player in
 		assignPlot,
 		player
 	)
+
 end

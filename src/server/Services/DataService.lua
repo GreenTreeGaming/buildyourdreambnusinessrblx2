@@ -25,7 +25,7 @@ local BusinessConfig = require(
 		:WaitForChild("BusinessConfig")
 )
 
-local DATA_STORE_NAME = "PlayerData_v9"
+local DATA_STORE_NAME = "PlayerData_v10"
 
 -- Version 2 changed Businesses from one fixed stand
 -- into a list of uniquely identified placed businesses.
@@ -448,6 +448,34 @@ local function sanitizeMonetization(
 		)
 end
 
+local function getPlotTransformReference(
+	plot: Model
+): CFrame
+
+	local plotOrigin =
+		plot:FindFirstChild(
+			"PlotOrigin"
+		)
+
+
+	if plotOrigin
+		and plotOrigin:IsA(
+			"BasePart"
+		) then
+
+		return plotOrigin.CFrame
+	end
+
+
+	-- Backwards/safety fallback.
+	warn(
+		`[DataService] {plot:GetFullName()} has no PlotOrigin. Falling back to Model pivot.`
+	)
+
+
+	return plot:GetPivot()
+end
+
 local function getMaximumMarketingLevel(): number
 	local maximumLevel = 0
 
@@ -672,11 +700,13 @@ local function sanitizePlacedBusinesses(
 		local transformSpace =
 			rawBusiness.TransformSpace
 
-		if transformSpace ~= "Plot"
-			and transformSpace ~= "World" then
+		if transformSpace ~= "PlotOrigin"
+	and transformSpace ~= "Plot"
+	and transformSpace ~= "World" then
 
-			transformSpace = "World"
-		end
+	transformSpace =
+		"World"
+end
 
 		usedIds[businessId] = true
 
@@ -1124,10 +1154,16 @@ local function captureBusinessState(
 				instance
 			)
 
-		local relativeCFrame =
-			plot:GetPivot():ToObjectSpace(
-				instance:GetPivot()
-			)
+		local plotReference =
+	getPlotTransformReference(
+		plot
+	)
+
+
+local relativeCFrame =
+	plotReference:ToObjectSpace(
+		instance:GetPivot()
+	)
 
 		table.insert(
 			savedBusinesses,
@@ -1146,7 +1182,7 @@ local function captureBusinessState(
 						relativeCFrame
 					),
 
-				TransformSpace = "Plot",
+				TransformSpace = "PlotOrigin",
 
 				Upgrades =
 					getBusinessUpgradeSnapshot(
@@ -1703,17 +1739,37 @@ function DataService.RestorePlot(
 
 		local targetCFrame
 
-		if savedBusiness.TransformSpace
-			== "Plot" then
 
-			targetCFrame =
-				plot:GetPivot()
-				* serializedTransform
-		else
-			-- Version-one compatibility.
-			targetCFrame =
-				serializedTransform
-		end
+if savedBusiness.TransformSpace
+	== "PlotOrigin" then
+
+	local plotReference =
+		getPlotTransformReference(
+			plot
+		)
+
+
+	targetCFrame =
+		plotReference
+		* serializedTransform
+
+
+elseif savedBusiness.TransformSpace
+	== "Plot" then
+
+	-- Backwards compatibility with your existing
+	-- plot-relative saves.
+	targetCFrame =
+		plot:GetPivot()
+		* serializedTransform
+
+
+else
+
+	-- Very old world-space save compatibility.
+	targetCFrame =
+		serializedTransform
+end
 
 		if placedBusinesses:FindFirstChild(
 			savedBusiness.Id
