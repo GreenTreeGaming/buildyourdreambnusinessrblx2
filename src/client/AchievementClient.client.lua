@@ -743,16 +743,16 @@ local function requestClaim(
 
 
 	Notification.Success(
-		`You earned ${formatNumber(result.Reward or 0)}!`,
+	`You earned ${formatNumber(result.Reward or 0)}!`,
 
-		{
-			Title =
-				`{result.AchievementName} {romanNumeral(result.Tier or 1)}`,
+	{
+		Title =
+			`{result.AchievementName} {romanNumeral(result.Tier or 1)}`,
 
-			Duration =
-				4,
-		}
-	)
+		Duration =
+			2.5,
+	}
+)
 
 
 	if result.State then

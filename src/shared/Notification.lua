@@ -12,14 +12,32 @@ local Notification = {}
 -- CONFIG
 --==================================================
 
-local MAX_NOTIFICATIONS =
+local DESKTOP_MAX_NOTIFICATIONS =
 	4
+
+local MOBILE_MAX_NOTIFICATIONS =
+	3
 
 local DEFAULT_DURATION =
 	3.5
 
+local SUCCESS_DURATION =
+	2.25
+
+local WARNING_DURATION =
+	3.5
+
+local ERROR_DURATION =
+	3.5
+
+local INFO_DURATION =
+	3.5
+
 local CARD_WIDTH =
 	410
+
+local MOBILE_CARD_WIDTH =
+	330
 
 local MIN_CARD_HEIGHT =
 	78
@@ -30,12 +48,12 @@ local MAX_CARD_HEIGHT =
 local CARD_GAP =
 	10
 
+local NOTIFICATION_TOP_OFFSET =
+	115
 
--- Approximate wrapping.
---
--- The actual message label is allowed to use the
--- resulting vertical space, so wrapped text will no
--- longer be clipped.
+local MOBILE_TOP_OFFSET =
+	85
+
 local MESSAGE_CHARS_PER_LINE =
 	38
 
@@ -48,21 +66,11 @@ local MESSAGE_TOP =
 local MESSAGE_BOTTOM_PADDING =
 	18
 
-
--- Give especially long messages a little more
--- reading time automatically.
 local LONG_MESSAGE_EXTRA_DURATION =
 	1.5
 
 local LONG_MESSAGE_THRESHOLD =
 	70
-
-
--- How far down the notification stack begins.
--- This keeps it underneath the cash UI.
-local NOTIFICATION_TOP_OFFSET =
-	115
-
 
 --==================================================
 -- COLORS
@@ -284,27 +292,65 @@ end
 
 
 local function getDuration(
+	notificationType: string,
 	message: string,
 	options
 ): number
 
-	if typeof(options.Duration)
-		== "number" then
+	-- Explicit durations always take priority.
+	if options
+		and typeof(options.Duration)
+			== "number" then
 
-		return options.Duration
+		return math.max(
+			0.5,
+			options.Duration
+		)
 	end
 
 
-	if #message >= LONG_MESSAGE_THRESHOLD then
+	local duration =
+		DEFAULT_DURATION
 
-		return DEFAULT_DURATION
-			+ LONG_MESSAGE_EXTRA_DURATION
+
+	if notificationType
+		== "Success" then
+
+		duration =
+			SUCCESS_DURATION
+
+	elseif notificationType
+		== "Warning" then
+
+		duration =
+			WARNING_DURATION
+
+	elseif notificationType
+		== "Error" then
+
+		duration =
+			ERROR_DURATION
+
+	elseif notificationType
+		== "Info" then
+
+		duration =
+			INFO_DURATION
 	end
 
 
-	return DEFAULT_DURATION
+	-- Long notifications need a little more time,
+	-- regardless of notification type.
+	if #message
+		>= LONG_MESSAGE_THRESHOLD then
+
+		duration +=
+			LONG_MESSAGE_EXTRA_DURATION
+	end
+
+
+	return duration
 end
-
 
 local function addCorner(
 	instance: GuiObject,
@@ -520,65 +566,111 @@ local function getGui(): ScreenGui
 		holder
 
 
-	-- Responsive scaling for smaller/mobile screens.
-	local responsiveScale =
-		Instance.new(
-			"UIScale"
-		)
+	-- Responsive sizing for smaller/mobile screens.
+local responsiveScale =
+	Instance.new("UIScale")
 
-	responsiveScale.Name =
-		"ResponsiveScale"
+responsiveScale.Name =
+	"ResponsiveScale"
 
-	responsiveScale.Scale =
-		1
+responsiveScale.Scale =
+	1
 
-	responsiveScale.Parent =
-		holder
+responsiveScale.Parent =
+	holder
 
 
-	local camera =
-		workspace.CurrentCamera
+local camera =
+	workspace.CurrentCamera
 
 
-	local function updateScale()
-		if not camera then
-			return
-		end
-
-
-		local viewport =
-			camera.ViewportSize
-
-
-		if viewport.X < 500 then
-
-			responsiveScale.Scale =
-				math.clamp(
-					(viewport.X - 24)
-						/ CARD_WIDTH,
-					0.72,
-					1
-				)
-
-		else
-
-			responsiveScale.Scale =
-				1
-		end
+local function updateScale()
+	if not camera then
+		return
 	end
 
 
-	updateScale()
+	local viewport =
+		camera.ViewportSize
 
 
-	if camera then
+	local isMobile =
+		viewport.X <= 700
 
-		camera:GetPropertyChangedSignal(
-			"ViewportSize"
-		):Connect(
-			updateScale
-		)
+
+	if isMobile then
+
+		-- Keep the notification comfortably inside
+		-- the screen while still being easy to read.
+		local targetWidth =
+			math.min(
+				MOBILE_CARD_WIDTH,
+				viewport.X - 32
+			)
+
+
+		responsiveScale.Scale =
+			math.clamp(
+				targetWidth / CARD_WIDTH,
+				0.72,
+				0.88
+			)
+
+
+		holder.Position =
+			UDim2.new(
+				0.5,
+				0,
+				0,
+				MOBILE_TOP_OFFSET
+			)
+
+
+		holder.Size =
+			UDim2.new(
+				0,
+				CARD_WIDTH,
+				1,
+				-MOBILE_TOP_OFFSET
+			)
+
+	else
+
+		responsiveScale.Scale =
+			1
+
+
+		holder.Position =
+			UDim2.new(
+				0.5,
+				0,
+				0,
+				NOTIFICATION_TOP_OFFSET
+			)
+
+
+		holder.Size =
+			UDim2.new(
+				0,
+				CARD_WIDTH,
+				1,
+				-NOTIFICATION_TOP_OFFSET
+			)
 	end
+end
+
+
+updateScale()
+
+
+if camera then
+
+	camera:GetPropertyChangedSignal(
+		"ViewportSize"
+	):Connect(
+		updateScale
+	)
+end
 
 
 	return gui
@@ -1573,22 +1665,34 @@ function Notification.Show(
 		or {}
 
 
-	while #activeNotifications
-		>= MAX_NOTIFICATIONS do
+	local camera =
+	workspace.CurrentCamera
 
-		local oldest =
-			activeNotifications[1]
+local viewportWidth =
+	camera
+	and camera.ViewportSize.X
+	or 1920
+
+local maxNotifications =
+	viewportWidth <= 700
+	and MOBILE_MAX_NOTIFICATIONS
+	or DESKTOP_MAX_NOTIFICATIONS
 
 
-		if not oldest then
-			break
-		end
+while #activeNotifications
+	>= maxNotifications do
 
+	local oldest =
+		activeNotifications[1]
 
-		closeNotification(
-			oldest
-		)
+	if not oldest then
+		break
 	end
+
+	closeNotification(
+		oldest
+	)
+end
 
 
 	local card,
@@ -1607,10 +1711,11 @@ function Notification.Show(
 
 
 	local duration =
-		getDuration(
-			message,
-			options
-		)
+	getDuration(
+		notificationType,
+		message,
+		options
+	)
 
 
 	if duration <= 0 then

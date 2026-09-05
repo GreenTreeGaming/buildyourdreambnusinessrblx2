@@ -22,6 +22,12 @@ local rareCustomerNotification =
 	)
 
 
+-- Important gameplay events should stay visible
+-- noticeably longer than ordinary success messages.
+local RARE_CUSTOMER_NOTIFICATION_DURATION =
+	5.5
+
+
 rareCustomerNotification.OnClientEvent:Connect(
 	function(
 		customerType: string,
@@ -45,7 +51,7 @@ rareCustomerNotification.OnClientEvent:Connect(
 					customerName,
 
 				Duration =
-					4.5,
+					RARE_CUSTOMER_NOTIFICATION_DURATION,
 			}
 		)
 	end

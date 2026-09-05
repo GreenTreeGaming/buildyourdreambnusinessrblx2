@@ -37,6 +37,11 @@ local getPlotStateRemote =
 		"GetPlotExpansionState"
 	) :: RemoteFunction
 
+local MARKETING_NOTIFICATION_DURATION =
+	5
+
+local PLOT_NOTIFICATION_DURATION =
+	5.5
 
 --==================================================
 -- UI
@@ -323,7 +328,7 @@ local function showMarketingNotification()
 				"Marketing Upgrade Available",
 
 			Duration =
-				4.5,
+				MARKETING_NOTIFICATION_DURATION,
 		}
 	)
 end
@@ -339,11 +344,10 @@ local function showPlotNotification()
 				"Plot Expansion Available",
 
 			Duration =
-				4.5,
+				PLOT_NOTIFICATION_DURATION,
 		}
 	)
 end
-
 
 --==================================================
 -- INDICATOR UPDATE

@@ -29,6 +29,13 @@ local FormatNumber =
 			:WaitForChild("FormatNumber")
 	)
 
+local Notification =
+	require(
+		ReplicatedStorage
+			:WaitForChild("Shared")
+			:WaitForChild("Notification")
+	)
+
 
 local getQuestStateRemote =
 	remotes:WaitForChild(
@@ -1031,13 +1038,43 @@ questClaimResultRemote.OnClientEvent:Connect(
 		success: boolean,
 		message: string
 	)
+
+		if typeof(message)
+			~= "string" then
+
+			message =
+				success
+				and "Quest reward claimed!"
+				or "Could not claim quest."
+		end
+
+
 		if success then
-			print(
-				message
+
+			Notification.Success(
+				message,
+
+				{
+					Title =
+						"Quest Complete!",
+
+					Duration =
+						2.25,
+				}
 			)
+
 		else
-			warn(
-				message
+
+			Notification.Error(
+				message,
+
+				{
+					Title =
+						"Quest",
+
+					Duration =
+						3.5,
+				}
 			)
 		end
 	end

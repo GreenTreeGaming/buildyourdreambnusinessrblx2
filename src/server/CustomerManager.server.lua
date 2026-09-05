@@ -329,6 +329,45 @@ local function addCustomerVisualEffects(
 	end
 
 
+	local typeConfig =
+		CustomerTypes.Get(
+			customerType
+		)
+
+
+	--==================================================
+-- CUSTOMER TYPE OUTLINE
+--==================================================
+
+if customerType ~= "Regular" then
+
+	local highlight =
+		Instance.new("Highlight")
+
+	highlight.Name =
+		"CustomerTypeOutline"
+
+	highlight.Adornee =
+		customer
+
+	highlight.FillTransparency =
+		1
+
+	highlight.OutlineColor =
+		typeConfig.TextColor
+
+	-- Slightly stronger than before.
+	highlight.OutlineTransparency =
+		0
+
+	highlight.DepthMode =
+		Enum.HighlightDepthMode.Occluded
+
+	highlight.Parent =
+		customer
+end
+
+
 	--==================================================
 	-- VIP
 	--==================================================
@@ -496,43 +535,6 @@ local function addCustomerVisualEffects(
 	--==================================================
 
 	elseif customerType == "Golden" then
-
-		local highlight =
-			Instance.new("Highlight")
-
-
-		highlight.Name =
-			"GoldenAura"
-
-		highlight.Adornee =
-			customer
-
-		highlight.FillColor =
-			Color3.fromRGB(
-				255,
-				196,
-				42
-			)
-
-		highlight.FillTransparency =
-			0.78
-
-		highlight.OutlineColor =
-			Color3.fromRGB(
-				255,
-				226,
-				105
-			)
-
-		highlight.OutlineTransparency =
-			0.15
-
-		highlight.DepthMode =
-			Enum.HighlightDepthMode.Occluded
-
-		highlight.Parent =
-			customer
-
 
 		local sparkles =
 			createParticleEmitter(
