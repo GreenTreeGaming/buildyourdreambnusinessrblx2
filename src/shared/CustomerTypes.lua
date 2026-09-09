@@ -47,11 +47,11 @@ CustomerTypes.Types = {
 		),
 
 	BusinessPreferences = {
-		LemonadeStand = 1.00,
-		HotdogStand = 1.00,
-		HaircutStand = 1.00,
-	},
-
+	LemonadeStand = 1.00,
+	HotdogStand = 1.00,
+	HaircutStand = 1.00,
+	CoffeeStand = 1.00,
+},
 	StrokeColor =
 		Color3.fromRGB(
 			25,
@@ -82,10 +82,11 @@ Generous = {
 		),
 
 	BusinessPreferences = {
-		LemonadeStand = 1.00,
-		HotdogStand = 1.10,
-		HaircutStand = 1.05,
-	},
+	LemonadeStand = 1.00,
+	HotdogStand = 1.10,
+	HaircutStand = 1.05,
+	CoffeeStand = 1.15,
+},
 
 	StrokeColor =
 		Color3.fromRGB(
@@ -117,10 +118,11 @@ Rich = {
 		),
 
 	BusinessPreferences = {
-		LemonadeStand = 0.90,
-		HotdogStand = 1.05,
-		HaircutStand = 1.35,
-	},
+	LemonadeStand = 0.90,
+	HotdogStand = 1.05,
+	HaircutStand = 1.35,
+	CoffeeStand = 1.45,
+},
 
 	StrokeColor =
 		Color3.fromRGB(
@@ -152,10 +154,11 @@ VIP = {
 		),
 
 	BusinessPreferences = {
-		LemonadeStand = 0.75,
-		HotdogStand = 1.05,
-		HaircutStand = 1.80,
-	},
+	LemonadeStand = 0.75,
+	HotdogStand = 1.05,
+	HaircutStand = 1.80,
+	CoffeeStand = 1.90,
+},
 
 	StrokeColor =
 		Color3.fromRGB(
@@ -190,6 +193,7 @@ VIP = {
 	LemonadeStand = 0.80,
 	HotdogStand = 1.10,
 	HaircutStand = 1.65,
+	CoffeeStand = 1.85,
 },
 
 		StrokeColor =
@@ -225,6 +229,7 @@ VIP = {
 	LemonadeStand = 0.85,
 	HotdogStand = 1.30,
 	HaircutStand = 1.45,
+	CoffeeStand = 1.75,
 },
 
 		StrokeColor =
@@ -260,6 +265,7 @@ VIP = {
 	LemonadeStand = 0.60,
 	HotdogStand = 0.95,
 	HaircutStand = 2.30,
+	CoffeeStand = 2.40,
 },
 
 		StrokeColor =
@@ -295,6 +301,7 @@ VIP = {
 	LemonadeStand = 0.75,
 	HotdogStand = 1.10,
 	HaircutStand = 2.00,
+	CoffeeStand = 2.10,
 },
 
 		StrokeColor =

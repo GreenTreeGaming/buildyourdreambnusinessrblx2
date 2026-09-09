@@ -34,37 +34,31 @@ local INFO_DURATION =
 	3.5
 
 local CARD_WIDTH =
-	410
+	470
 
 local MOBILE_CARD_WIDTH =
-	330
+	370
 
 local MIN_CARD_HEIGHT =
-	78
+	92
 
 local MAX_CARD_HEIGHT =
-	150
+	175
 
 local CARD_GAP =
-	10
-
-local NOTIFICATION_TOP_OFFSET =
-	115
-
-local MOBILE_TOP_OFFSET =
-	85
+	12
 
 local MESSAGE_CHARS_PER_LINE =
-	38
+	40
 
 local MESSAGE_LINE_HEIGHT =
-	17
+	20
 
 local MESSAGE_TOP =
-	39
+	45
 
 local MESSAGE_BOTTOM_PADDING =
-	18
+	20
 
 local LONG_MESSAGE_EXTRA_DURATION =
 	1.5
@@ -610,11 +604,11 @@ local function updateScale()
 
 
 		responsiveScale.Scale =
-			math.clamp(
-				targetWidth / CARD_WIDTH,
-				0.72,
-				0.88
-			)
+	math.clamp(
+		targetWidth / CARD_WIDTH,
+		0.80,
+		0.95
+	)
 
 
 		holder.Position =

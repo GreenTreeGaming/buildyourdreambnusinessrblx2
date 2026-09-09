@@ -807,6 +807,276 @@ local BusinessConfig = {
 			},
 		},
 	},
+
+	CoffeeStand = {
+	DisplayName = "Coffee Stand",
+	DisplayOrder = 4,
+
+	RevealDescription =
+		"Serve premium coffee, attract wealthier customers, and turn your stand into a bustling café.",
+
+	UnlockRequirements = {
+		ReputationLevel = 12,
+
+		LifetimeEarnings = 100000,
+
+		BusinessLevel = {
+			BusinessType = "HaircutStand",
+			Level = 3,
+		},
+	},
+
+	FirstStandFree = false,
+
+	AdditionalStandCost = 90000,
+
+	MaximumPlaced = 8,
+
+	BaseSaleValue = 500,
+
+	BaseServingCooldown = 6,
+
+	StandLevels = {
+		[1] = {
+			TemplateName = "CoffeeStand1",
+			UpgradeCost = 25000,
+
+			CustomerAttraction = 1.10,
+			CustomerRateMultiplier = 1.00,
+
+			SaleValueMultiplier = 1.00,
+
+			PremiumCustomerAttraction = 1.20,
+		},
+
+		[2] = {
+			TemplateName = "CoffeeStand2",
+			UpgradeCost = 90000,
+
+			CustomerAttraction = 1.30,
+			CustomerRateMultiplier = 1.08,
+
+			SaleValueMultiplier = 1.35,
+
+			PremiumCustomerAttraction = 1.45,
+		},
+
+		[3] = {
+			TemplateName = "CoffeeStand3",
+			UpgradeCost = 325000,
+
+			CustomerAttraction = 1.60,
+			CustomerRateMultiplier = 1.16,
+
+			SaleValueMultiplier = 1.90,
+
+			PremiumCustomerAttraction = 1.85,
+		},
+
+		[4] = {
+			TemplateName = "CoffeeStand4",
+			UpgradeCost = 1100000,
+
+			CustomerAttraction = 2.00,
+			CustomerRateMultiplier = 1.26,
+
+			SaleValueMultiplier = 2.80,
+
+			PremiumCustomerAttraction = 2.45,
+		},
+
+		[5] = {
+			TemplateName = "CoffeeStand5",
+			UpgradeCost = nil,
+
+			CustomerAttraction = 2.50,
+			CustomerRateMultiplier = 1.38,
+
+			SaleValueMultiplier = 4.20,
+
+			PremiumCustomerAttraction = 3.20,
+		},
+	},
+
+	Upgrades = {
+		ServingSpeed = {
+			DisplayName = "Faster Brewing",
+
+			Description =
+				"Upgrade your equipment to prepare coffee faster.",
+
+			ValueType = "Cooldown",
+
+			Levels = {
+				{
+					Level = 0,
+					Cost = 0,
+					Cooldown = 6,
+				},
+
+				{
+					Level = 1,
+					Cost = 6000,
+					Cooldown = 5.3,
+				},
+
+				{
+					Level = 2,
+					Cost = 20000,
+					Cooldown = 4.6,
+				},
+
+				{
+					Level = 3,
+					Cost = 60000,
+					Cooldown = 3.9,
+				},
+
+				{
+					Level = 4,
+					Cost = 175000,
+					Cooldown = 3.3,
+				},
+
+				{
+					Level = 5,
+					Cost = 475000,
+					Cooldown = 2.7,
+				},
+
+				{
+					Level = 6,
+					Cost = 1200000,
+					Cooldown = 2.2,
+				},
+
+				{
+					Level = 7,
+					Cost = 3000000,
+					Cooldown = 1.8,
+				},
+			},
+		},
+
+		QueueCapacity = {
+			DisplayName = "More Seating",
+
+			Description =
+				"Add more seating so additional customers can wait for their coffee.",
+
+			ValueType = "QueueCapacity",
+
+			Levels = {
+				{
+					Level = 0,
+					Cost = 0,
+					Capacity = 1,
+				},
+
+				{
+					Level = 1,
+					Cost = 10000,
+					Capacity = 2,
+				},
+
+				{
+					Level = 2,
+					Cost = 35000,
+					Capacity = 3,
+				},
+
+				{
+					Level = 3,
+					Cost = 125000,
+					Capacity = 4,
+				},
+
+				{
+					Level = 4,
+					Cost = 425000,
+					Capacity = 5,
+				},
+			},
+		},
+
+		SaleValue = {
+			DisplayName = "Better Coffee",
+
+			Description =
+				"Use higher-quality ingredients and dramatically increase the value of every order.",
+
+			ValueType = "SaleValue",
+
+			Levels = {
+				{
+					Level = 0,
+					Cost = 0,
+					SaleValue = 500,
+				},
+
+				{
+					Level = 1,
+					Cost = 7500,
+					SaleValue = 850,
+				},
+
+				{
+					Level = 2,
+					Cost = 25000,
+					SaleValue = 1450,
+				},
+
+				{
+					Level = 3,
+					Cost = 75000,
+					SaleValue = 2500,
+				},
+
+				{
+					Level = 4,
+					Cost = 225000,
+					SaleValue = 4250,
+				},
+
+				{
+					Level = 5,
+					Cost = 600000,
+					SaleValue = 7200,
+				},
+
+				{
+					Level = 6,
+					Cost = 1500000,
+					SaleValue = 12000,
+				},
+
+				{
+					Level = 7,
+					Cost = 3750000,
+					SaleValue = 20000,
+				},
+
+				{
+					Level = 8,
+					Cost = 9000000,
+					SaleValue = 34000,
+				},
+
+				{
+					Level = 9,
+					Cost = 21000000,
+					SaleValue = 56000,
+				},
+
+				{
+					Level = 10,
+					Cost = 48000000,
+					SaleValue = 92000,
+				},
+			},
+		},
+	},
+},
 }
 
 return BusinessConfig

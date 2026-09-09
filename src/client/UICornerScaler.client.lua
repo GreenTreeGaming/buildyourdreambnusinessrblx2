@@ -16,8 +16,10 @@ local playerGui =
 -- SETTINGS
 --==================================================
 
-local TARGET_BUTTON_NAME =
-	"OpenButton"
+local TARGET_BUTTON_NAMES = {
+	OpenButton = true,
+	Add = true,
+}
 
 
 local CONSTRAINT_NAME =
@@ -28,12 +30,23 @@ local CONSTRAINT_NAME =
 -- SETUP
 --==================================================
 
+local function isTargetButton(
+	instance: Instance
+): boolean
+
+	return TARGET_BUTTON_NAMES[
+		instance.Name
+	] == true
+end
+
+
 local function setupOpenButton(
 	instance: Instance
 )
 
-	if instance.Name
-		~= TARGET_BUTTON_NAME then
+	if not isTargetButton(
+		instance
+	) then
 
 		return
 	end
@@ -143,8 +156,9 @@ playerGui.DescendantAdded:Connect(
 		descendant: Instance
 	)
 
-		if descendant.Name
-			== TARGET_BUTTON_NAME then
+		if isTargetButton(
+			descendant
+		) then
 
 			-- Let its UICorner clone in first.
 			task.defer(
@@ -156,7 +170,7 @@ playerGui.DescendantAdded:Connect(
 		end
 
 
-		-- Handles the case where the OpenButton exists
+		-- Handles the case where the target button exists
 		-- first and its UICorner is added afterward.
 		if descendant:IsA(
 			"UICorner"
@@ -167,8 +181,9 @@ playerGui.DescendantAdded:Connect(
 
 
 			if parent
-				and parent.Name
-					== TARGET_BUTTON_NAME then
+				and isTargetButton(
+					parent
+				) then
 
 				task.defer(
 					setupOpenButton,
@@ -181,5 +196,5 @@ playerGui.DescendantAdded:Connect(
 
 
 print(
-	"OpenButton aspect ratio fixer started."
+	"OpenButton/Add aspect ratio fixer started."
 )

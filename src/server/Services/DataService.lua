@@ -25,7 +25,7 @@ local BusinessConfig = require(
 		:WaitForChild("BusinessConfig")
 )
 
-local DATA_STORE_NAME = "PlayerData_v10"
+local DATA_STORE_NAME = "PlayerData_v13"
 
 -- Version 2 changed Businesses from one fixed stand
 -- into a list of uniquely identified placed businesses.
@@ -118,6 +118,7 @@ local DEFAULT_PROFILE = {
 	LemonadeStand = true,
 	HotdogStand = false,
 	HaircutStand = false,
+	CoffeeStand = false,
 },
 }
 

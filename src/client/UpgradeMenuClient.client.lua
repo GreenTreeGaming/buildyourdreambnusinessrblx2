@@ -1101,14 +1101,11 @@ local function configureGameplayValueBox(
 	title: TextLabel,
 	amount: TextLabel
 )
-	--
-	-- Keep the heading in the top part of the box.
-	--
 	title.Position =
 		UDim2.new(
 			0.05,
 			0,
-			0.08,
+			0.04,
 			0
 		)
 
@@ -1116,7 +1113,7 @@ local function configureGameplayValueBox(
 		UDim2.new(
 			0.90,
 			0,
-			0.28,
+			0.30,
 			0
 		)
 
@@ -1127,14 +1124,11 @@ local function configureGameplayValueBox(
 		false
 
 
-	--
-	-- Give the actual value most of the box.
-	--
 	amount.Position =
 		UDim2.new(
 			0.05,
 			0,
-			0.38,
+			0.34,
 			0
 		)
 
@@ -1142,7 +1136,7 @@ local function configureGameplayValueBox(
 		UDim2.new(
 			0.90,
 			0,
-			0.52,
+			0.62,
 			0
 		)
 
@@ -1159,10 +1153,16 @@ local function configureGameplayValueBox(
 		Enum.TextYAlignment.Center
 
 
-	--
-	-- Remove anything that caps how large
-	-- TextScaled is allowed to become.
-	--
+	for _, child in title:GetChildren() do
+		if child:IsA(
+			"UITextSizeConstraint"
+		) then
+
+			child:Destroy()
+		end
+	end
+
+
 	for _, child in amount:GetChildren() do
 		if child:IsA(
 			"UITextSizeConstraint"
@@ -1239,7 +1239,7 @@ cards.StandAppearance.CurrentAmount.TextWrapped =
 	true
 
 cards.StandAppearance.CurrentAmount.TextSize =
-	12
+	18
 
 
 cards.StandAppearance.AfterAmount.TextScaled =
@@ -1249,7 +1249,7 @@ cards.StandAppearance.AfterAmount.TextWrapped =
 	true
 
 cards.StandAppearance.AfterAmount.TextSize =
-	12
+	18
 
 
 cards.QueueCapacity =
@@ -1288,6 +1288,9 @@ for _, card in gameplayCards do
 		card.AfterTitle,
 		card.AfterAmount
 	)
+
+	card.CurrentAmount.TextScaled = true
+	card.AfterAmount.TextScaled = true
 end
 
 
