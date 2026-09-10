@@ -48,6 +48,12 @@ local MAX_CARD_HEIGHT =
 local CARD_GAP =
 	12
 
+local NOTIFICATION_TOP_OFFSET =
+	24
+
+local MOBILE_TOP_OFFSET =
+	18
+
 local MESSAGE_CHARS_PER_LINE =
 	40
 
@@ -459,17 +465,20 @@ local function getGui(): ScreenGui
 
 
 	if existing
-		and existing:IsA(
-			"ScreenGui"
-		) then
+	and existing:IsA(
+		"ScreenGui"
+	)
+	and existing:FindFirstChild(
+		"Holder"
+	) then
 
-		return existing
-	end
+	return existing
+end
 
 
-	if existing then
-		existing:Destroy()
-	end
+if existing then
+	existing:Destroy()
+end
 
 
 	local gui =

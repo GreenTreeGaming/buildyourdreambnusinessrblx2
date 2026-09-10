@@ -62,6 +62,10 @@ local tutorialFrame =
 		"Frame"
 	) :: Frame
 
+local skipButton =
+	tutorialFrame:WaitForChild(
+		"SkipBtn"
+	) :: GuiButton
 
 local title =
 	tutorialFrame:WaitForChild(
@@ -267,6 +271,9 @@ local textTweenInfo =
 local running =
 	false
 
+local tutorialThread:
+	thread? =
+	nil
 
 local activeFrameTween:
 	Tween? =
@@ -1038,6 +1045,92 @@ local function finishTutorial()
 		false
 end
 
+local function skipTutorial()
+
+	if not running then
+		return
+	end
+
+
+	running =
+		false
+
+
+	-- Mark the tutorial completed on the server.
+	-- The server already immediately saves this state.
+	completeTutorialRemote:FireServer()
+
+
+	-- Stop any tutorial tweens that may currently be running.
+	if activeFrameTween then
+
+		activeFrameTween:Cancel()
+
+		activeFrameTween =
+			nil
+
+	end
+
+
+	if activeTextTween then
+
+		activeTextTween:Cancel()
+
+		activeTextTween =
+			nil
+
+	end
+
+
+	-- Completely remove the tutorial UI immediately.
+	tutorialFrame.Visible =
+		false
+
+	tutorialGui.Enabled =
+		false
+
+
+	-- The tutorial temporarily takes control of the camera
+	-- during the plot introduction. Restore it in case the
+	-- player skips during that section.
+	local character =
+		player.Character
+
+	local humanoid =
+		character
+			and character:FindFirstChildOfClass(
+				"Humanoid"
+			)
+
+	if humanoid then
+
+		camera.CameraSubject =
+			humanoid
+
+	end
+
+	camera.CameraType =
+		Enum.CameraType.Custom
+
+
+	-- Most importantly, actually stop the tutorial coroutine.
+	-- Otherwise it could continue waiting for buttons,
+	-- cash, upgrades, etc. after being skipped.
+	if tutorialThread then
+
+		task.cancel(
+			tutorialThread
+		)
+
+		tutorialThread =
+			nil
+
+	end
+end
+
+skipButton.Activated:Connect(
+	skipTutorial
+)
 
 --==================================================
 -- MAIN TUTORIAL
@@ -1460,6 +1553,7 @@ if state.Completed
 end
 
 
-task.spawn(
-	runTutorial
-)
+tutorialThread =
+	task.spawn(
+		runTutorial
+	)

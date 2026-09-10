@@ -132,13 +132,13 @@ local BusinessConfig = {
 
 					{
 						Level = 6,
-						Cost = 11000,
+						Cost = 9000,
 						Cooldown = 1.8,
 					},
 
 					{
 						Level = 7,
-						Cost = 26000,
+						Cost = 18000,
 						Cooldown = 1.5,
 					},
 				},
@@ -179,7 +179,7 @@ local BusinessConfig = {
 
 					{
 						Level = 4,
-						Cost = 8500,
+						Cost = 6500,
 						Capacity = 5,
 					},
 				},
@@ -244,19 +244,19 @@ local BusinessConfig = {
 
 					{
 						Level = 8,
-						Cost = 125000,
+						Cost = 100000,
 						SaleValue = 650,
 					},
 
 					{
 						Level = 9,
-						Cost = 300000,
+						Cost = 225000,
 						SaleValue = 1050,
 					},
 
 					{
 						Level = 10,
-						Cost = 700000,
+						Cost = 450000,
 						SaleValue = 1700,
 					},
 				},
@@ -319,7 +319,7 @@ local BusinessConfig = {
 
 	[3] = {
 		TemplateName = "HotdogStand3",
-		UpgradeCost = 14000,
+		UpgradeCost = 12000,
 
 		CustomerAttraction = 1.35,
 		CustomerRateMultiplier = 1.25,
@@ -331,7 +331,7 @@ local BusinessConfig = {
 
 	[4] = {
 		TemplateName = "HotdogStand4",
-		UpgradeCost = 50000,
+		UpgradeCost = 35000,
 
 		CustomerAttraction = 1.60,
 		CustomerRateMultiplier = 1.45,
@@ -396,19 +396,19 @@ local BusinessConfig = {
 
 					{
 						Level = 5,
-						Cost = 18000,
+						Cost = 15000,
 						Cooldown = 2.2,
 					},
 
 					{
 						Level = 6,
-						Cost = 45000,
+						Cost = 32000,
 						Cooldown = 1.8,
 					},
 
 					{
 						Level = 7,
-						Cost = 110000,
+						Cost = 70000,
 						Cooldown = 1.5,
 					},
 				},
@@ -449,7 +449,7 @@ local BusinessConfig = {
 
 					{
 						Level = 4,
-						Cost = 22000,
+						Cost = 15000,
 						Capacity = 5,
 					},
 				},
@@ -508,25 +508,25 @@ local BusinessConfig = {
 
 					{
 						Level = 7,
-						Cost = 200000,
+						Cost = 150000,
 						SaleValue = 1500,
 					},
 
 					{
 						Level = 8,
-						Cost = 500000,
+						Cost = 325000,
 						SaleValue = 2500,
 					},
 
 					{
 						Level = 9,
-						Cost = 1200000,
+						Cost = 700000,
 						SaleValue = 4000,
 					},
 
 					{
 						Level = 10,
-						Cost = 2800000,
+						Cost = 1500000,
 						SaleValue = 6500,
 					},
 				},
@@ -591,7 +591,7 @@ local BusinessConfig = {
 
 	[3] = {
 		TemplateName = "HaircutStand3",
-		UpgradeCost = 75000,
+		UpgradeCost = 60000,
 
 		CustomerAttraction = 1.45,
 		CustomerRateMultiplier = 1.10,
@@ -603,7 +603,7 @@ local BusinessConfig = {
 
 	[4] = {
 		TemplateName = "HaircutStand4",
-		UpgradeCost = 275000,
+		UpgradeCost = 180000,
 
 		CustomerAttraction = 1.80,
 		CustomerRateMultiplier = 1.18,
@@ -664,25 +664,25 @@ local BusinessConfig = {
 
 					{
 						Level = 4,
-						Cost = 45000,
+						Cost = 35000,
 						Cooldown = 3.3,
 					},
 
 					{
 						Level = 5,
-						Cost = 125000,
+						Cost = 85000,
 						Cooldown = 2.7,
 					},
 
 					{
 						Level = 6,
-						Cost = 325000,
+						Cost = 200000,
 						Cooldown = 2.2,
 					},
 
 					{
 						Level = 7,
-						Cost = 800000,
+						Cost = 450000,
 						Cooldown = 1.8,
 					},
 				},
@@ -717,13 +717,13 @@ local BusinessConfig = {
 
 					{
 						Level = 3,
-						Cost = 32000,
+						Cost = 25000,
 						Capacity = 4,
 					},
 
 					{
 						Level = 4,
-						Cost = 110000,
+						Cost = 75000,
 						Capacity = 5,
 					},
 				},
@@ -770,37 +770,37 @@ local BusinessConfig = {
 
 					{
 						Level = 5,
-						Cost = 160000,
+						Cost = 120000,
 						SaleValue = 2050,
 					},
 
 					{
 						Level = 6,
-						Cost = 400000,
+						Cost = 275000,
 						SaleValue = 3500,
 					},
 
 					{
 						Level = 7,
-						Cost = 1000000,
+						Cost = 600000,
 						SaleValue = 5900,
 					},
 
 					{
 						Level = 8,
-						Cost = 2500000,
+						Cost = 1300000,
 						SaleValue = 9800,
 					},
 
 					{
 						Level = 9,
-						Cost = 6000000,
+						Cost = 2800000,
 						SaleValue = 16000,
 					},
 
 					{
 						Level = 10,
-						Cost = 14000000,
+						Cost = 6000000,
 						SaleValue = 26000,
 					},
 				},
@@ -838,7 +838,7 @@ local BusinessConfig = {
 
 	StandLevels = {
 		[1] = {
-			TemplateName = "CoffeeStand1",
+			TemplateName = "CoffeeStand",
 			UpgradeCost = 25000,
 
 			CustomerAttraction = 1.10,
@@ -863,7 +863,7 @@ local BusinessConfig = {
 
 		[3] = {
 			TemplateName = "CoffeeStand3",
-			UpgradeCost = 325000,
+			UpgradeCost = 250000,
 
 			CustomerAttraction = 1.60,
 			CustomerRateMultiplier = 1.16,
@@ -875,7 +875,7 @@ local BusinessConfig = {
 
 		[4] = {
 			TemplateName = "CoffeeStand4",
-			UpgradeCost = 1100000,
+			UpgradeCost = 650000,
 
 			CustomerAttraction = 2.00,
 			CustomerRateMultiplier = 1.26,
@@ -934,25 +934,25 @@ local BusinessConfig = {
 
 				{
 					Level = 4,
-					Cost = 175000,
+					Cost = 125000,
 					Cooldown = 3.3,
 				},
 
 				{
 					Level = 5,
-					Cost = 475000,
+					Cost = 300000,
 					Cooldown = 2.7,
 				},
 
 				{
 					Level = 6,
-					Cost = 1200000,
+					Cost = 650000,
 					Cooldown = 2.2,
 				},
 
 				{
 					Level = 7,
-					Cost = 3000000,
+					Cost = 1400000,
 					Cooldown = 1.8,
 				},
 			},
@@ -987,13 +987,13 @@ local BusinessConfig = {
 
 				{
 					Level = 3,
-					Cost = 125000,
+					Cost = 90000,
 					Capacity = 4,
 				},
 
 				{
 					Level = 4,
-					Cost = 425000,
+					Cost = 250000,
 					Capacity = 5,
 				},
 			},
@@ -1034,43 +1034,43 @@ local BusinessConfig = {
 
 				{
 					Level = 4,
-					Cost = 225000,
+					Cost = 180000,
 					SaleValue = 4250,
 				},
 
 				{
 					Level = 5,
-					Cost = 600000,
+					Cost = 400000,
 					SaleValue = 7200,
 				},
 
 				{
 					Level = 6,
-					Cost = 1500000,
+					Cost = 900000,
 					SaleValue = 12000,
 				},
 
 				{
 					Level = 7,
-					Cost = 3750000,
+					Cost = 1900000,
 					SaleValue = 20000,
 				},
 
 				{
 					Level = 8,
-					Cost = 9000000,
+					Cost = 4000000,
 					SaleValue = 34000,
 				},
 
 				{
 					Level = 9,
-					Cost = 21000000,
+					Cost = 8000000,
 					SaleValue = 56000,
 				},
 
 				{
 					Level = 10,
-					Cost = 48000000,
+					Cost = 16000000,
 					SaleValue = 92000,
 				},
 			},

@@ -25,14 +25,14 @@ local BusinessConfig = require(
 		:WaitForChild("BusinessConfig")
 )
 
-local DATA_STORE_NAME = "PlayerData_v13"
+local DATA_STORE_NAME = "PlayerData_v15"
 
 -- Version 2 changed Businesses from one fixed stand
 -- into a list of uniquely identified placed businesses.
 --
 -- Version 3 saves each placed business's physical model level.
 -- Version 4 adds plot-wide marketing progression.
-local CURRENT_DATA_VERSION = 9
+local CURRENT_DATA_VERSION = 10
 
 local MAX_RETRIES = 3
 local RETRY_DELAY_SECONDS = 2
@@ -65,6 +65,7 @@ local DEFAULT_PROFILE = {
 	Version = CURRENT_DATA_VERSION,
 
 	Cash = 0,
+	TimePlayed = 0,
 	TutorialCompleted = false,
 
 	CustomerVisits = {
@@ -147,6 +148,7 @@ type SavedPlacedBusiness = {
 type PlayerProfile = {
 	Version: number,
 	Cash: number,
+	TimePlayed: number,
 
 	TutorialCompleted: boolean,
 
@@ -195,6 +197,10 @@ local loadingPlayers: {
 } = {}
 
 local savingPlayers: {
+	[Player]: boolean
+} = {}
+
+local timeTrackingPlayers: {
 	[Player]: boolean
 } = {}
 
@@ -828,6 +834,11 @@ local function migrateProfile(
 			math.floor(profile.Cash)
 		)
 
+	profile.TimePlayed =
+		sanitizeStatistic(
+			profile.TimePlayed
+		)
+
 	profile.MarketingLevel =
 	sanitizeMarketingLevel(
 		profile.MarketingLevel
@@ -1008,6 +1019,47 @@ local function createLeaderstats(
 		)
 
 	cash.Parent = leaderstats
+end
+
+local function startTimeTracking(
+	player: Player
+)
+	if timeTrackingPlayers[player] then
+		return
+	end
+
+	timeTrackingPlayers[player] = true
+
+	task.spawn(function()
+		while player.Parent
+			and profiles[player]
+			and timeTrackingPlayers[player] do
+
+			task.wait(1)
+
+			local profile =
+				profiles[player]
+
+			if not player.Parent
+				or not profile
+				or not timeTrackingPlayers[player] then
+
+				break
+			end
+
+			profile.TimePlayed =
+				sanitizeStatistic(
+					profile.TimePlayed
+				) + 1
+
+			player:SetAttribute(
+				"TimePlayed",
+				profile.TimePlayed
+			)
+		end
+
+		timeTrackingPlayers[player] = nil
+	end)
 end
 
 local function getBusinessType(
@@ -1243,6 +1295,11 @@ local function createSaveSnapshot(
 			)
 	end
 
+	snapshot.TimePlayed =
+		sanitizeStatistic(
+			currentProfile.TimePlayed
+		)
+
 	captureBusinessState(
 		player,
 		snapshot
@@ -1348,6 +1405,15 @@ function DataService.LoadPlayer(
 	)
 
 	player:SetAttribute(
+		"TimePlayed",
+		profile.TimePlayed
+	)
+
+	startTimeTracking(
+		player
+	)
+
+	player:SetAttribute(
 		"DataLoaded",
 		true
 	)
@@ -1386,6 +1452,21 @@ function DataService.GetProfile(
 	player: Player
 ): PlayerProfile?
 	return profiles[player]
+end
+
+function DataService.GetTimePlayed(
+	player: Player
+): number
+	local profile =
+		profiles[player]
+
+	if not profile then
+		return 0
+	end
+
+	return sanitizeStatistic(
+		profile.TimePlayed
+	)
 end
 
 function DataService.GetTutorialCompleted(
@@ -1995,6 +2076,7 @@ end
 function DataService.ReleasePlayer(
 	player: Player
 )
+	timeTrackingPlayers[player] = nil
 	profiles[player] = nil
 	loadingPlayers[player] = nil
 	savingPlayers[player] = nil
