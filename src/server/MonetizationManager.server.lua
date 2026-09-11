@@ -199,10 +199,38 @@ local function refreshBenefits(
 			ShopConfig.ReputationBoostMultiplier
 	end
 
+	local licenseCashMultiplier =
+	player:GetAttribute(
+		"LicenseCashMultiplier"
+	)
+
+
+if typeof(licenseCashMultiplier)
+		== "number"
+	and licenseCashMultiplier >= 1 then
+
+	cashMultiplier *=
+		licenseCashMultiplier
+end
+
 	player:SetAttribute(
 		"CashMultiplier",
 		cashMultiplier
 	)
+
+	local licenseCustomerMultiplier =
+	player:GetAttribute(
+		"LicenseCustomerRateMultiplier"
+	)
+
+
+if typeof(licenseCustomerMultiplier)
+		== "number"
+	and licenseCustomerMultiplier >= 1 then
+
+	customerMultiplier *=
+		licenseCustomerMultiplier
+end
 
 	player:SetAttribute(
 		"CustomerMonetizationMultiplier",

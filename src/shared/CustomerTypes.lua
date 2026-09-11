@@ -357,15 +357,78 @@ end
 -- RANDOM
 --==================================================
 
-function CustomerTypes.GetRandomType(): (
+function CustomerTypes.GetRandomType(
+	rareMultiplier: number?
+): (
 	string,
 	CustomerTypeConfig
 )
 
+	if typeof(rareMultiplier)
+			~= "number"
+		or rareMultiplier < 1 then
+
+		rareMultiplier =
+			1
+	end
+
+
+	local rareTypes = {
+		VIP = true,
+		Celebrity = true,
+		Influencer = true,
+		Billionaire = true,
+		Golden = true,
+	}
+
+
+	local weightedTypes = {}
+
+	local dynamicTotalWeight =
+		0
+
+
+	for customerType,
+		config in
+		CustomerTypes.Types do
+
+		local weight =
+			config.Weight
+
+
+		if rareTypes[
+			customerType
+		] then
+
+			weight *=
+				rareMultiplier
+		end
+
+
+		dynamicTotalWeight +=
+			weight
+
+
+		table.insert(
+			weightedTypes,
+			{
+				Type =
+					customerType,
+
+				Config =
+					config,
+
+				Weight =
+					weight,
+			}
+		)
+	end
+
+
 	local roll =
 		random:NextNumber(
 			0,
-			totalWeight
+			dynamicTotalWeight
 		)
 
 
@@ -373,17 +436,17 @@ function CustomerTypes.GetRandomType(): (
 		0
 
 
-	for customerType, config in
-		CustomerTypes.Types do
+	for _, entry in
+		weightedTypes do
 
 		accumulated +=
-			config.Weight
+			entry.Weight
 
 
 		if roll <= accumulated then
 
-			return customerType,
-				config
+			return entry.Type,
+				entry.Config
 		end
 	end
 

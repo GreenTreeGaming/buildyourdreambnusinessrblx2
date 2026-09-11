@@ -844,7 +844,43 @@ end
 
 local maximumPlaced =
 	config.MaximumPlaced
-	or 1
+	or math.huge
+
+
+local licensePlacementBonus =
+	player:GetAttribute(
+		"LicensePlacementBonus"
+	)
+
+
+if maximumPlaced ~= math.huge
+	and typeof(
+		licensePlacementBonus
+	) == "number"
+	and licensePlacementBonus > 0 then
+
+	maximumPlaced +=
+		math.floor(
+			licensePlacementBonus
+		)
+end
+
+
+local licensePlacementBonus =
+	player:GetAttribute(
+		"LicensePlacementBonus"
+	)
+
+
+if typeof(licensePlacementBonus)
+		== "number"
+	and licensePlacementBonus > 0 then
+
+	maximumPlaced +=
+		math.floor(
+			licensePlacementBonus
+		)
+end
 
 if not editedStand
 	and #currentBusinesses

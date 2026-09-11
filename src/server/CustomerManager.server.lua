@@ -696,9 +696,49 @@ local function setupCustomerInfo(
 	)
 
 
-	local customerType,
-		typeConfig =
-		CustomerTypes.GetRandomType()
+	local rareCustomerMultiplier =
+	1
+
+
+local ownerUserId =
+	plot:GetAttribute(
+		"OwnerUserId"
+	)
+
+
+if typeof(ownerUserId)
+	== "number" then
+
+	local owner =
+		Players:GetPlayerByUserId(
+			ownerUserId
+		)
+
+
+	if owner then
+
+		local multiplier =
+			owner:GetAttribute(
+				"LicenseRareCustomerMultiplier"
+			)
+
+
+		if typeof(multiplier)
+				== "number"
+			and multiplier >= 1 then
+
+			rareCustomerMultiplier =
+				multiplier
+		end
+	end
+end
+
+
+local customerType,
+	typeConfig =
+	CustomerTypes.GetRandomType(
+		rareCustomerMultiplier
+	)
 
 
 	--==================================================
@@ -1773,44 +1813,93 @@ local function getBusinessCooldown(
 	stand: Model
 ): number
 
-	local standCooldown =
+	local baseCooldown =
 		stand:GetAttribute(
 			"PurchaseCooldown"
 		)
 
 
-	if typeof(standCooldown)
-			== "number"
-		and standCooldown > 0 then
+	if typeof(baseCooldown)
+			~= "number"
+		or baseCooldown <= 0 then
 
-		return standCooldown
+		local businessType =
+			getBusinessType(
+				stand
+			)
+
+
+		local config =
+			businessType
+			and BusinessConfig[
+				businessType
+			]
+
+
+		if config
+			and typeof(
+				config.BaseServingCooldown
+			) == "number"
+			and config.BaseServingCooldown > 0 then
+
+			baseCooldown =
+				config.BaseServingCooldown
+
+		else
+
+			baseCooldown =
+				5
+		end
 	end
 
 
-	local businessType =
-		getBusinessType(
-			stand
+	--==================================================
+	-- LICENSE SERVICE SPEED
+	--==================================================
+
+	local speedMultiplier =
+		1
+
+
+	local ownerUserId =
+		stand:GetAttribute(
+			"OwnerUserId"
 		)
 
 
-	local config =
-		businessType
-		and BusinessConfig[
-			businessType
-		]
+	if typeof(ownerUserId)
+		== "number" then
+
+		local owner =
+			Players:GetPlayerByUserId(
+				ownerUserId
+			)
 
 
-	if config
-		and typeof(
-			config.BaseServingCooldown
-		) == "number"
-		and config.BaseServingCooldown > 0 then
+		if owner then
 
-		return config.BaseServingCooldown
+			local value =
+				owner:GetAttribute(
+					"LicenseServiceSpeedMultiplier"
+				)
+
+
+			if typeof(value)
+					== "number"
+				and value >= 1 then
+
+				speedMultiplier =
+					value
+			end
+		end
 	end
 
 
-	return 5
+	return math.max(
+		0.1,
+		baseCooldown
+			/ speedMultiplier
+	)
 end
 
 local function getBusinessSaleValue(
