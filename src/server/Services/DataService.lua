@@ -32,7 +32,7 @@ local DATA_STORE_NAME = "PlayerData_v16"
 --
 -- Version 3 saves each placed business's physical model level.
 -- Version 4 adds plot-wide marketing progression.
-local CURRENT_DATA_VERSION = 10
+local CURRENT_DATA_VERSION = 11
 
 local MAX_RETRIES = 3
 local RETRY_DELAY_SECONDS = 2
@@ -65,6 +65,7 @@ local DEFAULT_PROFILE = {
 	Version = CURRENT_DATA_VERSION,
 
 	Cash = 0,
+	Licenses = 0,
 	TimePlayed = 0,
 	TutorialCompleted = false,
 
@@ -148,6 +149,7 @@ type SavedPlacedBusiness = {
 type PlayerProfile = {
 	Version: number,
 	Cash: number,
+	Licenses: number,
 	TimePlayed: number,
 
 	TutorialCompleted: boolean,
@@ -824,20 +826,25 @@ local function migrateProfile(
 	)
 
 	if type(profile.Cash) ~= "number" then
-		profile.Cash =
-			DEFAULT_PROFILE.Cash
-	end
-
 	profile.Cash =
-		math.max(
-			0,
-			math.floor(profile.Cash)
-		)
+		DEFAULT_PROFILE.Cash
+end
 
-	profile.TimePlayed =
-		sanitizeStatistic(
-			profile.TimePlayed
-		)
+profile.Cash =
+	math.max(
+		0,
+		math.floor(profile.Cash)
+	)
+
+profile.Licenses =
+	sanitizeStatistic(
+		profile.Licenses
+	)
+
+profile.TimePlayed =
+	sanitizeStatistic(
+		profile.TimePlayed
+	)
 
 	profile.MarketingLevel =
 	sanitizeMarketingLevel(
@@ -1300,6 +1307,11 @@ local function createSaveSnapshot(
 			currentProfile.TimePlayed
 		)
 
+	snapshot.Licenses =
+	sanitizeStatistic(
+		currentProfile.Licenses
+	)
+
 	captureBusinessState(
 		player,
 		snapshot
@@ -1405,13 +1417,18 @@ function DataService.LoadPlayer(
 	)
 
 	player:SetAttribute(
-		"TimePlayed",
-		profile.TimePlayed
-	)
+	"Licenses",
+	profile.Licenses
+)
 
-	startTimeTracking(
-		player
-	)
+player:SetAttribute(
+	"TimePlayed",
+	profile.TimePlayed
+)
+
+startTimeTracking(
+	player
+)
 
 	player:SetAttribute(
 		"DataLoaded",
@@ -1467,6 +1484,191 @@ function DataService.GetTimePlayed(
 	return sanitizeStatistic(
 		profile.TimePlayed
 	)
+end
+
+--==================================================
+-- LICENSES
+--==================================================
+
+function DataService.GetLicenses(
+	player: Player
+): number
+
+	local profile =
+		profiles[player]
+
+
+	if not profile then
+		return 0
+	end
+
+
+	return sanitizeStatistic(
+		profile.Licenses
+	)
+end
+
+
+function DataService.SetLicenses(
+	player: Player,
+	amount: number
+): boolean
+
+	local profile =
+		profiles[player]
+
+
+	if not profile then
+		return false
+	end
+
+
+	if typeof(amount) ~= "number"
+		or amount ~= amount
+		or amount == math.huge
+		or amount == -math.huge then
+
+		return false
+	end
+
+
+	local newAmount =
+		math.max(
+			0,
+			math.floor(amount)
+		)
+
+
+	profile.Licenses =
+		newAmount
+
+
+	player:SetAttribute(
+		"Licenses",
+		newAmount
+	)
+
+
+	return true
+end
+
+
+function DataService.AddLicenses(
+	player: Player,
+	amount: number
+): boolean
+
+	local profile =
+		profiles[player]
+
+
+	if not profile then
+		return false
+	end
+
+
+	if typeof(amount) ~= "number"
+		or amount ~= amount
+		or amount == math.huge
+		or amount == -math.huge then
+
+		return false
+	end
+
+
+	amount =
+		math.floor(amount)
+
+
+	if amount <= 0 then
+		return false
+	end
+
+
+	local currentAmount =
+		sanitizeStatistic(
+			profile.Licenses
+		)
+
+
+	local newAmount =
+		currentAmount
+		+ amount
+
+
+	profile.Licenses =
+		newAmount
+
+
+	player:SetAttribute(
+		"Licenses",
+		newAmount
+	)
+
+
+	return true
+end
+
+
+function DataService.SpendLicenses(
+	player: Player,
+	amount: number
+): boolean
+
+	local profile =
+		profiles[player]
+
+
+	if not profile then
+		return false
+	end
+
+
+	if typeof(amount) ~= "number"
+		or amount ~= amount
+		or amount == math.huge
+		or amount == -math.huge then
+
+		return false
+	end
+
+
+	amount =
+		math.floor(amount)
+
+
+	if amount <= 0 then
+		return false
+	end
+
+
+	local currentAmount =
+		sanitizeStatistic(
+			profile.Licenses
+		)
+
+
+	if currentAmount < amount then
+		return false
+	end
+
+
+	local newAmount =
+		currentAmount
+		- amount
+
+
+	profile.Licenses =
+		newAmount
+
+
+	player:SetAttribute(
+		"Licenses",
+		newAmount
+	)
+
+
+	return true
 end
 
 function DataService.GetTutorialCompleted(
