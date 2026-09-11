@@ -236,76 +236,20 @@ function FormatNumber.Full(
 	value: number,
 	decimalPlaces: number?
 ): string
-	if not isValidNumber(value) then
-		return "0"
-	end
-
-	local places =
-		clampDecimalPlaces(
-			decimalPlaces
-		)
-
-	local negative =
-		value < 0
-
-	local absoluteValue =
-		math.abs(value)
-
-	local formatted =
-		formatDecimal(
-			absoluteValue,
-			places
-		)
-
-	local integerPart, decimalPart =
-		string.match(
-			formatted,
-			"^(%d+)%.?(%d*)$"
-		)
-
-	integerPart =
-		addCommas(
-			integerPart or "0"
-		)
-
-	if decimalPart
-		and decimalPart ~= "" then
-
-		formatted =
-			integerPart
-				.. "."
-				.. decimalPart
-	else
-		formatted =
-			integerPart
-	end
-
-	if negative then
-		return "-" .. formatted
-	end
-
-	return formatted
+	return FormatNumber.Compact(
+		value,
+		decimalPlaces
+	)
 end
 
 function FormatNumber.FullCurrency(
 	value: number,
 	decimalPlaces: number?
 ): string
-	if not isValidNumber(value) then
-		return "$0"
-	end
-
-	local formatted =
-		FormatNumber.Full(
-			math.abs(value),
-			decimalPlaces
-		)
-
-	if value < 0 then
-		return "-$" .. formatted
-	end
-
-	return "$" .. formatted
+	return FormatNumber.Currency(
+		value,
+		decimalPlaces
+	)
 end
 
 return FormatNumber

@@ -284,6 +284,45 @@ local activeTextTween:
 	Tween? =
 	nil
 
+local TUTORIAL_HIGHLIGHT_COLOR =
+	Color3.fromRGB(
+		255,
+		223,
+		102
+	)
+
+local TUTORIAL_HIGHLIGHT_FILL_TRANSPARENCY =
+	0.86
+
+local TUTORIAL_HIGHLIGHT_IDLE_TRANSPARENCY =
+	0.18
+
+local TUTORIAL_HIGHLIGHT_PULSE_TRANSPARENCY =
+	0.45
+
+local TUTORIAL_HIGHLIGHT_THICKNESS =
+	3
+
+local TUTORIAL_HIGHLIGHT_PULSE_THICKNESS =
+	5
+
+local TUTORIAL_HIGHLIGHT_SIZE_OFFSET =
+	18
+
+local TUTORIAL_HIGHLIGHT_PULSE_SCALE =
+	1.06
+
+local TUTORIAL_HIGHLIGHT_PULSE_TIME =
+	0.65
+
+local activeHighlight:
+	Frame? =
+	nil
+
+local activeHighlightPulseThread:
+	thread? =
+	nil
+
 
 --==================================================
 -- FRAME HELPERS
@@ -1011,8 +1050,31 @@ local function showTutorial()
 	)
 end
 
+local function clearButtonHighlight()
+
+	if activeHighlightPulseThread then
+
+		task.cancel(
+			activeHighlightPulseThread
+		)
+
+		activeHighlightPulseThread =
+			nil
+	end
+
+
+	if activeHighlight then
+
+		activeHighlight:Destroy()
+
+		activeHighlight =
+			nil
+	end
+end
+
 
 local function finishTutorial()
+	clearButtonHighlight()
 
 	showTimedMessage(
 		"That's everything you need to get started!",
@@ -1054,6 +1116,8 @@ local function skipTutorial()
 
 	running =
 		false
+
+	clearButtonHighlight()
 
 
 	-- Mark the tutorial completed on the server.
@@ -1133,6 +1197,243 @@ skipButton.Activated:Connect(
 )
 
 --==================================================
+-- BUTTON HIGHLIGHT
+--==================================================
+
+local function getButtonCornerRadius(
+	button: GuiButton
+): UDim
+	local uiCorner =
+		button:FindFirstChildWhichIsA(
+			"UICorner"
+		)
+
+	if uiCorner then
+		return uiCorner.CornerRadius
+	end
+
+	return UDim.new(
+		0,
+		12
+	)
+end
+
+
+
+local function highlightButton(
+	button: GuiButton,
+	color: Color3?
+)
+
+	clearButtonHighlight()
+
+
+	if not button.Parent then
+		return
+	end
+
+
+	local highlightColor =
+		color
+		or TUTORIAL_HIGHLIGHT_COLOR
+
+
+	local aura =
+		Instance.new("Frame")
+
+	aura.Name =
+		"TutorialHighlight"
+
+	aura.AnchorPoint =
+		Vector2.new(
+			0.5,
+			0.5
+		)
+
+	aura.Position =
+		UDim2.new(
+			0.5,
+			0,
+			0.5,
+			0
+		)
+
+	aura.Size =
+		UDim2.new(
+			1,
+			TUTORIAL_HIGHLIGHT_SIZE_OFFSET,
+			1,
+			TUTORIAL_HIGHLIGHT_SIZE_OFFSET
+		)
+
+	aura.BackgroundColor3 =
+		highlightColor
+
+	aura.BackgroundTransparency =
+		TUTORIAL_HIGHLIGHT_FILL_TRANSPARENCY
+
+	aura.BorderSizePixel =
+		0
+
+	aura.ZIndex =
+		math.max(
+			1,
+			button.ZIndex - 1
+		)
+
+	aura.Parent =
+		button
+
+
+	local auraCorner =
+		Instance.new("UICorner")
+
+	auraCorner.CornerRadius =
+		getButtonCornerRadius(
+			button
+		)
+
+	auraCorner.Parent =
+		aura
+
+
+	local auraStroke =
+		Instance.new("UIStroke")
+
+	auraStroke.Color =
+		highlightColor
+
+	auraStroke.Thickness =
+		TUTORIAL_HIGHLIGHT_THICKNESS
+
+	auraStroke.Transparency =
+		TUTORIAL_HIGHLIGHT_IDLE_TRANSPARENCY
+
+	auraStroke.Parent =
+		aura
+
+
+	local auraScale =
+		Instance.new("UIScale")
+
+	auraScale.Scale =
+		1
+
+	auraScale.Parent =
+		aura
+
+
+	activeHighlight =
+		aura
+
+
+	activeHighlightPulseThread =
+		task.spawn(function()
+
+			while running
+				and aura.Parent
+				and button.Parent do
+
+				local growTween =
+					TweenService:Create(
+						auraScale,
+						TweenInfo.new(
+							TUTORIAL_HIGHLIGHT_PULSE_TIME,
+							Enum.EasingStyle.Sine,
+							Enum.EasingDirection.Out
+						),
+						{
+							Scale =
+								TUTORIAL_HIGHLIGHT_PULSE_SCALE,
+						}
+					)
+
+				local strokeGrowTween =
+					TweenService:Create(
+						auraStroke,
+						TweenInfo.new(
+							TUTORIAL_HIGHLIGHT_PULSE_TIME,
+							Enum.EasingStyle.Sine,
+							Enum.EasingDirection.Out
+						),
+						{
+							Transparency =
+								TUTORIAL_HIGHLIGHT_PULSE_TRANSPARENCY,
+
+							Thickness =
+								TUTORIAL_HIGHLIGHT_PULSE_THICKNESS,
+						}
+					)
+
+				growTween:Play()
+				strokeGrowTween:Play()
+
+				growTween.Completed:Wait()
+
+
+				if not running
+					or not aura.Parent
+					or not button.Parent then
+
+					break
+				end
+
+
+				local shrinkTween =
+					TweenService:Create(
+						auraScale,
+						TweenInfo.new(
+							TUTORIAL_HIGHLIGHT_PULSE_TIME,
+							Enum.EasingStyle.Sine,
+							Enum.EasingDirection.InOut
+						),
+						{
+							Scale = 1,
+						}
+					)
+
+				local strokeShrinkTween =
+					TweenService:Create(
+						auraStroke,
+						TweenInfo.new(
+							TUTORIAL_HIGHLIGHT_PULSE_TIME,
+							Enum.EasingStyle.Sine,
+							Enum.EasingDirection.InOut
+						),
+						{
+							Transparency =
+								TUTORIAL_HIGHLIGHT_IDLE_TRANSPARENCY,
+
+							Thickness =
+								TUTORIAL_HIGHLIGHT_THICKNESS,
+						}
+					)
+
+				shrinkTween:Play()
+				strokeShrinkTween:Play()
+
+				shrinkTween.Completed:Wait()
+			end
+		end)
+end
+
+
+local function waitForHighlightedButtonPress(
+	button: GuiButton,
+	color: Color3?
+)
+
+	highlightButton(
+		button,
+		color
+	)
+
+	button.Activated:Wait()
+
+	clearButtonHighlight()
+end
+
+--==================================================
 -- MAIN TUTORIAL
 --==================================================
 
@@ -1206,9 +1507,9 @@ local function runTutorial()
 	)
 
 
-	waitForButtonPress(
-		addButton
-	)
+	waitForHighlightedButtonPress(
+	addButton
+)
 
 
 	local lemonadeStand =
@@ -1232,10 +1533,9 @@ local function runTutorial()
 			getLemonadeButton()
 
 
-		waitForButtonPress(
-			lemonadeButton
-		)
-
+		waitForHighlightedButtonPress(
+	lemonadeButton
+)
 
 		-- Wait for the real placement controls.
 		waitUntilVisible(
@@ -1313,9 +1613,9 @@ local function runTutorial()
 	)
 
 
-	waitForButtonPress(
-		questsOpenButton
-	)
+	waitForHighlightedButtonPress(
+	questsOpenButton
+)
 
 
 	waitUntilVisible(
