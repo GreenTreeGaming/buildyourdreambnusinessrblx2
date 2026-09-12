@@ -667,6 +667,23 @@ local function renderEarnMethods()
 	end
 end
 
+local LICENSE_IMAGES = {
+	Operations =
+		"rbxassetid://97437298073596",
+
+	Advertising =
+		"rbxassetid://101633672564115",
+
+	Expansion =
+		"rbxassetid://124922347182163",
+
+	Executive =
+		"rbxassetid://135369033657696",
+
+	EliteNetwork =
+		"rbxassetid://123493899128226",
+}
+
 
 --==================================================
 -- UPGRADE ITEMS
@@ -679,6 +696,24 @@ local function createUpgradeItem(
 
 	local clone =
 		upgradeTemplate:Clone()
+
+	local imageLabel =
+	clone:WaitForChild(
+		"ImageLabel"
+	) :: ImageLabel
+
+
+local imageId =
+	LICENSE_IMAGES[
+		definition.Id
+	]
+
+
+if imageId then
+
+	imageLabel.Image =
+		imageId
+end
 
 
 	clone.Name =

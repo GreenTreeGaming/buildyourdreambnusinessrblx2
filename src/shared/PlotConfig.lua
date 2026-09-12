@@ -92,7 +92,12 @@ local PlotConfig = {
 
 		{
 			Level = 8,
-			Cost = 40000000,
+
+			-- Was $40M.
+			-- $30M is still an expensive endgame purchase,
+			-- but is more appropriate for the final ~18%
+			-- increase in usable plot area.
+			Cost = 30000000,
 
 			Size = 500,
 
