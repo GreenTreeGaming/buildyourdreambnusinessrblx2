@@ -184,7 +184,9 @@ local MarketingConfig = {
 
 		{
 			Level = 12,
-			Cost = 6000000,
+
+			-- Was $6M.
+			Cost = 5000000,
 
 			DisplayName = "Event Sponsorship",
 			Description =
@@ -199,7 +201,9 @@ local MarketingConfig = {
 
 		{
 			Level = 13,
-			Cost = 12500000,
+
+			-- Was $12.5M.
+			Cost = 10000000,
 
 			DisplayName = "Digital Billboard",
 			Description =
@@ -214,7 +218,9 @@ local MarketingConfig = {
 
 		{
 			Level = 14,
-			Cost = 25000000,
+
+			-- Was $25M.
+			Cost = 18000000,
 
 			DisplayName = "Influencer Campaign",
 			Description =
@@ -229,7 +235,9 @@ local MarketingConfig = {
 
 		{
 			Level = 15,
-			Cost = 50000000,
+
+			-- Was $50M.
+			Cost = 30000000,
 
 			DisplayName = "City-Wide Campaign",
 			Description =
