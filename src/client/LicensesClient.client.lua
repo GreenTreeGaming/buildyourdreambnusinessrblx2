@@ -59,6 +59,21 @@ local licenseStateUpdatedRemote =
 		"LicenseStateUpdated"
 	) :: RemoteEvent
 
+local Notification =
+	require(
+		ReplicatedStorage
+			:WaitForChild(
+				"Shared"
+			)
+			:WaitForChild(
+				"Notification"
+			)
+	)
+
+local licenseEarnedRemote =
+	remotes:WaitForChild(
+		"LicenseEarned"
+	) :: RemoteEvent
 
 --==================================================
 -- UI
@@ -522,15 +537,26 @@ local function createEarnItem(
 
 
 	earnName.Text =
-		definition.DisplayName
+	state
+	and state.DisplayName
+	or definition.DisplayName
 
 
-	earnDesc.Text =
-		definition.Description
+earnDesc.Text =
+	state
+	and state.Description
+	or definition.Description
 
 
-	rewardAmount.Text =
-		`+{definition.Reward}`
+local reward =
+	state
+	and state.Reward
+	or definition.Reward
+	or 0
+
+
+rewardAmount.Text =
+	`+{reward}`
 
 
 	local progress =
@@ -1174,4 +1200,44 @@ licenseStateUpdatedRemote.OnClientEvent:Connect(
 
 showTab(
 	"HowToEarn"
+)
+
+licenseEarnedRemote.OnClientEvent:Connect(
+	function(
+		amount: number,
+		sourceName: string
+	)
+
+		amount =
+			math.max(
+				1,
+				math.floor(
+					tonumber(amount)
+					or 1
+				)
+			)
+
+
+		if type(sourceName)
+			~= "string"
+			or sourceName == "" then
+
+			sourceName =
+				"License Reward"
+		end
+
+
+		local licenseWord =
+			amount == 1
+			and "License"
+			or "Licenses"
+
+
+		Notification.Success(
+			`You earned {amount} {licenseWord}! — {sourceName}`,
+			{
+				Duration = 4,
+			}
+		)
+	end
 )

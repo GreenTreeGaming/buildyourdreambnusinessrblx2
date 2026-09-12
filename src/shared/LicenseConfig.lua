@@ -207,7 +207,412 @@ LicenseConfig.EarnMethods = {
 
 		Repeatable = true,
 	},
+
+
+	--==================================================
+	-- TIERED / REPEATABLE TRACKS
+	--==================================================
+
+	{
+		Id = "CustomersServedTrack",
+
+		DisplayName =
+			"Customer Service",
+
+		Description =
+			"Serve {GOAL} total customers.",
+
+		Order = 10,
+
+		Type =
+			"TotalCustomers",
+
+		Stages = {
+			{
+				Goal = 100,
+				Reward = 1,
+			},
+
+			{
+				Goal = 500,
+				Reward = 1,
+			},
+
+			{
+				Goal = 2000,
+				Reward = 1,
+			},
+
+			{
+				Goal = 5000,
+				Reward = 2,
+			},
+
+			{
+				Goal = 15000,
+				Reward = 2,
+			},
+		},
+
+		Endless = true,
+
+		EndlessGoalMultiplier =
+			2,
+
+		EndlessReward =
+			2,
+	},
+
+
+	{
+		Id = "LifetimeEarningsTrack",
+
+		DisplayName =
+			"Business Earnings",
+
+		Description =
+			"Earn ${GOAL} total from your businesses.",
+
+		Order = 11,
+
+		Type =
+			"LifetimeEarnings",
+
+		Stages = {
+			{
+				Goal = 10000,
+				Reward = 1,
+			},
+
+			{
+				Goal = 100000,
+				Reward = 1,
+			},
+
+			{
+				Goal = 1000000,
+				Reward = 1,
+			},
+
+			{
+				Goal = 10000000,
+				Reward = 2,
+			},
+
+			{
+				Goal = 100000000,
+				Reward = 2,
+			},
+		},
+
+		Endless = true,
+
+		EndlessGoalMultiplier =
+			5,
+
+		EndlessReward =
+			2,
+	},
+
+
+	{
+		Id = "RareCustomersTrack",
+
+		DisplayName =
+			"VIP Treatment",
+
+		Description =
+			"Serve {GOAL} VIP or rarer customers.",
+
+		Order = 12,
+
+		Type =
+			"RareCustomers",
+
+		Stages = {
+			{
+				Goal = 1,
+				Reward = 1,
+			},
+
+			{
+				Goal = 10,
+				Reward = 1,
+			},
+
+			{
+				Goal = 50,
+				Reward = 1,
+			},
+
+			{
+				Goal = 200,
+				Reward = 2,
+			},
+
+			{
+				Goal = 500,
+				Reward = 2,
+			},
+		},
+
+		Endless = true,
+
+		EndlessGoalMultiplier =
+			2,
+
+		EndlessReward =
+			2,
+	},
+
+
+	{
+		Id = "BusinessOwnerTrack",
+
+		DisplayName =
+			"Growing Empire",
+
+		Description =
+			"Own {GOAL} businesses at once.",
+
+		Order = 13,
+
+		Type =
+			"OwnedBusinesses",
+
+		Stages = {
+			{
+				Goal = 3,
+				Reward = 1,
+			},
+
+			{
+				Goal = 8,
+				Reward = 1,
+			},
+
+			{
+				Goal = 15,
+				Reward = 1,
+			},
+
+			{
+				Goal = 25,
+				Reward = 2,
+			},
+		},
+	},
+
+
+	{
+		Id = "BusinessVarietyTrack",
+
+		DisplayName =
+			"Business Collector",
+
+		Description =
+			"Own {GOAL} different types of businesses.",
+
+		Order = 14,
+
+		Type =
+			"UniqueBusinessTypes",
+
+		Stages = {
+			{
+				Goal = 2,
+				Reward = 1,
+			},
+
+			{
+				Goal = 3,
+				Reward = 1,
+			},
+
+			{
+				Goal = 4,
+				Reward = 2,
+			},
+		},
+	},
+
+
+	{
+		Id = "GoldenCustomersTrack",
+
+		DisplayName =
+			"Golden Customer Hunter",
+
+		Description =
+			"Serve {GOAL} Golden customers.",
+
+		Order = 15,
+
+		Type =
+			"CustomerTypeVisits",
+
+		CustomerType =
+			"Golden",
+
+		Stages = {
+			{
+				Goal = 1,
+				Reward = 2,
+			},
+
+			{
+				Goal = 3,
+				Reward = 2,
+			},
+
+			{
+				Goal = 10,
+				Reward = 3,
+			},
+
+			{
+				Goal = 25,
+				Reward = 3,
+			},
+		},
+
+		Endless = true,
+
+		EndlessGoalMultiplier =
+			2,
+
+		EndlessReward =
+			3,
+	},
 }
+
+function LicenseConfig.GetEarnStage(
+	definition: any,
+	completedStages: number
+): (number?, number?, number, boolean)
+
+	if type(definition.Stages)
+		~= "table" then
+
+		return
+			definition.Goal,
+			definition.Reward,
+			1,
+			false
+	end
+
+
+	completedStages =
+		math.max(
+			0,
+			math.floor(
+				completedStages
+			)
+		)
+
+
+	local stageNumber =
+		completedStages + 1
+
+
+	local stage =
+		definition.Stages[
+			stageNumber
+		]
+
+
+	if stage then
+
+		return
+			stage.Goal,
+			stage.Reward,
+			stageNumber,
+			false
+	end
+
+
+	if definition.Endless
+		~= true then
+
+		return
+			nil,
+			nil,
+			stageNumber,
+			true
+	end
+
+
+	local lastStage =
+		definition.Stages[
+			#definition.Stages
+		]
+
+
+	if not lastStage then
+
+		return
+			nil,
+			nil,
+			stageNumber,
+			true
+	end
+
+
+	local extraStage =
+		stageNumber
+			- #definition.Stages
+
+
+	local multiplier =
+		tonumber(
+			definition
+				.EndlessGoalMultiplier
+		)
+		or 2
+
+
+	multiplier =
+		math.max(
+			1.01,
+			multiplier
+		)
+
+
+	local goal =
+		math.floor(
+			lastStage.Goal
+				* (
+					multiplier
+					^ extraStage
+				)
+		)
+
+
+	-- Avoid absurd floating point values if someone
+	-- somehow reaches thousands of repeatable tiers.
+	goal =
+		math.clamp(
+			goal,
+			1,
+			9e15
+		)
+
+
+	local reward =
+		tonumber(
+			definition
+				.EndlessReward
+		)
+		or lastStage.Reward
+		or 1
+
+
+	return
+		goal,
+		reward,
+		stageNumber,
+		false
+end
 
 
 --==================================================

@@ -78,7 +78,6 @@ local plotsFolder =
 		"Plots"
 	)
 
-
 --==================================================
 -- REMOTES
 --==================================================
@@ -144,6 +143,14 @@ local licenseStateUpdatedRemote =
 		"LicenseStateUpdated",
 		"RemoteEvent"
 	) :: RemoteEvent
+
+
+local licenseEarnedRemote =
+	getOrCreateRemote(
+		"LicenseEarned",
+		"RemoteEvent"
+	) :: RemoteEvent
+
 
 
 --==================================================
@@ -288,6 +295,241 @@ local function getBusinessType(
 
 
 	return business.Name
+end
+
+local function getOwnedBusinesses(
+	player: Player
+): {Model}
+
+	local result = {}
+
+
+	local plot =
+		getPlayerPlot(
+			player
+		)
+
+
+	if not plot then
+		return result
+	end
+
+
+	local folder =
+		plot:FindFirstChild(
+			"PlacedBusinesses"
+		)
+
+
+	if not folder then
+		return result
+	end
+
+
+	for _, business in
+		folder:GetChildren()
+	do
+
+		if not business:IsA(
+			"Model"
+		) then
+
+			continue
+		end
+
+
+		if business:GetAttribute(
+			"OwnerUserId"
+		) ~= player.UserId then
+
+			continue
+		end
+
+
+		table.insert(
+			result,
+			business
+		)
+	end
+
+
+	return result
+end
+
+
+local function getTotalCustomers(
+	player: Player
+): number
+
+	local total =
+		0
+
+
+	for _, amount in
+		DataService.GetCustomerVisits(
+			player
+		)
+	do
+
+		total +=
+			sanitizeNumber(
+				amount
+			)
+	end
+
+
+	return total
+end
+
+
+local function getRareCustomerCount(
+	player: Player
+): number
+
+	local rareTypes = {
+		"VIP",
+		"Celebrity",
+		"Influencer",
+		"Billionaire",
+		"Golden",
+	}
+
+
+	local total =
+		0
+
+
+	for _, customerType in
+		rareTypes
+	do
+
+		total +=
+			sanitizeNumber(
+				DataService
+					.GetCustomerVisitCount(
+						player,
+						customerType
+					)
+			)
+	end
+
+
+	return total
+end
+
+
+local function getOwnedBusinessCount(
+	player: Player
+): number
+
+	return #getOwnedBusinesses(
+		player
+	)
+end
+
+
+local function getUniqueBusinessTypeCount(
+	player: Player
+): number
+
+	local discovered = {}
+
+
+	for _, business in
+		getOwnedBusinesses(
+			player
+		)
+	do
+
+		discovered[
+			getBusinessType(
+				business
+			)
+		] = true
+	end
+
+
+	local count =
+		0
+
+
+	for _ in discovered do
+		count += 1
+	end
+
+
+	return count
+end
+
+
+local function getLifetimeEarnings(
+	player: Player
+): number
+
+	local businesses =
+		getOwnedBusinesses(
+			player
+		)
+
+
+	local total =
+		0
+
+
+	if #businesses > 0 then
+
+		for _, business in
+			businesses
+		do
+
+			total +=
+				sanitizeNumber(
+					business:GetAttribute(
+						"LifetimeEarnings"
+					)
+				)
+		end
+
+
+		return total
+	end
+
+
+	-- Fallback while the player's saved businesses
+	-- are still being restored into Workspace.
+
+	local profile: any =
+		DataService.GetProfile(
+			player
+		)
+
+
+	if not profile
+		or type(
+			profile.PlacedBusinesses
+		) ~= "table" then
+
+		return 0
+	end
+
+
+	for _, business in
+		profile.PlacedBusinesses
+	do
+
+		if type(business)
+			== "table" then
+
+			total +=
+				sanitizeNumber(
+					business
+						.LifetimeEarnings
+				)
+		end
+	end
+
+
+	return total
 end
 
 
@@ -665,9 +907,108 @@ local function getEarnProgress(
 	end
 
 
+	if definition.Type
+		== "TotalCustomers" then
+
+		return getTotalCustomers(
+			player
+		)
+	end
+
+
+	if definition.Type
+		== "LifetimeEarnings" then
+
+		return getLifetimeEarnings(
+			player
+		)
+	end
+
+
+	if definition.Type
+		== "RareCustomers" then
+
+		return getRareCustomerCount(
+			player
+		)
+	end
+
+
+	if definition.Type
+		== "OwnedBusinesses" then
+
+		return getOwnedBusinessCount(
+			player
+		)
+	end
+
+
+	if definition.Type
+		== "UniqueBusinessTypes" then
+
+		return getUniqueBusinessTypeCount(
+			player
+		)
+	end
+
+
+	if definition.Type
+		== "CustomerTypeVisits" then
+
+		return sanitizeNumber(
+			DataService
+				.GetCustomerVisitCount(
+					player,
+					definition.CustomerType
+				)
+		)
+	end
+
+
 	return 0
 end
 
+local function getTrackStage(
+	player: Player,
+	definition: any
+)
+
+	local completedStages =
+		LicenseService
+			.GetEarnTrackLevel(
+				player,
+				definition.Id
+			)
+
+
+	return LicenseConfig
+		.GetEarnStage(
+			definition,
+			completedStages
+		)
+end
+
+
+local function formatTrackDescription(
+	definition: any,
+	goal: number
+): string
+
+	local description =
+		tostring(
+			definition.Description
+			or ""
+		)
+
+
+	return string.gsub(
+		description,
+		"{GOAL}",
+		tostring(
+			goal
+		)
+	)
+end
 
 --==================================================
 -- SAVE
@@ -689,6 +1030,29 @@ local function requestSave(
 	)
 end
 
+local function notifyLicenseEarned(
+	player: Player,
+	amount: number,
+	sourceName: string
+)
+
+	amount =
+		sanitizeNumber(
+			amount
+		)
+
+
+	if amount <= 0 then
+		return
+	end
+
+
+	licenseEarnedRemote:FireClient(
+		player,
+		amount,
+		sourceName
+	)
+end
 
 --==================================================
 -- AUTOMATIC LICENSE REWARDS
@@ -753,96 +1117,194 @@ local function processEarnRewards(
 
 		if licenseCount > 0 then
 
-			DataService.AddLicenses(
-				player,
-				licenseCount
-			)
+	DataService.AddLicenses(
+		player,
+		licenseCount
+	)
+
+
+	notifyLicenseEarned(
+		player,
+		licenseCount,
+		"License Fragments"
+	)
+
+
+	changed =
+		true
+end
+	end
+
+
+	--==============================================
+-- EARN METHODS
+--==============================================
+
+for _, definition in
+	LicenseConfig.EarnMethods
+do
+
+	if definition.Type
+		== "LicenseFragments" then
+
+		continue
+	end
+
+
+	local progress =
+		getEarnProgress(
+			player,
+			definition
+		)
+
+
+	--==========================================
+	-- TIERED TRACK
+	--==========================================
+
+	if type(definition.Stages)
+		== "table" then
+
+		-- Allows somebody who already had a lot of
+		-- progress before this update to receive
+		-- multiple earned tiers safely.
+		for _ = 1, 25 do
+
+			local goal,
+				reward,
+				_stageNumber,
+				completed =
+				getTrackStage(
+					player,
+					definition
+				)
+
+
+			if completed
+				or not goal
+				or progress < goal then
+
+				break
+			end
+
+
+			reward =
+				sanitizeNumber(
+					reward
+				)
+
+
+			if reward > 0 then
+
+	DataService.AddLicenses(
+		player,
+		reward
+	)
+
+
+	local reason =
+		`{definition.DisplayName} ({goal} reached)`
+
+
+	notifyLicenseEarned(
+		player,
+		reward,
+		reason
+	)
+end
+
+
+			LicenseService
+				.AdvanceEarnTrack(
+					player,
+					definition.Id
+				)
 
 
 			changed =
 				true
 		end
+
+
+		continue
 	end
 
 
-	--==============================================
-	-- ONE-TIME MILESTONES
-	--==============================================
+	--==========================================
+	-- NORMAL ONE-TIME MILESTONE
+	--==========================================
 
-	for _, definition in
-		LicenseConfig.EarnMethods do
+	if definition.Repeatable
+		== true then
 
-		if definition.Repeatable
-			== true then
-
-			continue
-		end
-
-
-		local alreadyClaimed =
-			LicenseService
-				.HasClaimedEarnReward(
-					player,
-					definition.Id
-				)
-
-
-		if alreadyClaimed then
-			continue
-		end
-
-
-		local progress =
-			getEarnProgress(
-				player,
-				definition
-			)
-
-
-		local goal =
-			sanitizeNumber(
-				definition.Goal
-			)
-
-
-		if goal <= 0
-			or progress < goal then
-
-			continue
-		end
-
-
-		local marked =
-			LicenseService
-				.MarkEarnRewardClaimed(
-					player,
-					definition.Id
-				)
-
-
-		if not marked then
-			continue
-		end
-
-
-		local reward =
-			sanitizeNumber(
-				definition.Reward
-			)
-
-
-		if reward > 0 then
-
-			DataService.AddLicenses(
-				player,
-				reward
-			)
-		end
-
-
-		changed =
-			true
+		continue
 	end
+
+
+	local alreadyClaimed =
+		LicenseService
+			.HasClaimedEarnReward(
+				player,
+				definition.Id
+			)
+
+
+	if alreadyClaimed then
+		continue
+	end
+
+
+	local goal =
+		sanitizeNumber(
+			definition.Goal
+		)
+
+
+	if goal <= 0
+		or progress < goal then
+
+		continue
+	end
+
+
+	local marked =
+		LicenseService
+			.MarkEarnRewardClaimed(
+				player,
+				definition.Id
+			)
+
+
+	if not marked then
+		continue
+	end
+
+
+	local reward =
+		sanitizeNumber(
+			definition.Reward
+		)
+
+
+	if reward > 0 then
+
+	DataService.AddLicenses(
+		player,
+		reward
+	)
+
+
+	notifyLicenseEarned(
+		player,
+		reward,
+		definition.DisplayName
+	)
+end
+
+
+	changed =
+		true
+end
 
 
 	playerLocks[
@@ -936,57 +1398,131 @@ local function buildState(
 
 
 	for _, definition in
-		LicenseConfig.EarnMethods do
+	LicenseConfig.EarnMethods
+do
 
-		local progress =
-			getEarnProgress(
+	local progress =
+		getEarnProgress(
+			player,
+			definition
+		)
+
+
+	if type(definition.Stages)
+		== "table" then
+
+		local goal,
+			reward,
+			stageNumber,
+			completed =
+			getTrackStage(
 				player,
 				definition
 			)
 
 
-		local goal =
-			sanitizeNumber(
-				definition.Goal
-			)
+		if completed then
+
+			local finalStage =
+				definition.Stages[
+					#definition.Stages
+				]
 
 
-		local claimed =
-			false
+			earnMethods[
+				definition.Id
+			] = {
+				Progress =
+					finalStage
+					and finalStage.Goal
+					or progress,
 
+				Goal =
+					finalStage
+					and finalStage.Goal
+					or 1,
 
-		if definition.Repeatable
-			~= true then
+				Reward =
+					finalStage
+					and finalStage.Reward
+					or 0,
 
-			claimed =
-				LicenseService
-					.HasClaimedEarnReward(
-						player,
-						definition.Id
-					)
+				Stage =
+					stageNumber,
+
+				Claimed =
+					true,
+
+				DisplayName =
+					definition.DisplayName,
+
+				Description =
+					"All rewards completed.",
+			}
+		else
+
+			earnMethods[
+				definition.Id
+			] = {
+				Progress =
+					progress,
+
+				Goal =
+					goal,
+
+				Reward =
+					reward,
+
+				Stage =
+					stageNumber,
+
+				Claimed =
+					false,
+
+				DisplayName =
+					definition.DisplayName,
+
+				Description =
+					formatTrackDescription(
+						definition,
+						goal
+					),
+			}
 		end
 
 
-		earnMethods[
-			definition.Id
-		] = {
-			Progress =
-				progress,
-
-			Goal =
-				goal,
-
-			Claimed =
-				claimed,
-
-			Completed =
-				claimed
-				or (
-					goal > 0
-					and progress >= goal
-				),
-		}
+		continue
 	end
+
+
+	earnMethods[
+		definition.Id
+	] = {
+		Progress =
+			progress,
+
+		Goal =
+			definition.Goal,
+
+		Reward =
+			definition.Reward,
+
+		Claimed =
+			definition.Repeatable ~= true
+			and LicenseService
+				.HasClaimedEarnReward(
+					player,
+					definition.Id
+				)
+			or false,
+
+		DisplayName =
+			definition.DisplayName,
+
+		Description =
+			definition.Description,
+	}
+end
 
 
 	local upgrades =

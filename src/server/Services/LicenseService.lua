@@ -75,6 +75,12 @@ local function getStorage(
 		storage.UpgradeLevels = {}
 	end
 
+	if type(storage.EarnTrackLevels)
+	~= "table" then
+
+	storage.EarnTrackLevels = {}
+end
+
 
 	storage.DailyStreak =
 		sanitizeNumber(
@@ -305,7 +311,107 @@ function LicenseService.MarkEarnRewardClaimed(
 
 	return true
 end
+--==================================================
+-- EARN TRACK LEVELS
+--==================================================
 
+function LicenseService.GetEarnTrackLevel(
+	player: Player,
+	trackId: string
+): number
+
+	local storage =
+		getStorage(
+			player
+		)
+
+
+	if not storage then
+		return 0
+	end
+
+
+	if type(trackId) ~= "string"
+		or trackId == "" then
+
+		return 0
+	end
+
+
+	return sanitizeNumber(
+		storage.EarnTrackLevels[
+			trackId
+		]
+	)
+end
+
+
+function LicenseService.SetEarnTrackLevel(
+	player: Player,
+	trackId: string,
+	level: number
+): boolean
+
+	local storage =
+		getStorage(
+			player
+		)
+
+
+	if not storage then
+		return false
+	end
+
+
+	if type(trackId) ~= "string"
+		or trackId == "" then
+
+		return false
+	end
+
+
+	storage.EarnTrackLevels[
+		trackId
+	] =
+		sanitizeNumber(
+			level
+		)
+
+
+	return true
+end
+
+
+function LicenseService.AdvanceEarnTrack(
+	player: Player,
+	trackId: string
+): number
+
+	local current =
+		LicenseService
+			.GetEarnTrackLevel(
+				player,
+				trackId
+			)
+
+
+	local nextLevel =
+		current + 1
+
+
+	if not LicenseService
+		.SetEarnTrackLevel(
+			player,
+			trackId,
+			nextLevel
+		) then
+
+		return current
+	end
+
+
+	return nextLevel
+end
 
 --==================================================
 -- UPGRADE LEVELS
