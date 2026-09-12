@@ -74,9 +74,6 @@ end
 local SALES_PER_REPUTATION_LEVEL =
 	25
 
-local MAX_REPUTATION_LEVEL =
-	50
-
 local CHECK_INTERVAL =
 	1
 
@@ -186,14 +183,12 @@ local function getReputationLevel(
 		)
 
 
-	return math.clamp(
+	return math.max(
+		1,
 		math.floor(
 			totalSales
 				/ SALES_PER_REPUTATION_LEVEL
-		) + 1,
-
-		1,
-		MAX_REPUTATION_LEVEL
+		) + 1
 	)
 end
 

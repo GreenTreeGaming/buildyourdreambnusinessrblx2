@@ -22,6 +22,13 @@ local DataService =
 			:WaitForChild("DataService")
 	)
 
+local ReputationConfig =
+	require(
+		ReplicatedStorage
+			:WaitForChild("Shared")
+			:WaitForChild("ReputationConfig")
+	)
+
 
 local remotes =
 	ReplicatedStorage:WaitForChild("Remotes")
@@ -44,11 +51,6 @@ end
 
 local plotsFolder =
 	Workspace:WaitForChild("Plots")
-
-
-local MAX_REPUTATION_LEVEL = 50
-
-local SALES_PER_LEVEL = 25
 
 local MINIMUM_RATING = 3
 
@@ -383,7 +385,12 @@ local function calculatePlotReputation(
 			ReputationLevel = 1,
 
 			CurrentProgress = 0,
-			RequiredProgress = SALES_PER_LEVEL,
+
+RequiredProgress =
+	ReputationConfig
+		.GetSalesRequiredForNextLevel(
+			1
+		),
 
 			CustomerRateBonus = 0,
 
@@ -636,30 +643,13 @@ local function calculatePlotReputation(
 		) / 10
 
 
-	local reputationLevel =
-		math.clamp(
-			math.floor(
-				totalSales
-					/ SALES_PER_LEVEL
-			) + 1,
-
-			1,
-			MAX_REPUTATION_LEVEL
-		)
-
-
-	local currentProgress
-
-	if reputationLevel
-		>= MAX_REPUTATION_LEVEL then
-
-		currentProgress =
-			SALES_PER_LEVEL
-	else
-		currentProgress =
+	local reputationLevel,
+	currentProgress,
+	requiredProgress =
+	ReputationConfig
+		.GetStateFromSales(
 			totalSales
-				% SALES_PER_LEVEL
-	end
+		)
 
 
 	local customerBonus =
@@ -681,13 +671,13 @@ local function calculatePlotReputation(
 		Rating = rating,
 
 		ReputationLevel =
-			reputationLevel,
+	reputationLevel,
 
-		CurrentProgress =
-			currentProgress,
+CurrentProgress =
+	currentProgress,
 
-		RequiredProgress =
-			SALES_PER_LEVEL,
+RequiredProgress =
+	requiredProgress,
 
 		CustomerRateBonus =
 			customerBonus,
