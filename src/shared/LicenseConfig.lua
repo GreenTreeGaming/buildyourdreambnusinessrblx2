@@ -1,14 +1,5 @@
 local LicenseConfig = {}
 
-
---==================================================
--- GENERAL
---==================================================
-
-LicenseConfig.FragmentsPerLicense =
-	10
-
-
 --==================================================
 -- WAYS TO EARN
 --==================================================
@@ -183,29 +174,6 @@ LicenseConfig.EarnMethods = {
 		Goal = 10,
 
 		Reward = 1,
-	},
-
-
-	{
-		Id = "LicenseFragments",
-
-		DisplayName =
-			"License Fragments",
-
-		Description =
-			"Collect 10 License Fragments to automatically create a License.",
-
-		Order = 9,
-
-		Type =
-			"LicenseFragments",
-
-		Goal =
-			LicenseConfig.FragmentsPerLicense,
-
-		Reward = 1,
-
-		Repeatable = true,
 	},
 
 

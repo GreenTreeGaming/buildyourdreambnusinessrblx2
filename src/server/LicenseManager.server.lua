@@ -898,16 +898,6 @@ local function getEarnProgress(
 
 
 	if definition.Type
-		== "LicenseFragments" then
-
-		return LicenseService
-			.GetFragments(
-				player
-			)
-	end
-
-
-	if definition.Type
 		== "TotalCustomers" then
 
 		return getTotalCustomers(
@@ -1078,64 +1068,6 @@ local function processEarnRewards(
 	local changed =
 		false
 
-
-	--==============================================
-	-- REPEATABLE FRAGMENTS
-	--==============================================
-
-	local fragments =
-		LicenseService.GetFragments(
-			player
-		)
-
-
-	local fragmentsPerLicense =
-		LicenseConfig
-			.FragmentsPerLicense
-
-
-	if fragments
-		>= fragmentsPerLicense then
-
-		local licenseCount =
-			math.floor(
-				fragments
-					/ fragmentsPerLicense
-			)
-
-
-		local remaining =
-			fragments
-				% fragmentsPerLicense
-
-
-		LicenseService.SetFragments(
-			player,
-			remaining
-		)
-
-
-		if licenseCount > 0 then
-
-	DataService.AddLicenses(
-		player,
-		licenseCount
-	)
-
-
-	notifyLicenseEarned(
-		player,
-		licenseCount,
-		"License Fragments"
-	)
-
-
-	changed =
-		true
-end
-	end
-
-
 	--==============================================
 -- EARN METHODS
 --==============================================
@@ -1143,12 +1075,6 @@ end
 for _, definition in
 	LicenseConfig.EarnMethods
 do
-
-	if definition.Type
-		== "LicenseFragments" then
-
-		continue
-	end
 
 
 	local progress =
@@ -1577,11 +1503,6 @@ end
 	return {
 		Licenses =
 			DataService.GetLicenses(
-				player
-			),
-
-		Fragments =
-			LicenseService.GetFragments(
 				player
 			),
 

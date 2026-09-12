@@ -87,13 +87,6 @@ end
 			storage.DailyStreak
 		)
 
-
-	storage.Fragments =
-		sanitizeNumber(
-			storage.Fragments
-		)
-
-
 	return storage
 end
 
@@ -147,105 +140,6 @@ function LicenseService.SetDailyStreak(
 
 	return true
 end
-
-
---==================================================
--- FRAGMENTS
---==================================================
-
-function LicenseService.GetFragments(
-	player: Player
-): number
-
-	local storage =
-		getStorage(
-			player
-		)
-
-
-	if not storage then
-		return 0
-	end
-
-
-	return sanitizeNumber(
-		storage.Fragments
-	)
-end
-
-
-function LicenseService.SetFragments(
-	player: Player,
-	amount: number
-): boolean
-
-	local storage =
-		getStorage(
-			player
-		)
-
-
-	if not storage then
-		return false
-	end
-
-
-	storage.Fragments =
-		sanitizeNumber(
-			amount
-		)
-
-
-	player:SetAttribute(
-		"LicenseFragments",
-		storage.Fragments
-	)
-
-
-	return true
-end
-
-
-function LicenseService.AddFragments(
-	player: Player,
-	amount: number
-): number
-
-	local storage =
-		getStorage(
-			player
-		)
-
-
-	if not storage then
-		return 0
-	end
-
-
-	amount =
-		sanitizeNumber(
-			amount
-		)
-
-
-	if amount <= 0 then
-		return storage.Fragments
-	end
-
-
-	storage.Fragments +=
-		amount
-
-
-	player:SetAttribute(
-		"LicenseFragments",
-		storage.Fragments
-	)
-
-
-	return storage.Fragments
-end
-
 
 --==================================================
 -- EARN REWARDS
@@ -493,12 +387,6 @@ function LicenseService.InitializePlayer(
 	if not storage then
 		return false
 	end
-
-
-	player:SetAttribute(
-		"LicenseFragments",
-		storage.Fragments
-	)
 
 
 	return true
