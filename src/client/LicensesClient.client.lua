@@ -81,11 +81,86 @@ local main =
 		"Main"
 	) :: Frame
 
+local function makeClickable(
+	object: GuiObject
+): GuiButton
 
-local closeButton =
+	if object:IsA("GuiButton") then
+		return object
+	end
+
+
+	local existing =
+		object:FindFirstChild(
+			"ClickArea"
+		)
+
+
+	if existing
+		and existing:IsA(
+			"GuiButton"
+		) then
+
+		return existing
+	end
+
+
+	local button =
+		Instance.new(
+			"TextButton"
+		)
+
+
+	button.Name =
+		"ClickArea"
+
+
+	button.BackgroundTransparency =
+		1
+
+
+	button.Text =
+		""
+
+
+	button.Size =
+		UDim2.fromScale(
+			1,
+			1
+		)
+
+
+	button.Position =
+		UDim2.fromScale(
+			0,
+			0
+		)
+
+
+	button.AnchorPoint =
+		Vector2.zero
+
+
+	button.AutoButtonColor =
+		false
+
+
+	button.ZIndex =
+		object.ZIndex + 10
+
+
+	button.Parent =
+		object
+
+
+	return button
+end
+
+local closeObject =
 	main:WaitForChild(
 		"Close"
-	) :: GuiButton
+	) :: GuiObject
+
 
 
 local contentFrame =
@@ -93,23 +168,22 @@ local contentFrame =
 		"Frame"
 	) :: Frame
 
-
 local buttonsFrame =
 	contentFrame:WaitForChild(
 		"Buttons"
 	) :: Frame
 
 
-local howToEarnButton =
+local howToEarnObject =
 	buttonsFrame:WaitForChild(
 		"HowToEarn"
-	) :: GuiButton
+	) :: GuiObject
 
 
-local upgradesButton =
+local upgradesObject =
 	buttonsFrame:WaitForChild(
 		"Upgrades"
-	) :: GuiButton
+	) :: GuiObject
 
 
 local howToEarnFrame =
@@ -134,6 +208,24 @@ local upgradeTemplate =
 	upgradesFrame:WaitForChild(
 		"Template"
 	) :: Frame
+
+local closeButton =
+	makeClickable(
+		closeObject
+	)
+
+
+local howToEarnButton =
+	makeClickable(
+		howToEarnObject
+	)
+
+
+local upgradesButton =
+	makeClickable(
+		upgradesObject
+	)
+
 
 
 --==================================================
