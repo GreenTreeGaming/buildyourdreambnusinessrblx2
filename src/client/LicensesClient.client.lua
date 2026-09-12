@@ -81,76 +81,103 @@ local main =
 		"Main"
 	) :: Frame
 
+local INTERACTION_ZINDEX =
+	50
+
 local function makeClickable(
 	object: GuiObject
 ): GuiButton
 
+	local button: GuiButton?
+
+
+	-- Use the object itself when it is already a button.
 	if object:IsA("GuiButton") then
-		return object
+		button =
+			object
+	else
+
+		-- Prefer an actual button already inside the UI object.
+		button =
+			object:FindFirstChildWhichIsA(
+				"GuiButton",
+				true
+			)
+
+
+		-- Otherwise create a transparent click layer.
+		if not button then
+
+			local existing =
+				object:FindFirstChild(
+					"ClickArea"
+				)
+
+
+			if existing
+				and existing:IsA(
+					"GuiButton"
+				) then
+
+				button =
+					existing
+			else
+
+				local clickArea =
+					Instance.new(
+						"TextButton"
+					)
+
+
+				clickArea.Name =
+					"ClickArea"
+
+				clickArea.BackgroundTransparency =
+					1
+
+				clickArea.Text =
+					""
+
+				clickArea.Size =
+					UDim2.fromScale(
+						1,
+						1
+					)
+
+				clickArea.Position =
+					UDim2.fromScale(
+						0,
+						0
+					)
+
+				clickArea.AnchorPoint =
+					Vector2.zero
+
+				clickArea.AutoButtonColor =
+					false
+
+				clickArea.Parent =
+					object
+
+
+				button =
+					clickArea
+			end
+		end
 	end
 
 
-	local existing =
-		object:FindFirstChild(
-			"ClickArea"
-		)
+	button.Active =
+		true
 
-
-	if existing
-		and existing:IsA(
-			"GuiButton"
-		) then
-
-		return existing
-	end
-
-
-	local button =
-		Instance.new(
-			"TextButton"
-		)
-
-
-	button.Name =
-		"ClickArea"
-
-
-	button.BackgroundTransparency =
-		1
-
-
-	button.Text =
-		""
-
-
-	button.Size =
-		UDim2.fromScale(
-			1,
-			1
-		)
-
-
-	button.Position =
-		UDim2.fromScale(
-			0,
-			0
-		)
-
-
-	button.AnchorPoint =
-		Vector2.zero
-
-
-	button.AutoButtonColor =
-		false
-
+	button.Selectable =
+		true
 
 	button.ZIndex =
-		object.ZIndex + 10
-
-
-	button.Parent =
-		object
+		math.max(
+			button.ZIndex,
+			INTERACTION_ZINDEX
+		)
 
 
 	return button
@@ -226,6 +253,44 @@ local upgradesButton =
 		upgradesObject
 	)
 
+-- Keep interactive controls above the tab content so that
+-- HowToEarnFrame / UpgradesFrame cannot swallow their clicks.
+
+closeObject.ZIndex =
+	math.max(
+		closeObject.ZIndex,
+		40
+	)
+
+buttonsFrame.ZIndex =
+	math.max(
+		buttonsFrame.ZIndex,
+		40
+	)
+
+howToEarnObject.ZIndex =
+	math.max(
+		howToEarnObject.ZIndex,
+		41
+	)
+
+upgradesObject.ZIndex =
+	math.max(
+		upgradesObject.ZIndex,
+		41
+	)
+
+howToEarnFrame.ZIndex =
+	math.min(
+		howToEarnFrame.ZIndex,
+		20
+	)
+
+upgradesFrame.ZIndex =
+	math.min(
+		upgradesFrame.ZIndex,
+		20
+	)
 
 
 --==================================================
@@ -360,32 +425,31 @@ local function showTab(
 	tabName: string
 )
 
+	if tabName ~= "HowToEarn"
+		and tabName ~= "Upgrades" then
+
+		warn(
+			`[Licenses] Unknown tab: {tabName}`
+		)
+
+		return
+	end
+
+
 	currentTab =
 		tabName
 
 
-	-- Always close BOTH first.
+	local showingHowToEarn =
+		tabName == "HowToEarn"
+
+
 	howToEarnFrame.Visible =
-		false
+		showingHowToEarn
 
 	upgradesFrame.Visible =
-		false
-
-
-	-- Then open only the selected tab.
-	if tabName
-		== "Upgrades" then
-
-		upgradesFrame.Visible =
-			true
-
-	else
-
-		howToEarnFrame.Visible =
-			true
-	end
+		not showingHowToEarn
 end
-
 
 --==================================================
 -- EARN ITEMS
@@ -607,9 +671,15 @@ local function createUpgradeItem(
 
 
 	local buyButton =
-		clone:WaitForChild(
-			"Buy"
-		) :: GuiButton
+	clone:WaitForChild(
+		"Buy"
+	) :: GuiButton
+
+
+local buyText =
+	buyButton:WaitForChild(
+		"InText"
+	) :: TextLabel
 
 
 	local upgradeName =
@@ -667,31 +737,36 @@ local function createUpgradeItem(
 		`LVL. {level}`
 
 
-	if maxed then
-
-		buyButton.Text =
-			"MAXED"
-
-
-		buyButton.Active =
-			false
+	-- The button itself should never render text.
+buyButton.Text =
+	""
 
 
-		buyButton.AutoButtonColor =
-			false
+if maxed then
 
-	else
-
-		buyButton.Text =
-			`BUY - {nextCost}`
+	buyText.Text =
+		"MAXED"
 
 
-		buyButton.Active =
-			true
+	buyButton.Active =
+		false
 
 
-		buyButton.AutoButtonColor =
-			true
+	buyButton.AutoButtonColor =
+		false
+
+else
+
+	buyText.Text =
+		`BUY - {nextCost}`
+
+
+	buyButton.Active =
+		true
+
+
+	buyButton.AutoButtonColor =
+		true
 
 
 		local upgradeId =
