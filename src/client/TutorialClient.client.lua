@@ -1462,7 +1462,7 @@ local function runTutorial()
 	--==================================================
 
 	showTimedMessage(
-		"Welcome to From Broke To Boss!",
+		"Welcome to Broke To Boss!",
 		NORMAL_MESSAGE_TIME
 	)
 

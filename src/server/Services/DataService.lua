@@ -32,7 +32,7 @@ local DATA_STORE_NAME = "PlayerData_v17"
 --
 -- Version 3 saves each placed business's physical model level.
 -- Version 4 adds plot-wide marketing progression.
-local CURRENT_DATA_VERSION = 11
+local CURRENT_DATA_VERSION = 12
 
 local MAX_RETRIES = 3
 local RETRY_DELAY_SECONDS = 2
@@ -68,6 +68,16 @@ local DEFAULT_PROFILE = {
 	Licenses = 0,
 	TimePlayed = 0,
 	TutorialCompleted = false,
+
+	DailyRewards = {
+		NextDay = 1,
+	
+		-- Exact Unix timestamp when the next
+		-- reward becomes claimable.
+		NextClaimAt = 0,
+	
+		LastClaimRewardDay = 0,
+	},
 
 	CustomerVisits = {
 		Regular = 0,
@@ -153,6 +163,12 @@ type PlayerProfile = {
 	TimePlayed: number,
 
 	TutorialCompleted: boolean,
+
+	DailyRewards: {
+		NextDay: number,
+		NextClaimAt: number,
+		LastClaimRewardDay: number,
+	},
 
 	CustomerVisits: {
 		[string]: number,
@@ -2945,6 +2961,114 @@ function DataService.AddCustomerVisit(
 
 
 	return newAmount
+end
+
+function DataService.GetDailyRewardData(
+	player: Player
+)
+	local profile =
+		profiles[player]
+
+	if not profile then
+		return nil
+	end
+
+	if type(profile.DailyRewards)
+		~= "table" then
+
+		profile.DailyRewards = {
+			NextDay = 1,
+			NextClaimAt = 0,
+			LastClaimRewardDay = 0,
+		}
+	end
+
+	local data =
+		profile.DailyRewards
+
+	data.NextDay =
+		math.clamp(
+			math.floor(
+				tonumber(data.NextDay)
+					or 1
+			),
+			1,
+			7
+		)
+
+	data.NextClaimAt =
+		math.max(
+			0,
+			math.floor(
+				tonumber(data.NextClaimAt)
+					or 0
+			)
+		)
+
+	data.LastClaimRewardDay =
+		math.clamp(
+			math.floor(
+				tonumber(
+					data.LastClaimRewardDay
+				) or 0
+			),
+			0,
+			7
+		)
+
+	return data
+end
+
+
+function DataService.SetDailyRewardData(
+	player: Player,
+	nextDay: number,
+	nextClaimAt: number,
+	lastClaimRewardDay: number
+): boolean
+	local profile =
+		profiles[player]
+
+	if not profile then
+		return false
+	end
+
+	if typeof(nextDay) ~= "number"
+		or typeof(nextClaimAt) ~= "number"
+		or typeof(lastClaimRewardDay) ~= "number" then
+
+		return false
+	end
+
+	if type(profile.DailyRewards)
+		~= "table" then
+
+		profile.DailyRewards = {}
+	end
+
+	profile.DailyRewards.NextDay =
+		math.clamp(
+			math.floor(nextDay),
+			1,
+			7
+		)
+
+	profile.DailyRewards.NextClaimAt =
+		math.max(
+			0,
+			math.floor(nextClaimAt)
+		)
+
+	profile.DailyRewards.LastClaimRewardDay =
+		math.clamp(
+			math.floor(
+				lastClaimRewardDay
+			),
+			0,
+			7
+		)
+
+	return true
 end
 
 return DataService
