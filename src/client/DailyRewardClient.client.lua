@@ -101,10 +101,290 @@ local OPEN_TWEEN =
 
 local CLOSE_TWEEN =
 	TweenInfo.new(
-		0.2,
+		0.18,
 		Enum.EasingStyle.Quad,
 		Enum.EasingDirection.In
 	)
+
+
+--==================================================
+-- GRADIENT STYLES
+--==================================================
+
+local DAY_GRADIENT_STYLES = {
+	[1] = {
+		Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(
+				0,
+				Color3.fromRGB(
+					66,
+					185,
+					255
+				)
+			),
+
+			ColorSequenceKeypoint.new(
+				1,
+				Color3.fromRGB(
+					39,
+					151,
+					239
+				)
+			),
+		}),
+
+		Rotation = 90,
+
+		Animated = false,
+	},
+
+	[2] = {
+		Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(
+				0,
+				Color3.fromRGB(
+					40,
+					205,
+					255
+				)
+			),
+
+			ColorSequenceKeypoint.new(
+				0.5,
+				Color3.fromRGB(
+					40,
+					162,
+					255
+				)
+			),
+
+			ColorSequenceKeypoint.new(
+				1,
+				Color3.fromRGB(
+					67,
+					126,
+					255
+				)
+			),
+		}),
+
+		Rotation = 105,
+
+		Animated = false,
+	},
+
+	[3] = {
+		Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(
+				0,
+				Color3.fromRGB(
+					34,
+					214,
+					255
+				)
+			),
+
+			ColorSequenceKeypoint.new(
+				0.5,
+				Color3.fromRGB(
+					63,
+					123,
+					255
+				)
+			),
+
+			ColorSequenceKeypoint.new(
+				1,
+				Color3.fromRGB(
+					132,
+					83,
+					255
+				)
+			),
+		}),
+
+		Rotation = 0,
+
+		Animated = true,
+
+		Duration = 16,
+	},
+
+	[4] = {
+		Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(
+				0,
+				Color3.fromRGB(
+					62,
+					102,
+					255
+				)
+			),
+
+			ColorSequenceKeypoint.new(
+				0.5,
+				Color3.fromRGB(
+					131,
+					70,
+					255
+				)
+			),
+
+			ColorSequenceKeypoint.new(
+				1,
+				Color3.fromRGB(
+					222,
+					77,
+					255
+				)
+			),
+		}),
+
+		Rotation = 0,
+
+		Animated = true,
+
+		Duration = 12,
+	},
+
+	[5] = {
+		Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(
+				0,
+				Color3.fromRGB(
+					255,
+					89,
+					121
+				)
+			),
+
+			ColorSequenceKeypoint.new(
+				0.45,
+				Color3.fromRGB(
+					255,
+					113,
+					54
+				)
+			),
+
+			ColorSequenceKeypoint.new(
+				1,
+				Color3.fromRGB(
+					255,
+					190,
+					46
+				)
+			),
+		}),
+
+		Rotation = 0,
+
+		Animated = true,
+
+		Duration = 9,
+	},
+
+	[6] = {
+		Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(
+				0,
+				Color3.fromRGB(
+					64,
+					45,
+					210
+				)
+			),
+
+			ColorSequenceKeypoint.new(
+				0.35,
+				Color3.fromRGB(
+					129,
+					59,
+					255
+				)
+			),
+
+			ColorSequenceKeypoint.new(
+				0.7,
+				Color3.fromRGB(
+					42,
+					170,
+					255
+				)
+			),
+
+			ColorSequenceKeypoint.new(
+				1,
+				Color3.fromRGB(
+					42,
+					239,
+					218
+				)
+			),
+		}),
+
+		Rotation = 0,
+
+		Animated = true,
+
+		Duration = 7,
+	},
+
+	[7] = {
+		Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(
+				0,
+				Color3.fromRGB(
+					255,
+					145,
+					25
+				)
+			),
+
+			ColorSequenceKeypoint.new(
+				0.22,
+				Color3.fromRGB(
+					255,
+					220,
+					66
+				)
+			),
+
+			ColorSequenceKeypoint.new(
+				0.5,
+				Color3.fromRGB(
+					255,
+					250,
+					194
+				)
+			),
+
+			ColorSequenceKeypoint.new(
+				0.75,
+				Color3.fromRGB(
+					255,
+					191,
+					25
+				)
+			),
+
+			ColorSequenceKeypoint.new(
+				1,
+				Color3.fromRGB(
+					255,
+					115,
+					20
+				)
+			),
+		}),
+
+		Rotation = 0,
+
+		Animated = true,
+
+		Duration = 4.5,
+	},
+}
 
 
 --==================================================
@@ -115,6 +395,10 @@ local currentState = nil
 
 local cards: {
 	[number]: GuiObject
+} = {}
+
+local gradientTweens: {
+	[Tween]: boolean
 } = {}
 
 local claiming =
@@ -129,6 +413,9 @@ local countdownToken =
 local originalFrameSize =
 	mainFrame.Size
 
+local activeWindowTween: Tween? =
+	nil
+
 
 --==================================================
 -- FORMATTING
@@ -138,7 +425,8 @@ local function setClaimButtonText(
 	button: TextButton,
 	text: string
 )
-	button.Text = ""
+	button.Text =
+		""
 
 	local title =
 		button:FindFirstChild(
@@ -313,13 +601,27 @@ end
 
 
 --==================================================
--- OPEN / CLOSE
+-- WINDOW HELPERS
 --==================================================
 
+local function stopWindowTween()
+	if activeWindowTween then
+		activeWindowTween:Cancel()
+
+		activeWindowTween =
+			nil
+	end
+end
+
+
 local function openUI()
-	if isOpen then
+	if isOpen
+		and screenGui.Enabled then
+
 		return
 	end
+
+	stopWindowTween()
 
 	isOpen =
 		true
@@ -343,29 +645,41 @@ local function openUI()
 			originalFrameSize.Y.Offset
 		)
 
-	TweenService:Create(
-		mainFrame,
-		OPEN_TWEEN,
-		{
-			Size =
-				originalFrameSize,
-		}
-	):Play()
+	activeWindowTween =
+		TweenService:Create(
+			mainFrame,
+			OPEN_TWEEN,
+			{
+				Size =
+					originalFrameSize,
+			}
+		)
+
+	activeWindowTween:Play()
+
+	activeWindowTween.Completed:Once(
+		function()
+			activeWindowTween =
+				nil
+		end
+	)
 end
 
 
 local function closeUI()
-	if not isOpen then
-		screenGui.Enabled =
+	if not screenGui.Enabled then
+		isOpen =
 			false
 
 		return
 	end
 
+	stopWindowTween()
+
 	isOpen =
 		false
 
-	local tween =
+	activeWindowTween =
 		TweenService:Create(
 			mainFrame,
 			CLOSE_TWEEN,
@@ -385,10 +699,13 @@ local function closeUI()
 			}
 		)
 
-	tween:Play()
+	activeWindowTween:Play()
 
-	tween.Completed:Once(
+	activeWindowTween.Completed:Once(
 		function()
+			activeWindowTween =
+				nil
+
 			if isOpen then
 				return
 			end
@@ -404,10 +721,106 @@ end
 
 
 --==================================================
+-- GRADIENT HELPERS
+--==================================================
+
+local function stopGradientTweens()
+	for tween in gradientTweens do
+		tween:Cancel()
+	end
+
+	table.clear(
+		gradientTweens
+	)
+end
+
+
+local function animateGradient(
+	gradient: UIGradient,
+	duration: number
+)
+	local tween =
+		TweenService:Create(
+			gradient,
+			TweenInfo.new(
+				duration,
+				Enum.EasingStyle.Linear,
+				Enum.EasingDirection.InOut,
+				-1,
+				false,
+				0
+			),
+			{
+				Rotation =
+					gradient.Rotation
+					+ 360,
+			}
+		)
+
+	gradientTweens[tween] =
+		true
+
+	tween:Play()
+end
+
+
+local function applyDayGradient(
+	card: GuiObject,
+	day: number
+)
+	local gradient =
+		card:FindFirstChild(
+			"UIGradient"
+		)
+
+	if not gradient
+		or not gradient:IsA(
+			"UIGradient"
+		) then
+
+		warn(
+			`Daily reward Day {day} is missing its UIGradient.`
+		)
+
+		return
+	end
+
+	local style =
+		DAY_GRADIENT_STYLES[
+			day
+		]
+
+	if not style then
+		return
+	end
+
+	gradient.Color =
+		style.Color
+
+	gradient.Rotation =
+		style.Rotation
+		or 0
+
+	gradient.Offset =
+		Vector2.zero
+
+	if style.Animated then
+		animateGradient(
+			gradient,
+			style.Duration
+				or 10
+		)
+	end
+end
+
+
+--==================================================
 -- CARD HELPERS
 --==================================================
 
 local function clearCards()
+	stopGradientTweens()
+
 	for _, child in
 		rewardsFrame:GetChildren() do
 
@@ -415,8 +828,7 @@ local function clearCards()
 			continue
 		end
 
-		-- Keep things such as UIGridLayout,
-		-- UIPadding, etc.
+		-- Keeps UIGridLayout / UIPadding etc.
 		if child:IsA(
 			"GuiObject"
 		) then
@@ -425,7 +837,9 @@ local function clearCards()
 		end
 	end
 
-	table.clear(cards)
+	table.clear(
+		cards
+	)
 end
 
 
@@ -474,7 +888,6 @@ local function refreshCards()
 		end
 
 
-		-- Day 7 was claimed today.
 		if completedCycleToday then
 			setClaimButtonText(
 				claimButton,
@@ -491,7 +904,6 @@ local function refreshCards()
 		end
 
 
-		-- Previous rewards in the current cycle.
 		if day < nextDay then
 			setClaimButtonText(
 				claimButton,
@@ -508,7 +920,6 @@ local function refreshCards()
 		end
 
 
-		-- The player's current reward.
 		if day == nextDay then
 			if canClaim then
 				setClaimButtonText(
@@ -522,9 +933,9 @@ local function refreshCards()
 				claimButton.AutoButtonColor =
 					not claiming
 			else
-				-- If this was the reward they just
-				-- claimed, keep it saying CLAIMED.
-				if lastRewardDay == day then
+				if lastRewardDay
+					== day then
+
 					setClaimButtonText(
 						claimButton,
 						"CLAIMED"
@@ -549,7 +960,6 @@ local function refreshCards()
 		end
 
 
-		-- Future rewards.
 		setClaimButtonText(
 			claimButton,
 			"LOCKED"
@@ -634,6 +1044,7 @@ local function startCountdown()
 
 					if not loaded then
 						task.wait(1)
+
 						continue
 					end
 
@@ -752,12 +1163,11 @@ local function claimReward(
 	end
 
 
-	-- Stop any old countdown that may still
-	-- be running.
+	-- Kill any countdown that existed
+	-- before this claim.
 	countdownToken += 1
 
 
-	-- Start the next reward's countdown.
 	if currentState
 		and not currentState.CanClaim then
 
@@ -830,8 +1240,6 @@ local function createCards()
 			) :: TextButton
 
 
-		-- The TextButton itself should have no
-		-- text. ClaimReward.Title displays it.
 		claimButton.Text =
 			""
 
@@ -859,7 +1267,8 @@ local function createCards()
 				]
 
 			rewardImg2.Image =
-				image or ""
+				image
+				or ""
 
 			rewardImg2.Visible =
 				image ~= nil
@@ -870,6 +1279,14 @@ local function createCards()
 			rewardImg2.Visible =
 				false
 		end
+
+
+		-- Give each successive day a
+		-- more valuable-looking appearance.
+		applyDayGradient(
+			card,
+			day
+		)
 
 
 		claimButton.Activated:Connect(
@@ -892,8 +1309,24 @@ end
 -- CONNECTIONS
 --==================================================
 
-closeButton.Activated:Connect(
-	closeUI
+-- Explicitly enable the close button in case
+-- it was disabled in Studio.
+closeButton.Active =
+	true
+
+closeButton.Selectable =
+	true
+
+closeButton.AutoButtonColor =
+	true
+
+
+-- MouseButton1Click works reliably for both
+-- mouse clicks and mobile taps.
+closeButton.MouseButton1Click:Connect(
+	function()
+		closeUI()
+	end
 )
 
 
@@ -916,8 +1349,6 @@ createCards()
 
 task.spawn(
 	function()
-		-- Give the rest of the player's UI
-		-- a moment to initialize.
 		task.wait(1)
 
 		local loaded =
@@ -932,8 +1363,11 @@ task.spawn(
 		end
 
 
+		-- Show every time the player joins,
+		-- even if today's reward was claimed.
 		openUI()
-		
+
+
 		if not currentState.CanClaim then
 			startCountdown()
 		end
