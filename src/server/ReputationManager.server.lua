@@ -546,7 +546,11 @@ RequiredProgress =
 			ReputationLevel = 1,
 
 			CurrentProgress = 0,
-			RequiredProgress = SALES_PER_LEVEL,
+			RequiredProgress =
+				ReputationConfig
+					.GetSalesRequiredForNextLevel(
+						1
+					),
 
 			CustomerRateBonus = 0,
 
@@ -769,6 +773,11 @@ local function updatePlotReputation(
 	plot:SetAttribute(
 		"ReputationCustomerRateMultiplier",
 		multiplier
+	)
+
+	plot:SetAttribute(
+		"ReputationReady",
+		true
 	)
 end
 

@@ -570,6 +570,11 @@ local function clearPlot(
 		0
 	)
 
+	plot:SetAttribute(
+		"ReputationReady",
+		false
+	)
+
 
 	plot:SetAttribute(
 		"ReputationLevel",
