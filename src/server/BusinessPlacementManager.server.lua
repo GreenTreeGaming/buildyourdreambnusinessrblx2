@@ -15,6 +15,13 @@ local BusinessConfig = require(
 		:WaitForChild("BusinessConfig")
 )
 
+local BusinessBuildAnimation =
+	require(
+		script.Parent
+			:WaitForChild("Services")
+			:WaitForChild("BusinessBuildAnimation")
+	)
+
 local businessModels =
 	ReplicatedStorage:WaitForChild("BusinessModels")
 
@@ -865,23 +872,6 @@ if maximumPlaced ~= math.huge
 		)
 end
 
-
-local licensePlacementBonus =
-	player:GetAttribute(
-		"LicensePlacementBonus"
-	)
-
-
-if typeof(licensePlacementBonus)
-		== "number"
-	and licensePlacementBonus > 0 then
-
-	maximumPlaced +=
-		math.floor(
-			licensePlacementBonus
-		)
-end
-
 if not editedStand
 	and #currentBusinesses
 		>= maximumPlaced then
@@ -1167,9 +1157,9 @@ placeBusinessRemote.OnServerEvent:Connect(
 	)
 
 	stand:SetAttribute(
-		"StandUnavailable",
-		false
-	)
+	"StandUnavailable",
+	false
+)
 
 	stand:SetAttribute(
 		"IsBeingEdited",
@@ -1374,15 +1364,54 @@ stand:SetAttribute(
 	config.BaseSaleValue
 )
 
-		setModelPlacedState(stand)
+		setModelPlacedState(
+	stand
+)
 
-		stand.Parent = placedBusinesses
 
-		stand:PivotTo(
-			placementCFrame
-		)
+stand.Parent =
+	placedBusinesses
 
-		if businessName == "LemonadeStand" then
+
+stand:PivotTo(
+	placementCFrame
+)
+
+
+--
+-- Keep customers/prompts from using the business while
+-- it performs its very short arrival animation.
+--
+stand:SetAttribute(
+	"StandUnavailable",
+	true
+)
+
+
+disablePrompts(
+	stand
+)
+
+
+BusinessBuildAnimation.Play(
+	stand
+)
+
+
+stand:SetAttribute(
+	"StandUnavailable",
+	false
+)
+
+
+restorePrompts(
+	stand
+)
+
+
+if businessName
+	== "LemonadeStand" then
+
 	plot:SetAttribute(
 		"StarterBusinessPlaced",
 		true

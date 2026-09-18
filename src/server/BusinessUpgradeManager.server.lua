@@ -4,9 +4,6 @@ local Players =
 local ReplicatedStorage =
 	game:GetService("ReplicatedStorage")
 
-local TweenService =
-	game:GetService("TweenService")
-
 local Workspace =
 	game:GetService("Workspace")
 
@@ -24,6 +21,12 @@ local businessModels =
 		"BusinessModels"
 	)
 
+local BusinessBuildAnimation =
+	require(
+		script.Parent
+			:WaitForChild("Services")
+			:WaitForChild("BusinessBuildAnimation")
+	)
 
 local remotes =
 	ReplicatedStorage:WaitForChild(
@@ -43,80 +46,6 @@ local REQUEST_COOLDOWN =
 
 local MANAGEMENT_DISTANCE =
 	22
-
-
---==================================================
--- APPEARANCE CONSTRUCTION ANIMATION
---==================================================
-
--- The old animation started at 8% size and 2.25 studs
--- underground. That made larger stands feel slow and messy.
---
--- This animation is intentionally fast and subtle.
-
--- Parts start only slightly below their final position.
-local CONSTRUCTION_START_OFFSET =
-	Vector3.new(
-		0,
-		-0.45,
-		0
-	)
-
-
--- They overshoot upward by a tiny amount before settling.
-local CONSTRUCTION_OVERSHOOT =
-	Vector3.new(
-		0,
-		0.08,
-		0
-	)
-
-
--- Start fairly close to final size.
--- This creates a quick "materialize/build" effect instead
--- of every object growing from nothing.
-local CONSTRUCTION_START_SCALE =
-	0.78
-
-
-local MINIMUM_PART_SIZE =
-	0.05
-
-
--- Main expansion/fade.
-local CONSTRUCTION_APPEAR_TIME =
-	0.16
-
-
--- Tiny settle movement after the initial pop.
-local CONSTRUCTION_SETTLE_TIME =
-	0.055
-
-
--- IMPORTANT:
--- This is the TOTAL amount of stagger across the ENTIRE
--- stand, not stagger-per-part.
---
--- That means huge Level 5 stands don't animate slower
--- simply because they contain more pieces.
-local CONSTRUCTION_TOTAL_STAGGER =
-	0.11
-
-
--- Small random variation prevents everything from looking
--- mechanically synchronized.
-local CONSTRUCTION_RANDOM_JITTER =
-	0.012
-
-
--- Brief completed-build flash.
-local COMPLETION_FLASH_TIME =
-	0.18
-
-
-local constructionRandom =
-	Random.new()
-
 
 --==================================================
 -- REMOTES
@@ -1947,11 +1876,6 @@ local function performUpgrade(
 		return
 	end
 
-
-	local oldPivot =
-		stand:GetPivot()
-
-
 	-- Prevent customers and prompts from interacting
 	-- during the very short replacement animation.
 	local businessType =
@@ -1987,9 +1911,6 @@ disablePrompts(
 
 local upgradedStand =
 	template:Clone()
-
-	local upgradedStand =
-		template:Clone()
 
 
 	local success,
@@ -2058,53 +1979,45 @@ local upgradedStand =
 
 
 			upgradedStand.Parent =
-				placedBusinesses
+	placedBusinesses
 
 
-			alignModelToStand(
+--
+-- Line the new model up using PlacementOrigin BEFORE
+-- deleting the old model.
+--
+alignModelToStand(
 	upgradedStand,
 	stand
 )
 
 
-			-- Capture final transforms after PivotTo.
-			local constructionStates =
-				getConstructionParts(
-					upgradedStand
-				)
+--
+-- At this point the new stand is perfectly positioned.
+-- The animation only moves the entire model as one unit,
+-- so complex models can never pull themselves apart.
+--
+stand:Destroy()
 
 
-			-- Hide/shrink the new visual BEFORE destroying
-			-- the old model, so there is never a visible
-			-- frame where both full stands overlap.
-			prepareConstructionAnimation(
-				constructionStates
-			)
+upgradedStand.Name =
+	finalName
 
 
-			stand:Destroy()
+BusinessBuildAnimation.Play(
+	upgradedStand
+)
 
 
-			upgradedStand.Name =
-				finalName
+upgradedStand:SetAttribute(
+	"StandUnavailable",
+	false
+)
 
 
-			-- Fast polished build.
-			playConstructionAnimation(
-				upgradedStand,
-				constructionStates
-			)
-
-
-			upgradedStand:SetAttribute(
-				"StandUnavailable",
-				false
-			)
-
-
-			restorePrompts(
-				upgradedStand
-			)
+restorePrompts(
+	upgradedStand
+)
 		end)
 
 
