@@ -631,24 +631,32 @@ local function logPurchase(
 		)
 
 
-	AnalyticsTracker.LogFunnel(
-		player,
-		"Monetization",
-		4,
-		"Purchase Completed",
-		customFields
-	)
+	local sessionId =
+		AnalyticsTracker.GetActiveFunnelSession(
+			player,
+			"Monetization"
+		)
 
 
-	--
-	-- The standard funnel answers:
-	--
-	-- Shop -> Offer -> Prompt -> First Purchase
-	--
-	-- These custom events let you break completed
-	-- purchases down by the actual offer without
-	-- consuming more of Roblox's funnel limit.
-	--
+	if sessionId then
+
+		AnalyticsTracker.LogFunnel(
+			player,
+			"Monetization",
+			4,
+			"Purchase Completed",
+			customFields,
+			sessionId
+		)
+
+
+		AnalyticsTracker.EndFunnelSession(
+			player,
+			"Monetization"
+		)
+	end
+
+
 	AnalyticsTracker.LogCustom(
 		player,
 		`Purchase_{productName}`,
@@ -656,7 +664,6 @@ local function logPurchase(
 		customFields
 	)
 end
-
 
 --==================================================
 -- RECEIPTS

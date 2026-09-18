@@ -1325,22 +1325,13 @@ local function updateBusinesses(
 
 		if snapshot.TotalSales
 			<= 0 then
-
+		
 			AnalyticsTracker.LogOnboarding(
 				player,
 				AnalyticsTracker
 					.Onboarding
 					.ServedFirstCustomer,
 				"Served First Customer"
-			)
-
-
-			AnalyticsTracker.LogOnboarding(
-				player,
-				AnalyticsTracker
-					.Onboarding
-					.EarnedFirstCash,
-				"Earned First Cash"
 			)
 		end
 
@@ -2420,55 +2411,90 @@ analyticsEvent.OnServerEvent:Connect(
 
 		if eventName
 			== "ShopOpened" then
-
+		
+			local sessionId =
+				AnalyticsTracker.StartFunnelSession(
+					player,
+					"Monetization"
+				)
+		
+		
 			AnalyticsTracker.LogFunnel(
 				player,
 				"Monetization",
 				1,
-				"Shop Opened"
+				"Shop Opened",
+				nil,
+				sessionId
 			)
-
-
+		
+		
 			return
 		end
 
 
 		if eventName
 			== "ProductViewed" then
-
+		
+			local sessionId =
+				AnalyticsTracker.GetActiveFunnelSession(
+					player,
+					"Monetization"
+				)
+		
+			if not sessionId then
+				return
+			end
+		
+		
 			AnalyticsTracker.LogFunnel(
 				player,
 				"Monetization",
 				2,
 				"Product Viewed",
-
+		
 				AnalyticsTracker.MakeFields(
 					data.Product,
 					data.ProductType
-				)
+				),
+		
+				sessionId
 			)
-
-
+		
+		
 			return
 		end
 
 
 		if eventName
 			== "PurchasePromptOpened" then
-
+		
+			local sessionId =
+				AnalyticsTracker.GetActiveFunnelSession(
+					player,
+					"Monetization"
+				)
+		
+			if not sessionId then
+				return
+			end
+		
+		
 			AnalyticsTracker.LogFunnel(
 				player,
 				"Monetization",
 				3,
 				"Purchase Prompt Opened",
-
+		
 				AnalyticsTracker.MakeFields(
 					data.Product,
 					data.ProductType
-				)
+				),
+		
+				sessionId
 			)
-
-
+		
+		
 			return
 		end
 	end

@@ -4,8 +4,17 @@ local RobloxAnalyticsService =
 local Players =
 	game:GetService("Players")
 
+local HttpService =
+	game:GetService("HttpService")
+
 
 local AnalyticsTracker = {}
+
+local activeFunnelSessions: {
+	[Player]: {
+		[string]: string,
+	},
+} = {}
 
 
 --==================================================
@@ -18,9 +27,8 @@ AnalyticsTracker.Onboarding = {
 	EnteredPlacementMode = 3,
 	PlacedFirstLemonadeStand = 4,
 	ServedFirstCustomer = 5,
-	EarnedFirstCash = 6,
-	BoughtFirstUpgrade = 7,
-	TutorialCompleted = 8,
+	BoughtFirstUpgrade = 6,
+	TutorialCompleted = 7,
 }
 
 
@@ -214,7 +222,7 @@ end
 
 
 --==================================================
--- FUNNEL SESSION
+-- FUNNEL SESSIONS
 --==================================================
 
 local function getPersistentSessionId(
@@ -222,12 +230,71 @@ local function getPersistentSessionId(
 	funnelName: string
 ): string
 
-	--
-	-- These funnels represent first-time / lifetime
-	-- progression, so the same user keeps the same
-	-- session ID between joins.
-	--
 	return `{player.UserId}:{funnelName}`
+end
+
+
+function AnalyticsTracker.StartFunnelSession(
+	player: Player,
+	funnelName: string
+): string
+
+	local playerSessions =
+		activeFunnelSessions[player]
+
+	if not playerSessions then
+
+		playerSessions = {}
+
+		activeFunnelSessions[player] =
+			playerSessions
+	end
+
+
+	local sessionId =
+		HttpService:GenerateGUID(false)
+
+
+	playerSessions[funnelName] =
+		sessionId
+
+
+	return sessionId
+end
+
+
+function AnalyticsTracker.GetActiveFunnelSession(
+	player: Player,
+	funnelName: string
+): string?
+
+	local playerSessions =
+		activeFunnelSessions[player]
+
+	if not playerSessions then
+		return nil
+	end
+
+
+	return playerSessions[funnelName]
+end
+
+
+function AnalyticsTracker.EndFunnelSession(
+	player: Player,
+	funnelName: string
+)
+
+	local playerSessions =
+		activeFunnelSessions[player]
+
+	if not playerSessions then
+		return
+	end
+
+
+	playerSessions[funnelName] =
+		nil
 end
 
 
@@ -292,7 +359,8 @@ function AnalyticsTracker.LogFunnel(
 	funnelName: string,
 	step: number,
 	stepName: string,
-	customFields: {[string]: string}?
+	customFields: {[string]: string}?,
+	sessionId: string?
 )
 
 	if not player.Parent then
@@ -300,21 +368,30 @@ function AnalyticsTracker.LogFunnel(
 	end
 
 
+	local resolvedSessionId =
+		sessionId
+		or getPersistentSessionId(
+			player,
+			funnelName
+		)
+
+
+	--
+	-- Deduplicate lifetime funnels, but do NOT
+	-- deduplicate recurring session-based funnels.
+	--
+	local category =
+		`Funnel:{funnelName}:{resolvedSessionId}`
+
+
 	if hasLogged(
 		player,
-		`Funnel:{funnelName}`,
+		category,
 		step
 	) then
 
 		return
 	end
-
-
-	local sessionId =
-		getPersistentSessionId(
-			player,
-			funnelName
-		)
 
 
 	local success =
@@ -325,7 +402,7 @@ function AnalyticsTracker.LogFunnel(
 					LogFunnelStepEvent(
 						player,
 						funnelName,
-						sessionId,
+						resolvedSessionId,
 						step,
 						stepName,
 						customFields or {}
@@ -338,7 +415,7 @@ function AnalyticsTracker.LogFunnel(
 
 		markLogged(
 			player,
-			`Funnel:{funnelName}`,
+			category,
 			step
 		)
 	end
@@ -501,8 +578,12 @@ Players.PlayerRemoving:Connect(
 		clientEventTimes[
 			player
 		] = nil
+
+
+		activeFunnelSessions[
+			player
+		] = nil
 	end
 )
-
 
 return AnalyticsTracker
