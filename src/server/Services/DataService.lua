@@ -65,6 +65,8 @@ local DEFAULT_PROFILE = {
 	Version = CURRENT_DATA_VERSION,
 
 	Cash = 0,
+	HighestCash = 0,
+
 	Licenses = 0,
 	TimePlayed = 0,
 	TutorialCompleted = false,
@@ -158,7 +160,10 @@ type SavedPlacedBusiness = {
 
 type PlayerProfile = {
 	Version: number,
+
 	Cash: number,
+	HighestCash: number,
+
 	Licenses: number,
 	TimePlayed: number,
 
@@ -807,6 +812,71 @@ LifetimeEarnings =
 		)
 end
 
+function DataService.GetHighestCash(
+	player: Player
+): number
+
+	local profile =
+		profiles[player]
+
+
+	if not profile then
+		return 0
+	end
+
+
+	return sanitizeStatistic(
+		profile.HighestCash
+	)
+end
+
+
+function DataService.UpdateHighestCash(
+	player: Player,
+	amount: number
+): boolean
+
+	local profile =
+		profiles[player]
+
+
+	if not profile then
+		return false
+	end
+
+
+	local sanitizedAmount =
+		sanitizeStatistic(
+			amount
+		)
+
+
+	local currentHighest =
+		sanitizeStatistic(
+			profile.HighestCash
+		)
+
+
+	if sanitizedAmount
+		<= currentHighest then
+
+		return false
+	end
+
+
+	profile.HighestCash =
+		sanitizedAmount
+
+
+	player:SetAttribute(
+		"HighestCash",
+		sanitizedAmount
+	)
+
+
+	return true
+end
+
 local function migrateProfile(
 	rawData: any
 ): PlayerProfile
@@ -846,10 +916,16 @@ local function migrateProfile(
 		DEFAULT_PROFILE.Cash
 end
 
-profile.Cash =
+profile.HighestCash =
+	sanitizeStatistic(
+		profile.HighestCash
+	)
+
+
+profile.HighestCash =
 	math.max(
-		0,
-		math.floor(profile.Cash)
+		profile.HighestCash,
+		profile.Cash
 	)
 
 profile.Licenses =
@@ -1311,10 +1387,23 @@ local function createSaveSnapshot(
 	local cash = getCashValue(player)
 
 	if cash then
+	
 		snapshot.Cash =
 			math.max(
 				0,
-				math.floor(cash.Value)
+				math.floor(
+					cash.Value
+				)
+			)
+	
+	
+		snapshot.HighestCash =
+			math.max(
+				sanitizeStatistic(
+					snapshot.HighestCash
+				),
+	
+				snapshot.Cash
 			)
 	end
 
@@ -1430,6 +1519,53 @@ function DataService.LoadPlayer(
 	createLeaderstats(
 		player,
 		profile.Cash
+	)
+
+	local leaderstats =
+		player:FindFirstChild(
+			"leaderstats"
+		)
+	
+	
+	local cash =
+		leaderstats
+		and leaderstats:FindFirstChild(
+			"Cash"
+		)
+	
+	
+	if cash
+		and cash:IsA(
+			"IntValue"
+		) then
+	
+		DataService.UpdateHighestCash(
+			player,
+			cash.Value
+		)
+	
+	
+		cash:GetPropertyChangedSignal(
+			"Value"
+		):Connect(
+			function()
+	
+				if not player.Parent then
+					return
+				end
+	
+	
+				DataService.UpdateHighestCash(
+					player,
+					cash.Value
+				)
+			end
+		)
+	end
+
+	player:SetAttribute(
+		"HighestCash",
+		profile.HighestCash
 	)
 
 	player:SetAttribute(

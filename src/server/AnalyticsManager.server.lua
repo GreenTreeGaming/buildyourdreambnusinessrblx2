@@ -66,6 +66,49 @@ local plotsFolder =
 	)
 
 
+local CASH_MILESTONES = {
+	100,
+	500,
+	1_000,
+	5_000,
+	10_000,
+	25_000,
+	50_000,
+	100_000,
+	250_000,
+	500_000,
+	1_000_000,
+	5_000_000,
+	10_000_000,
+}
+
+
+local LIFETIME_EARNINGS_MILESTONES = {
+	1_000,
+	5_000,
+	10_000,
+	50_000,
+	100_000,
+	500_000,
+	1_000_000,
+	5_000_000,
+	10_000_000,
+}
+
+
+local CUSTOMER_MILESTONES = {
+	10,
+	25,
+	50,
+	100,
+	250,
+	500,
+	1_000,
+	2_500,
+	5_000,
+	10_000,
+}
+
 --==================================================
 -- REMOTE
 --==================================================
@@ -495,6 +538,137 @@ local function getCash(
 	return 0
 end
 
+local function getLifetimeEarnings(
+	profile: any
+): number
+
+	local total =
+		0
+
+
+	if type(
+		profile.PlacedBusinesses
+	) ~= "table" then
+
+		return 0
+	end
+
+
+	for _, business in
+		profile.PlacedBusinesses
+	do
+
+		if type(business)
+			~= "table" then
+
+			continue
+		end
+
+
+		total +=
+			sanitizeNumber(
+				business.LifetimeEarnings
+			)
+	end
+
+
+	return total
+end
+
+local function formatMilestone(
+	amount: number
+): string
+
+	if amount >= 1_000_000 then
+
+		local millions =
+			amount / 1_000_000
+
+		if millions
+			% 1 == 0 then
+
+			return `${
+				math.floor(
+					millions
+				)
+			}M`
+		end
+
+
+		return `{
+			millions
+		}M`
+	end
+
+
+	if amount >= 1_000 then
+
+		local thousands =
+			amount / 1_000
+
+		if thousands
+			% 1 == 0 then
+
+			return `${
+				math.floor(
+					thousands
+				)
+			}K`
+		end
+
+
+		return `{
+			thousands
+		}K`
+	end
+
+
+	return tostring(
+		amount
+	)
+end
+
+local function logMilestones(
+	player: Player,
+	pathName: string,
+	currentValue: number,
+	milestones: {number},
+	prefix: string?
+)
+
+	for index, milestone in
+		milestones
+	do
+
+		if currentValue
+			< milestone then
+
+			break
+		end
+
+
+		local label =
+			formatMilestone(
+				milestone
+			)
+
+
+		if prefix then
+
+			label =
+				prefix
+				.. label
+		end
+
+
+		AnalyticsTracker.LogProgression(
+			player,
+			pathName,
+			index,
+			label
+		)
+	end
+end
 
 local function getNextPlotCost(
 	currentLevel: number
@@ -2007,6 +2181,55 @@ local function updateTutorial(
 		completed
 end
 
+--==================================================
+-- ECONOMY / ACTIVITY MILESTONES
+--==================================================
+
+local function updateMilestones(
+	player: Player,
+	snapshot: Snapshot,
+	profile: any
+)
+
+	local highestCash =
+		DataService.GetHighestCash(
+			player
+		)
+	
+	
+	logMilestones(
+		player,
+		"CashProgression",
+		highestCash,
+		CASH_MILESTONES,
+		"$"
+	)
+
+
+	local lifetimeEarnings =
+		getLifetimeEarnings(
+			profile
+		)
+
+
+	logMilestones(
+		player,
+		"LifetimeEarnings",
+		lifetimeEarnings,
+		LIFETIME_EARNINGS_MILESTONES,
+		"$"
+	)
+
+
+	logMilestones(
+		player,
+		"CustomersServed",
+		snapshot.TotalSales,
+		CUSTOMER_MILESTONES,
+		nil
+	)
+end
+
 
 --==================================================
 -- PLAYER UPDATE
@@ -2112,8 +2335,15 @@ local function updatePlayer(
 		player,
 		snapshot
 	)
-
-
+	
+	
+	updateMilestones(
+		player,
+		snapshot,
+		profile
+	)
+	
+	
 	flushEarlyProgression(
 		player,
 		snapshot
