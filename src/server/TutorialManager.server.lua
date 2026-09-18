@@ -15,6 +15,17 @@ local remotes =
 		"Remotes"
 	)
 
+local Players =
+	game:GetService("Players")
+
+
+local AnalyticsTracker =
+	require(
+		script.Parent
+			:WaitForChild("Services")
+			:WaitForChild("AnalyticsService")
+	)
+
 
 --==================================================
 -- REMOTES
@@ -254,6 +265,13 @@ completeTutorialRemote.OnServerEvent:Connect(
 
 			return
 		end
+
+		AnalyticsTracker.LogOnboarding(
+			player,
+			AnalyticsTracker.Onboarding
+				.TutorialCompleted,
+			"Tutorial Completed"
+		)
 
 
 		-- Save immediately instead of relying solely

@@ -7,6 +7,13 @@ local ReplicatedStorage =
 local Workspace =
 	game:GetService("Workspace")
 
+local ReputationConfig =
+	require(
+		ReplicatedStorage
+			:WaitForChild("Shared")
+			:WaitForChild("ReputationConfig")
+	)
+
 
 local BusinessConfig =
 	require(
@@ -69,10 +76,6 @@ end
 --==================================================
 -- CONSTANTS
 --==================================================
-
--- Keep this synchronized with ReputationManager.
-local SALES_PER_REPUTATION_LEVEL =
-	25
 
 local CHECK_INTERVAL =
 	1
@@ -183,12 +186,18 @@ local function getReputationLevel(
 		)
 
 
+	local reputationLevel =
+		ReputationConfig
+			.GetStateFromSales(
+				totalSales
+			)
+
+
 	return math.max(
 		1,
 		math.floor(
-			totalSales
-				/ SALES_PER_REPUTATION_LEVEL
-		) + 1
+			reputationLevel
+		)
 	)
 end
 
