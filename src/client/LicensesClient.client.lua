@@ -1270,9 +1270,9 @@ licenseEarnedRemote.OnClientEvent:Connect(
 
 		Notification.Success(
 			`You earned {amount} {licenseWord}! — {sourceName}`,
-			{
-				Duration = 4,
-			}
+				{
+					Duration = 2,
+				}
 		)
 	end
 )

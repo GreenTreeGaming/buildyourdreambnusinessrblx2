@@ -43,6 +43,17 @@ local cashLabel =
 		"Title"
 	) :: TextLabel
 
+local addButton =
+	cashAmount:WaitForChild(
+		"Add"
+	) :: TextButton
+
+
+local addIcon =
+	addButton:FindFirstChild(
+		"ImageLabel"
+	)
+
 
 local leaderstats =
 	player:WaitForChild(
@@ -114,6 +125,117 @@ end
 textScale =
 	textScale :: UIScale
 
+
+--==================================================
+-- ADD BUTTON RESPONSIVE SIZING
+--==================================================
+
+-- Remove the constraint from the previous version
+-- if it was already created.
+local oldAspect =
+	addButton:FindFirstChild(
+		"ResponsiveAspectRatio"
+	)
+
+if oldAspect then
+	oldAspect:Destroy()
+end
+
+
+local function updateAddButtonSize()
+
+	local cashHeight =
+		cashAmount.AbsoluteSize.Y
+
+
+	if cashHeight <= 0 then
+		return
+	end
+
+
+	-- Button is 68% of the cash bar's height.
+	local buttonSize =
+		math.max(
+			24,
+			math.round(
+				cashHeight * 0.68
+			)
+		)
+
+
+	-- Padding also scales with the cash bar.
+	local rightPadding =
+		math.max(
+			5,
+			math.round(
+				cashHeight * 0.1
+			)
+		)
+
+
+	addButton.AnchorPoint =
+		Vector2.new(
+			1,
+			0.5
+		)
+
+
+	addButton.Position =
+		UDim2.new(
+			1,
+			-rightPadding,
+			0.5,
+			0
+		)
+
+
+	addButton.Size =
+		UDim2.fromOffset(
+			buttonSize,
+			buttonSize
+		)
+
+
+	-- Keep the + icon proportional to the button.
+	if addIcon
+		and addIcon:IsA(
+			"GuiObject"
+		) then
+
+		addIcon.AnchorPoint =
+			Vector2.new(
+				0.5,
+				0.5
+			)
+
+
+		addIcon.Position =
+			UDim2.fromScale(
+				0.5,
+				0.5
+			)
+
+
+		addIcon.Size =
+			UDim2.fromScale(
+				0.62,
+				0.62
+			)
+	end
+end
+
+
+-- Wait until Roblox has calculated AbsoluteSize.
+task.defer(
+	updateAddButtonSize
+)
+
+
+cashAmount:GetPropertyChangedSignal(
+	"AbsoluteSize"
+):Connect(
+	updateAddButtonSize
+)
 
 --==================================================
 -- STATE

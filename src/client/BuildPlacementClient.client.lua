@@ -1530,9 +1530,150 @@ local function destroyFutureFootprint()
 		true
 end
 
-local function getLargestAvailableStandTemplate(
+--==================================================
+-- MAXIMUM FUTURE UPGRADE FOOTPRINT
+--==================================================
+
+type LocalFootprintBounds = {
+	MinX: number,
+	MaxX: number,
+	MinZ: number,
+	MaxZ: number,
+}
+
+
+local function includeBoundsCorners(
+	accumulated: LocalFootprintBounds?,
+	placementOrigin: BasePart,
+	placementBounds: BasePart
+): LocalFootprintBounds
+
+	--
+	-- Convert every corner of PlacementBounds into the
+	-- coordinate space of PlacementOrigin.
+	--
+	-- This is important because different stand levels may
+	-- have different model pivots or bounds offsets.
+	--
+	local halfX =
+		placementBounds.Size.X / 2
+
+	local halfZ =
+		placementBounds.Size.Z / 2
+
+
+	local corners = {
+		Vector3.new(
+			-halfX,
+			0,
+			-halfZ
+		),
+
+		Vector3.new(
+			-halfX,
+			0,
+			halfZ
+		),
+
+		Vector3.new(
+			halfX,
+			0,
+			-halfZ
+		),
+
+		Vector3.new(
+			halfX,
+			0,
+			halfZ
+		),
+	}
+
+
+	local minX =
+		accumulated
+			and accumulated.MinX
+			or math.huge
+
+	local maxX =
+		accumulated
+			and accumulated.MaxX
+			or -math.huge
+
+	local minZ =
+		accumulated
+			and accumulated.MinZ
+			or math.huge
+
+	local maxZ =
+		accumulated
+			and accumulated.MaxZ
+			or -math.huge
+
+
+	for _, corner in corners do
+
+		local worldCorner =
+			placementBounds.CFrame
+				:PointToWorldSpace(
+					corner
+				)
+
+
+		local localCorner =
+			placementOrigin.CFrame
+				:PointToObjectSpace(
+					worldCorner
+				)
+
+
+		minX =
+			math.min(
+				minX,
+				localCorner.X
+			)
+
+
+		maxX =
+			math.max(
+				maxX,
+				localCorner.X
+			)
+
+
+		minZ =
+			math.min(
+				minZ,
+				localCorner.Z
+			)
+
+
+		maxZ =
+			math.max(
+				maxZ,
+				localCorner.Z
+			)
+	end
+
+
+	return {
+		MinX =
+			minX,
+
+		MaxX =
+			maxX,
+
+		MinZ =
+			minZ,
+
+		MaxZ =
+			maxZ,
+	}
+end
+
+
+local function getMaximumUpgradeLocalBounds(
 	businessName: string
-): Model?
+): LocalFootprintBounds?
 
 	local config =
 		BusinessConfig[
@@ -1541,27 +1682,24 @@ local function getLargestAvailableStandTemplate(
 
 
 	if type(config) ~= "table"
-		or type(config.StandLevels)
-			~= "table" then
+		or type(
+			config.StandLevels
+		) ~= "table" then
 
 		return nil
 	end
 
 
-	local highestLevel =
-		-math.huge
-
-	local bestTemplate:
-		Model? =
+	local combinedBounds:
+		LocalFootprintBounds? =
 		nil
 
 
-	for level, levelConfig in
+	for _, levelConfig in
 		config.StandLevels do
 
-		if typeof(level) ~= "number"
-			or type(levelConfig)
-				~= "table" then
+		if type(levelConfig)
+			~= "table" then
 
 			continue
 		end
@@ -1584,86 +1722,52 @@ local function getLargestAvailableStandTemplate(
 			)
 
 
-		if template
-			and template:IsA(
+		if not template
+			or not template:IsA(
 				"Model"
-			)
-			and level > highestLevel then
+			) then
 
-			local bounds =
-				template:FindFirstChild(
-					"PlacementBounds",
-					true
-				)
-
-
-			if bounds
-				and bounds:IsA(
-					"BasePart"
-				) then
-
-				highestLevel =
-					level
-
-				bestTemplate =
-					template
-			end
+			continue
 		end
+
+
+		local placementOrigin =
+			template:FindFirstChild(
+				"PlacementOrigin",
+				true
+			)
+
+
+		local placementBounds =
+			template:FindFirstChild(
+				"PlacementBounds",
+				true
+			)
+
+
+		if not placementOrigin
+			or not placementOrigin:IsA(
+				"BasePart"
+			)
+			or not placementBounds
+			or not placementBounds:IsA(
+				"BasePart"
+			) then
+
+			continue
+		end
+
+
+		combinedBounds =
+			includeBoundsCorners(
+				combinedBounds,
+				placementOrigin,
+				placementBounds
+			)
 	end
 
 
-	return bestTemplate
-end
-
-local function getFutureFootprintDefinition(
-	businessName: string
-): (
-	Model?,
-	BasePart?,
-	BasePart?
-)
-
-	local template =
-		getLargestAvailableStandTemplate(
-			businessName
-		)
-
-
-	if not template then
-		return nil, nil, nil
-	end
-
-
-	local placementOrigin =
-		template:FindFirstChild(
-			"PlacementOrigin",
-			true
-		)
-
-
-	local placementBounds =
-		template:FindFirstChild(
-			"PlacementBounds",
-			true
-		)
-
-
-	if not placementOrigin
-		or not placementOrigin:IsA(
-			"BasePart"
-		)
-		or not placementBounds
-		or not placementBounds:IsA(
-			"BasePart"
-		) then
-
-		return nil, nil, nil
-	end
-
-
-	return template,
-		placementOrigin,
-		placementBounds
+	return combinedBounds
 end
 
 
@@ -1675,18 +1779,16 @@ local function getAlignedFutureBounds(
 	Vector3?
 )
 
-	local _template,
-		sourceOrigin,
-		sourceBounds =
-		getFutureFootprintDefinition(
+	local localBounds =
+		getMaximumUpgradeLocalBounds(
 			businessName
 		)
 
 
-	if not sourceOrigin
-		or not sourceBounds then
+	if not localBounds then
 
-		return nil, nil
+		return nil,
+			nil
 	end
 
 
@@ -1702,36 +1804,61 @@ local function getAlignedFutureBounds(
 			"BasePart"
 		) then
 
-		return nil, nil
+		return nil,
+			nil
 	end
 
 
-	local _,
-		sourceYaw,
-		_ =
-		sourceOrigin.CFrame
-			:ToOrientation()
+	local width =
+		localBounds.MaxX
+			- localBounds.MinX
 
 
-	local _,
+	local depth =
+		localBounds.MaxZ
+			- localBounds.MinZ
+
+
+	if width <= 0
+		or depth <= 0 then
+
+		return nil,
+			nil
+	end
+
+
+	--
+	-- Center of the combined footprint relative to
+	-- PlacementOrigin.
+	--
+	local localCenter =
+		Vector3.new(
+			(
+				localBounds.MinX
+					+ localBounds.MaxX
+			) / 2,
+
+			0,
+
+			(
+				localBounds.MinZ
+					+ localBounds.MaxZ
+			) / 2
+		)
+
+
+	--
+	-- Ignore accidental X/Z tilt on PlacementOrigin.
+	-- Placement is always horizontal.
+	--
+	local _x,
 		targetYaw,
-		_ =
+		_z =
 		targetOrigin.CFrame
 			:ToOrientation()
 
 
-	local cleanSource =
-		CFrame.new(
-			sourceOrigin.Position
-		)
-		* CFrame.Angles(
-			0,
-			sourceYaw,
-			0
-		)
-
-
-	local cleanTarget =
+	local cleanTargetOrigin =
 		CFrame.new(
 			targetOrigin.Position
 		)
@@ -1742,18 +1869,23 @@ local function getAlignedFutureBounds(
 		)
 
 
-	local transform =
-		cleanTarget
-			* cleanSource:Inverse()
+	local alignedCFrame =
+		cleanTargetOrigin
+			* CFrame.new(
+				localCenter
+			)
 
 
-	local alignedBoundsCFrame =
-		transform
-			* sourceBounds.CFrame
+	local alignedSize =
+		Vector3.new(
+			width,
+			FUTURE_FOOTPRINT_HEIGHT,
+			depth
+		)
 
 
-	return alignedBoundsCFrame,
-		sourceBounds.Size
+	return alignedCFrame,
+		alignedSize
 end
 
 local function createFutureEdge(

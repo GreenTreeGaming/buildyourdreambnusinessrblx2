@@ -247,41 +247,163 @@ local function getPlacementBoundsAtCFrame(
 	return boundsCFrame, boundsSize
 end
 
-local function getLargestStandTemplate(
+type LocalFootprintBounds = {
+	MinX: number,
+	MaxX: number,
+	MinZ: number,
+	MaxZ: number,
+}
+
+
+local function includeBoundsCorners(
+	accumulated: LocalFootprintBounds?,
+	placementOrigin: BasePart,
+	placementBounds: BasePart
+): LocalFootprintBounds
+
+	local halfX =
+		placementBounds.Size.X / 2
+
+	local halfZ =
+		placementBounds.Size.Z / 2
+
+
+	local corners = {
+		Vector3.new(
+			-halfX,
+			0,
+			-halfZ
+		),
+
+		Vector3.new(
+			-halfX,
+			0,
+			halfZ
+		),
+
+		Vector3.new(
+			halfX,
+			0,
+			-halfZ
+		),
+
+		Vector3.new(
+			halfX,
+			0,
+			halfZ
+		),
+	}
+
+
+	local minX =
+		accumulated
+			and accumulated.MinX
+			or math.huge
+
+	local maxX =
+		accumulated
+			and accumulated.MaxX
+			or -math.huge
+
+	local minZ =
+		accumulated
+			and accumulated.MinZ
+			or math.huge
+
+	local maxZ =
+		accumulated
+			and accumulated.MaxZ
+			or -math.huge
+
+
+	for _, corner in corners do
+
+		local worldCorner =
+			placementBounds.CFrame
+				:PointToWorldSpace(
+					corner
+				)
+
+
+		local localCorner =
+			placementOrigin.CFrame
+				:PointToObjectSpace(
+					worldCorner
+				)
+
+
+		minX =
+			math.min(
+				minX,
+				localCorner.X
+			)
+
+		maxX =
+			math.max(
+				maxX,
+				localCorner.X
+			)
+
+		minZ =
+			math.min(
+				minZ,
+				localCorner.Z
+			)
+
+		maxZ =
+			math.max(
+				maxZ,
+				localCorner.Z
+			)
+	end
+
+
+	return {
+		MinX = minX,
+		MaxX = maxX,
+		MinZ = minZ,
+		MaxZ = maxZ,
+	}
+end
+
+
+local function getMaximumUpgradeLocalBounds(
 	businessName: string
-): Model?
+): LocalFootprintBounds?
 
 	local config =
 		getBusinessConfig(
 			businessName
 		)
 
+
 	if not config
-		or type(config.StandLevels)
-			~= "table" then
+		or type(
+			config.StandLevels
+		) ~= "table" then
 
 		return nil
 	end
 
-	local highestLevel =
-		-math.huge
 
-	local largestTemplate:
-		Model? =
+	local combinedBounds:
+		LocalFootprintBounds? =
 		nil
 
-	for level, levelConfig in
+
+	for _, levelConfig in
 		config.StandLevels do
 
-		if typeof(level) ~= "number"
-			or type(levelConfig)
-				~= "table" then
+		if type(levelConfig)
+			~= "table" then
 
 			continue
 		end
 
+
 		local templateName =
 			levelConfig.TemplateName
+
 
 		if typeof(templateName)
 			~= "string" then
@@ -289,10 +411,12 @@ local function getLargestStandTemplate(
 			continue
 		end
 
+
 		local template =
 			businessModels:FindFirstChild(
 				templateName
 			)
+
 
 		if not template
 			or not template:IsA(
@@ -302,17 +426,20 @@ local function getLargestStandTemplate(
 			continue
 		end
 
+
 		local placementOrigin =
 			template:FindFirstChild(
 				"PlacementOrigin",
 				true
 			)
 
+
 		local placementBounds =
 			template:FindFirstChild(
 				"PlacementBounds",
 				true
 			)
+
 
 		if not placementOrigin
 			or not placementOrigin:IsA(
@@ -326,78 +453,81 @@ local function getLargestStandTemplate(
 			continue
 		end
 
-		if level > highestLevel then
-			highestLevel =
-				level
 
-			largestTemplate =
-				template
-		end
+		combinedBounds =
+			includeBoundsCorners(
+				combinedBounds,
+				placementOrigin,
+				placementBounds
+			)
 	end
 
-	return largestTemplate
+
+	return combinedBounds
 end
 
 
 local function getAlignedMaximumBounds(
 	businessName: string,
 	targetOriginCFrame: CFrame
-): (CFrame?, Vector3?)
+): (
+	CFrame?,
+	Vector3?
+)
 
-	local template =
-		getLargestStandTemplate(
+	local localBounds =
+		getMaximumUpgradeLocalBounds(
 			businessName
 		)
 
-	if not template then
-		return nil, nil
+
+	if not localBounds then
+
+		return nil,
+			nil
 	end
 
-	local sourceOrigin =
-		template:FindFirstChild(
-			"PlacementOrigin",
-			true
-		)
 
-	local sourceBounds =
-		template:FindFirstChild(
-			"PlacementBounds",
-			true
-		)
+	local width =
+		localBounds.MaxX
+			- localBounds.MinX
 
-	if not sourceOrigin
-		or not sourceOrigin:IsA(
-			"BasePart"
-		)
-		or not sourceBounds
-		or not sourceBounds:IsA(
-			"BasePart"
-		) then
 
-		return nil, nil
+	local depth =
+		localBounds.MaxZ
+			- localBounds.MinZ
+
+
+	if width <= 0
+		or depth <= 0 then
+
+		return nil,
+			nil
 	end
 
-	local _sourceX,
-		sourceYaw,
-		_sourceZ =
-		sourceOrigin.CFrame
-			:ToOrientation()
 
-	local _targetX,
-		targetYaw,
-		_targetZ =
+	local center =
+		Vector3.new(
+			(
+				localBounds.MinX
+					+ localBounds.MaxX
+			) / 2,
+
+			0,
+
+			(
+				localBounds.MinZ
+					+ localBounds.MaxZ
+			) / 2
+		)
+
+
+	local _x,
+		yaw,
+		_z =
 		targetOriginCFrame
 			:ToOrientation()
 
-	local cleanSource =
-		CFrame.new(
-			sourceOrigin.Position
-		)
-		* CFrame.Angles(
-			0,
-			sourceYaw,
-			0
-		)
 
 	local cleanTarget =
 		CFrame.new(
@@ -405,17 +535,21 @@ local function getAlignedMaximumBounds(
 		)
 		* CFrame.Angles(
 			0,
-			targetYaw,
+			yaw,
 			0
 		)
 
-	local transform =
-		cleanTarget
-			* cleanSource:Inverse()
 
-	return transform
-			* sourceBounds.CFrame,
-		sourceBounds.Size
+	return cleanTarget
+			* CFrame.new(
+				center
+			),
+
+		Vector3.new(
+			width,
+			0.2,
+			depth
+		)
 end
 
 local function isBoundingBoxInsideGround(
