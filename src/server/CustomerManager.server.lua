@@ -2896,14 +2896,14 @@ local function setupCustomerMovementAnimation(
 						)
 					)
 
-				elseif walkTrack.IsPlaying
-					and humanoid.MoveDirection.Magnitude
-						<= 0.01 then
+				elseif velocity <= 0.15
+	and walkTrack.IsPlaying
+	and humanoid.MoveDirection.Magnitude <= 0.01 then
 
-					walkTrack:Stop(
-						0.1
-					)
-				end
+	walkTrack:Stop(
+		0.1
+	)
+end
 			end
 
 
