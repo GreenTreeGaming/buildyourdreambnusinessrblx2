@@ -184,67 +184,63 @@ local MarketingConfig = {
 
 		{
 			Level = 12,
-
-			-- Was $6M.
-			Cost = 5000000,
-
+		
+			Cost = 4_000_000,
+		
 			DisplayName = "Event Sponsorship",
 			Description =
 				"Put your business in front of large crowds.",
-
+		
 			TemplateName = nil,
-
+		
 			CustomerLimit = 18,
 			MinimumSpawnInterval = 1.0,
 			MaximumSpawnInterval = 1.65,
 		},
-
+		
 		{
 			Level = 13,
-
-			-- Was $12.5M.
-			Cost = 10000000,
-
+		
+			Cost = 7_500_000,
+		
 			DisplayName = "Digital Billboard",
 			Description =
 				"Run high-visibility advertisements across the city.",
-
+		
 			TemplateName = nil,
-
+		
 			CustomerLimit = 20,
 			MinimumSpawnInterval = 0.98,
 			MaximumSpawnInterval = 1.58,
 		},
-
+		
 		{
 			Level = 14,
-
-			-- Was $25M.
-			Cost = 18000000,
-
+		
+			Cost = 13_000_000,
+		
 			DisplayName = "Influencer Campaign",
 			Description =
 				"Create major buzz around your growing business.",
-
+		
 			TemplateName = nil,
-
+		
 			CustomerLimit = 22,
 			MinimumSpawnInterval = 0.96,
 			MaximumSpawnInterval = 1.5,
 		},
-
+		
 		{
 			Level = 15,
-
-			-- Was $50M.
-			Cost = 30000000,
-
+		
+			Cost = 22_000_000,
+		
 			DisplayName = "City-Wide Campaign",
 			Description =
 				"Your brand is known throughout the entire city.",
-
+		
 			TemplateName = nil,
-
+		
 			CustomerLimit = 24,
 			MinimumSpawnInterval = 0.95,
 			MaximumSpawnInterval = 1.45,

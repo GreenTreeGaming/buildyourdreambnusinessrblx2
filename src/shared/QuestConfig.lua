@@ -197,72 +197,72 @@ QuestConfig.Quests = {
 	Serve1000 = {
 		DisplayName =
 			"THOUSAND SERVED",
-
+	
 		Description =
 			"Serve 1,000 customers.",
-
+	
 		Type =
 			"TotalSales",
-
+	
 		Required =
 			1000,
-
+	
 		RewardCash =
-			3500,
+			5_000,
 	},
 
 
 	Serve2500 = {
 		DisplayName =
 			"ALWAYS BUSY",
-
+	
 		Description =
 			"Serve 2,500 customers.",
-
+	
 		Type =
 			"TotalSales",
-
+	
 		Required =
 			2500,
-
+	
 		RewardCash =
-			6000,
+			15_000,
 	},
 
 
 	Serve5000 = {
 		DisplayName =
 			"CROWD PLEASER",
-
+	
 		Description =
 			"Serve 5,000 customers.",
-
+	
 		Type =
 			"TotalSales",
-
+	
 		Required =
 			5000,
-
+	
 		RewardCash =
-			10000,
+			35_000,
 	},
 
 
 	Serve10000 = {
 		DisplayName =
 			"BUSINESS LEGEND",
-
+	
 		Description =
 			"Serve 10,000 customers.",
-
+	
 		Type =
 			"TotalSales",
-
+	
 		Required =
 			10000,
-
+	
 		RewardCash =
-			17500,
+			75_000,
 	},
 
 
@@ -345,72 +345,72 @@ QuestConfig.Quests = {
 	Earn25000 = {
 		DisplayName =
 			"BIG PROFITS",
-
+	
 		Description =
-			"Earn $25,000 from your businesses.",
-
+			"Earn ,000 from your businesses.",
+	
 		Type =
 			"LifetimeEarnings",
-
+	
 		Required =
-			25000,
-
+			25_000,
+	
 		RewardCash =
-			2500,
+			3_000,
 	},
 
 
 	Earn50000 = {
 		DisplayName =
 			"ENTREPRENEUR",
-
+	
 		Description =
-			"Earn $50,000 from your businesses.",
-
+			"Earn ,000 from your businesses.",
+	
 		Type =
 			"LifetimeEarnings",
-
+	
 		Required =
-			50000,
-
+			50_000,
+	
 		RewardCash =
-			4000,
+			7_500,
 	},
 
 
 	Earn100000 = {
 		DisplayName =
 			"SIX FIGURES",
-
+	
 		Description =
-			"Earn $100,000 from your businesses.",
-
+			"Earn ,000 from your businesses.",
+	
 		Type =
 			"LifetimeEarnings",
-
+	
 		Required =
-			100000,
-
+			100_000,
+	
 		RewardCash =
-			7500,
+			15_000,
 	},
 
 
 	Earn250000 = {
 		DisplayName =
 			"BUSINESS MOGUL",
-
+	
 		Description =
-			"Earn $250,000 from your businesses.",
-
+			"Earn ,000 from your businesses.",
+	
 		Type =
 			"LifetimeEarnings",
-
+	
 		Required =
-			250000,
-
+			250_000,
+	
 		RewardCash =
-			15000,
+			35_000,
 	},
 
 
