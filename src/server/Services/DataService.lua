@@ -912,14 +912,28 @@ local function migrateProfile(
 	)
 
 	if type(profile.Cash) ~= "number" then
+		profile.Cash =
+			DEFAULT_PROFILE.Cash
+	end
+	
+	
 	profile.Cash =
-		DEFAULT_PROFILE.Cash
-end
-
-profile.HighestCash =
-	sanitizeStatistic(
-		profile.HighestCash
-	)
+		sanitizeStatistic(
+			profile.Cash
+		)
+	
+	
+	profile.HighestCash =
+		sanitizeStatistic(
+			profile.HighestCash
+		)
+	
+	
+	profile.HighestCash =
+		math.max(
+			profile.HighestCash,
+			profile.Cash
+		)
 
 
 profile.HighestCash =
