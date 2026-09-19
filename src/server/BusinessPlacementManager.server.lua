@@ -1344,15 +1344,10 @@ local currentBusinesses =
 
 
 local standCost =
-	config.AdditionalStandCost
-	or 0
-
-
-if config.FirstStandFree == true
-	and #currentBusinesses == 0 then
-
-	standCost = 0
-end
+	BusinessConfig.GetStandPurchaseCost(
+		businessName,
+		#currentBusinesses
+	)
 
 		local cash = getCashValue(player)
 
@@ -1370,7 +1365,7 @@ end
 			placeBusinessRemote:FireClient(
 				player,
 				false,
-				`You need ${standCost - cash.Value} more to build another stand.`
+				`You need ${standCost - cash.Value} more to build this business.`
 			)
 
 			return

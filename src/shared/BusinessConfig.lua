@@ -12,6 +12,10 @@ local BusinessConfig = {
 
 		AdditionalStandCost = 750,
 
+		-- Each additional paid Lemonade Stand becomes
+		-- 25% more expensive than the previous one.
+		StandCostGrowth = 1.25,
+
 		MaximumPlaced = 15,
 
 		BaseSaleValue = 10,
@@ -45,8 +49,6 @@ local BusinessConfig = {
 
 			[3] = {
 				TemplateName = "LemonadeStand3",
-
-				-- Slightly reduced.
 				UpgradeCost = 3200,
 
 				CustomerAttraction = 1.20,
@@ -59,8 +61,6 @@ local BusinessConfig = {
 
 			[4] = {
 				TemplateName = "LemonadeStand4",
-
-				-- Was 12,000.
 				UpgradeCost = 10500,
 
 				CustomerAttraction = 1.35,
@@ -126,28 +126,19 @@ local BusinessConfig = {
 
 					{
 						Level = 5,
-
-						-- Was 4,500.
 						Cost = 4000,
-
 						Cooldown = 2.2,
 					},
 
 					{
 						Level = 6,
-
-						-- Was 9,000.
 						Cost = 8000,
-
 						Cooldown = 1.8,
 					},
 
 					{
 						Level = 7,
-
-						-- Was 18,000.
 						Cost = 15000,
-
 						Cooldown = 1.5,
 					},
 				},
@@ -194,29 +185,82 @@ local BusinessConfig = {
 				},
 			},
 
-			-- LEMONADE
-SaleValue = {
-	DisplayName = "Better Lemonade",
+			SaleValue = {
+				DisplayName = "Better Lemonade",
 
-	Description =
-		"Improve your lemonade recipe and dramatically increase the value of every sale.",
+				Description =
+					"Improve your lemonade recipe and dramatically increase the value of every sale.",
 
-	ValueType = "SaleValue",
+				ValueType = "SaleValue",
 
-	Levels = {
-		{ Level = 0, Cost = 0, SaleValue = 10 },
-		{ Level = 1, Cost = 100, SaleValue = 16 },
-		{ Level = 2, Cost = 350, SaleValue = 26 },
-		{ Level = 3, Cost = 1000, SaleValue = 45 },
-		{ Level = 4, Cost = 3000, SaleValue = 80 },
-		{ Level = 5, Cost = 7500, SaleValue = 140 },
-		{ Level = 6, Cost = 19000, SaleValue = 240 },
-		{ Level = 7, Cost = 45000, SaleValue = 400 },
-		{ Level = 8, Cost = 90000, SaleValue = 650 },
-		{ Level = 9, Cost = 200000, SaleValue = 1050 },
-		{ Level = 10, Cost = 400000, SaleValue = 1700 },
-	},
-},
+				Levels = {
+					{
+						Level = 0,
+						Cost = 0,
+						SaleValue = 10,
+					},
+
+					{
+						Level = 1,
+						Cost = 100,
+						SaleValue = 16,
+					},
+
+					{
+						Level = 2,
+						Cost = 350,
+						SaleValue = 26,
+					},
+
+					{
+						Level = 3,
+						Cost = 1000,
+						SaleValue = 45,
+					},
+
+					{
+						Level = 4,
+						Cost = 2800,
+						SaleValue = 80,
+					},
+
+					{
+						Level = 5,
+						Cost = 6500,
+						SaleValue = 140,
+					},
+
+					{
+						Level = 6,
+						Cost = 15000,
+						SaleValue = 240,
+					},
+
+					{
+						Level = 7,
+						Cost = 30000,
+						SaleValue = 400,
+					},
+
+					{
+						Level = 8,
+						Cost = 55000,
+						SaleValue = 650,
+					},
+
+					{
+						Level = 9,
+						Cost = 100000,
+						SaleValue = 1050,
+					},
+
+					{
+						Level = 10,
+						Cost = 180000,
+						SaleValue = 1700,
+					},
+				},
+			},
 		},
 	},
 
@@ -228,9 +272,9 @@ SaleValue = {
 			"Serve hungry customers faster and earn bigger profits with your new hotdog business.",
 
 		UnlockRequirements = {
-			ReputationLevel = 3,
+			ReputationLevel = 4,
 
-			LifetimeEarnings = 500,
+			LifetimeEarnings = 2500,
 
 			BusinessLevel = {
 				BusinessType = "LemonadeStand",
@@ -242,9 +286,12 @@ SaleValue = {
 
 		AdditionalStandCost = 3000,
 
+		-- Each additional Hotdog Stand becomes
+		-- 30% more expensive.
+		StandCostGrowth = 1.30,
+
 		MaximumPlaced = 12,
 
-		-- Conservative increase from 35.
 		BaseSaleValue = 45,
 
 		BaseServingCooldown = 5,
@@ -276,8 +323,6 @@ SaleValue = {
 
 			[3] = {
 				TemplateName = "HotdogStand3",
-
-				-- Was 12,000.
 				UpgradeCost = 11000,
 
 				CustomerAttraction = 1.35,
@@ -290,8 +335,6 @@ SaleValue = {
 
 			[4] = {
 				TemplateName = "HotdogStand4",
-
-				-- Was 35,000.
 				UpgradeCost = 30000,
 
 				CustomerAttraction = 1.60,
@@ -363,19 +406,13 @@ SaleValue = {
 
 					{
 						Level = 6,
-
-						-- Was 32,000.
 						Cost = 28000,
-
 						Cooldown = 1.8,
 					},
 
 					{
 						Level = 7,
-
-						-- Was 70,000.
 						Cost = 60000,
-
 						Cooldown = 1.5,
 					},
 				},
@@ -422,29 +459,82 @@ SaleValue = {
 				},
 			},
 
-			-- HOTDOG
-SaleValue = {
-	DisplayName = "Better Hotdogs",
+			SaleValue = {
+				DisplayName = "Better Hotdogs",
 
-	Description =
-		"Improve your hotdogs and dramatically increase the value of every sale.",
+				Description =
+					"Improve your hotdogs and dramatically increase the value of every sale.",
 
-	ValueType = "SaleValue",
+				ValueType = "SaleValue",
 
-	Levels = {
-		{ Level = 0, Cost = 0, SaleValue = 45 },
-		{ Level = 1, Cost = 400, SaleValue = 70 },
-		{ Level = 2, Cost = 1300, SaleValue = 115 },
-		{ Level = 3, Cost = 4000, SaleValue = 180 },
-		{ Level = 4, Cost = 11000, SaleValue = 310 },
-		{ Level = 5, Cost = 30000, SaleValue = 525 },
-		{ Level = 6, Cost = 75000, SaleValue = 900 },
-		{ Level = 7, Cost = 140000, SaleValue = 1500 },
-		{ Level = 8, Cost = 300000, SaleValue = 2500 },
-		{ Level = 9, Cost = 625000, SaleValue = 4000 },
-		{ Level = 10, Cost = 1300000, SaleValue = 6500 },
-	},
-},
+				Levels = {
+					{
+						Level = 0,
+						Cost = 0,
+						SaleValue = 45,
+					},
+
+					{
+						Level = 1,
+						Cost = 400,
+						SaleValue = 70,
+					},
+
+					{
+						Level = 2,
+						Cost = 1300,
+						SaleValue = 115,
+					},
+
+					{
+						Level = 3,
+						Cost = 4000,
+						SaleValue = 180,
+					},
+
+					{
+						Level = 4,
+						Cost = 11000,
+						SaleValue = 310,
+					},
+
+					{
+						Level = 5,
+						Cost = 30000,
+						SaleValue = 525,
+					},
+
+					{
+						Level = 6,
+						Cost = 75000,
+						SaleValue = 900,
+					},
+
+					{
+						Level = 7,
+						Cost = 140000,
+						SaleValue = 1500,
+					},
+
+					{
+						Level = 8,
+						Cost = 300000,
+						SaleValue = 2500,
+					},
+
+					{
+						Level = 9,
+						Cost = 625000,
+						SaleValue = 4000,
+					},
+
+					{
+						Level = 10,
+						Cost = 1300000,
+						SaleValue = 6500,
+					},
+				},
+			},
 		},
 	},
 
@@ -456,9 +546,9 @@ SaleValue = {
 			"Cut hair, serve higher-paying customers, and grow your business into a professional barbershop.",
 
 		UnlockRequirements = {
-			ReputationLevel = 7,
+			ReputationLevel = 10,
 
-			LifetimeEarnings = 10000,
+			LifetimeEarnings = 75000,
 
 			BusinessLevel = {
 				BusinessType = "HotdogStand",
@@ -470,9 +560,12 @@ SaleValue = {
 
 		AdditionalStandCost = 18000,
 
+		-- Each additional Haircut Stand becomes
+		-- 32% more expensive.
+		StandCostGrowth = 1.32,
+
 		MaximumPlaced = 10,
 
-		-- Conservative increase from 140.
 		BaseSaleValue = 250,
 
 		BaseServingCooldown = 6,
@@ -504,8 +597,6 @@ SaleValue = {
 
 			[3] = {
 				TemplateName = "HaircutStand3",
-
-				-- Was 60,000.
 				UpgradeCost = 55000,
 
 				CustomerAttraction = 1.45,
@@ -518,8 +609,6 @@ SaleValue = {
 
 			[4] = {
 				TemplateName = "HaircutStand4",
-
-				-- Was 180,000.
 				UpgradeCost = 155000,
 
 				CustomerAttraction = 1.80,
@@ -585,28 +674,19 @@ SaleValue = {
 
 					{
 						Level = 5,
-
-						-- Was 85,000.
 						Cost = 75000,
-
 						Cooldown = 2.7,
 					},
 
 					{
 						Level = 6,
-
-						-- Was 200,000.
 						Cost = 175000,
-
 						Cooldown = 2.2,
 					},
 
 					{
 						Level = 7,
-
-						-- Was 450,000.
 						Cost = 375000,
-
 						Cooldown = 1.8,
 					},
 				},
@@ -653,29 +733,82 @@ SaleValue = {
 				},
 			},
 
-			-- HAIRCUT
-SaleValue = {
-	DisplayName = "Better Haircuts",
+			SaleValue = {
+				DisplayName = "Better Haircuts",
 
-	Description =
-		"Improve your service quality and dramatically increase what each haircut earns.",
+				Description =
+					"Improve your service quality and dramatically increase what each haircut earns.",
 
-	ValueType = "SaleValue",
+				ValueType = "SaleValue",
 
-	Levels = {
-		{ Level = 0, Cost = 0, SaleValue = 250 },
-		{ Level = 1, Cost = 2000, SaleValue = 400 },
-		{ Level = 2, Cost = 6500, SaleValue = 600 },
-		{ Level = 3, Cost = 20000, SaleValue = 900 },
-		{ Level = 4, Cost = 55000, SaleValue = 1300 },
-		{ Level = 5, Cost = 110000, SaleValue = 2050 },
-		{ Level = 6, Cost = 250000, SaleValue = 3500 },
-		{ Level = 7, Cost = 550000, SaleValue = 5900 },
-		{ Level = 8, Cost = 1150000, SaleValue = 9800 },
-		{ Level = 9, Cost = 2400000, SaleValue = 16000 },
-		{ Level = 10, Cost = 5000000, SaleValue = 26000 },
-	},
-},
+				Levels = {
+					{
+						Level = 0,
+						Cost = 0,
+						SaleValue = 250,
+					},
+
+					{
+						Level = 1,
+						Cost = 2000,
+						SaleValue = 400,
+					},
+
+					{
+						Level = 2,
+						Cost = 6500,
+						SaleValue = 600,
+					},
+
+					{
+						Level = 3,
+						Cost = 20000,
+						SaleValue = 900,
+					},
+
+					{
+						Level = 4,
+						Cost = 55000,
+						SaleValue = 1300,
+					},
+
+					{
+						Level = 5,
+						Cost = 110000,
+						SaleValue = 2050,
+					},
+
+					{
+						Level = 6,
+						Cost = 250000,
+						SaleValue = 3500,
+					},
+
+					{
+						Level = 7,
+						Cost = 550000,
+						SaleValue = 5900,
+					},
+
+					{
+						Level = 8,
+						Cost = 1150000,
+						SaleValue = 9800,
+					},
+
+					{
+						Level = 9,
+						Cost = 2400000,
+						SaleValue = 16000,
+					},
+
+					{
+						Level = 10,
+						Cost = 5000000,
+						SaleValue = 26000,
+					},
+				},
+			},
 		},
 	},
 
@@ -687,13 +820,13 @@ SaleValue = {
 			"Serve premium coffee, attract wealthier customers, and turn your stand into a bustling café.",
 
 		UnlockRequirements = {
-			ReputationLevel = 12,
+			ReputationLevel = 18,
 
-			LifetimeEarnings = 100000,
+			LifetimeEarnings = 1000000,
 
 			BusinessLevel = {
 				BusinessType = "HaircutStand",
-				Level = 3,
+				Level = 4,
 			},
 		},
 
@@ -701,9 +834,12 @@ SaleValue = {
 
 		AdditionalStandCost = 90000,
 
+		-- Each additional Coffee Stand becomes
+		-- 35% more expensive.
+		StandCostGrowth = 1.35,
+
 		MaximumPlaced = 8,
 
-		-- Conservative increase from 500.
 		BaseSaleValue = 1000,
 
 		BaseServingCooldown = 6,
@@ -735,8 +871,6 @@ SaleValue = {
 
 			[3] = {
 				TemplateName = "CoffeeStand3",
-
-				-- Was 250,000.
 				UpgradeCost = 225000,
 
 				CustomerAttraction = 1.60,
@@ -749,8 +883,6 @@ SaleValue = {
 
 			[4] = {
 				TemplateName = "CoffeeStand4",
-
-				-- Was 650,000.
 				UpgradeCost = 550000,
 
 				CustomerAttraction = 2.00,
@@ -816,28 +948,19 @@ SaleValue = {
 
 					{
 						Level = 5,
-
-						-- Was 300,000.
 						Cost = 275000,
-
 						Cooldown = 2.7,
 					},
 
 					{
 						Level = 6,
-
-						-- Was 650,000.
 						Cost = 550000,
-
 						Cooldown = 2.2,
 					},
 
 					{
 						Level = 7,
-
-						-- Was 1.4M.
 						Cost = 1100000,
-
 						Cooldown = 1.8,
 					},
 				},
@@ -866,58 +989,210 @@ SaleValue = {
 
 					{
 						Level = 2,
-
-						-- Was 35,000.
 						Cost = 30000,
-
 						Capacity = 3,
 					},
 
 					{
 						Level = 3,
-
-						-- Was 90,000.
 						Cost = 75000,
-
 						Capacity = 4,
 					},
 
 					{
 						Level = 4,
-
-						-- Was 250,000.
 						Cost = 180000,
-
 						Capacity = 5,
 					},
 				},
 			},
 
-			-- COFFEE
-SaleValue = {
-	DisplayName = "Better Coffee",
+			SaleValue = {
+				DisplayName = "Better Coffee",
 
-	Description =
-		"Use higher-quality ingredients and dramatically increase the value of every order.",
+				Description =
+					"Use higher-quality ingredients and dramatically increase the value of every order.",
 
-	ValueType = "SaleValue",
+				ValueType = "SaleValue",
 
-	Levels = {
-		{ Level = 0, Cost = 0, SaleValue = 1000 },
-		{ Level = 1, Cost = 7500, SaleValue = 1500 },
-		{ Level = 2, Cost = 25000, SaleValue = 2200 },
-		{ Level = 3, Cost = 70000, SaleValue = 3200 },
-		{ Level = 4, Cost = 170000, SaleValue = 4600 },
-		{ Level = 5, Cost = 375000, SaleValue = 7200 },
-		{ Level = 6, Cost = 850000, SaleValue = 12000 },
-		{ Level = 7, Cost = 1700000, SaleValue = 20000 },
-		{ Level = 8, Cost = 3500000, SaleValue = 34000 },
-		{ Level = 9, Cost = 7000000, SaleValue = 56000 },
-		{ Level = 10, Cost = 14000000, SaleValue = 92000 },
-	},
-},
+				Levels = {
+					{
+						Level = 0,
+						Cost = 0,
+						SaleValue = 1000,
+					},
+
+					{
+						Level = 1,
+						Cost = 7500,
+						SaleValue = 1500,
+					},
+
+					{
+						Level = 2,
+						Cost = 25000,
+						SaleValue = 2200,
+					},
+
+					{
+						Level = 3,
+						Cost = 70000,
+						SaleValue = 3200,
+					},
+
+					{
+						Level = 4,
+						Cost = 170000,
+						SaleValue = 4600,
+					},
+
+					{
+						Level = 5,
+						Cost = 400000,
+						SaleValue = 6500,
+					},
+
+					{
+						Level = 6,
+						Cost = 950000,
+						SaleValue = 9000,
+					},
+
+					{
+						Level = 7,
+						Cost = 2200000,
+						SaleValue = 12500,
+					},
+
+					{
+						Level = 8,
+						Cost = 5000000,
+						SaleValue = 17500,
+					},
+
+					{
+						Level = 9,
+						Cost = 11000000,
+						SaleValue = 24000,
+					},
+
+					{
+						Level = 10,
+						Cost = 24000000,
+						SaleValue = 33000,
+					},
+				},
+			},
 		},
 	},
 }
+
+
+--==================================================
+-- STAND PURCHASE PRICING
+--==================================================
+
+function BusinessConfig.GetStandPurchaseCost(
+	businessType: string,
+	currentOwned: number
+): number
+
+	local config =
+		BusinessConfig[
+			businessType
+		]
+
+
+	if type(config) ~= "table" then
+		return 0
+	end
+
+
+	currentOwned =
+		math.max(
+			0,
+			math.floor(
+				tonumber(currentOwned)
+					or 0
+			)
+		)
+
+
+	-- The first Lemonade Stand stays free.
+	if config.FirstStandFree == true
+		and currentOwned == 0 then
+
+		return 0
+	end
+
+
+	local baseCost =
+		tonumber(
+			config.AdditionalStandCost
+		) or 0
+
+
+	if baseCost <= 0 then
+		return 0
+	end
+
+
+	local growth =
+		tonumber(
+			config.StandCostGrowth
+		) or 1
+
+
+	growth =
+		math.max(
+			1,
+			growth
+		)
+
+
+	local growthSteps
+
+
+	-- For a business whose first stand is free:
+	--
+	-- currentOwned = 1 means the player is buying
+	-- their first PAID duplicate, so that should
+	-- still cost exactly AdditionalStandCost.
+	if config.FirstStandFree == true then
+
+		growthSteps =
+			math.max(
+				0,
+				currentOwned - 1
+			)
+
+	else
+
+		-- For paid-first businesses:
+		--
+		-- currentOwned = 0 = first stand at base price.
+		-- currentOwned = 1 = second stand at one growth step.
+		growthSteps =
+			currentOwned
+	end
+
+
+	local calculatedCost =
+		baseCost
+		* (
+			growth
+			^ growthSteps
+		)
+
+
+	return math.max(
+		0,
+		math.floor(
+			calculatedCost
+				+ 0.5
+		)
+	)
+end
+
 
 return BusinessConfig

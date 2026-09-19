@@ -197,16 +197,16 @@ QuestConfig.Quests = {
 	Serve1000 = {
 		DisplayName =
 			"THOUSAND SERVED",
-	
+
 		Description =
 			"Serve 1,000 customers.",
-	
+
 		Type =
 			"TotalSales",
-	
+
 		Required =
 			1000,
-	
+
 		RewardCash =
 			5_000,
 	},
@@ -215,16 +215,16 @@ QuestConfig.Quests = {
 	Serve2500 = {
 		DisplayName =
 			"ALWAYS BUSY",
-	
+
 		Description =
 			"Serve 2,500 customers.",
-	
+
 		Type =
 			"TotalSales",
-	
+
 		Required =
 			2500,
-	
+
 		RewardCash =
 			15_000,
 	},
@@ -233,16 +233,16 @@ QuestConfig.Quests = {
 	Serve5000 = {
 		DisplayName =
 			"CROWD PLEASER",
-	
+
 		Description =
 			"Serve 5,000 customers.",
-	
+
 		Type =
 			"TotalSales",
-	
+
 		Required =
 			5000,
-	
+
 		RewardCash =
 			35_000,
 	},
@@ -251,16 +251,16 @@ QuestConfig.Quests = {
 	Serve10000 = {
 		DisplayName =
 			"BUSINESS LEGEND",
-	
+
 		Description =
 			"Serve 10,000 customers.",
-	
+
 		Type =
 			"TotalSales",
-	
+
 		Required =
 			10000,
-	
+
 		RewardCash =
 			75_000,
 	},
@@ -272,10 +272,10 @@ QuestConfig.Quests = {
 
 	Earn100 = {
 		DisplayName =
-			"FIRST $100",
+			"FIRST ",
 
 		Description =
-			"Earn $100 from your businesses.",
+			"Earn  from your businesses.",
 
 		Type =
 			"LifetimeEarnings",
@@ -293,7 +293,7 @@ QuestConfig.Quests = {
 			"FOUR FIGURES",
 
 		Description =
-			"Earn $1,000 from your businesses.",
+			"Earn ,000 from your businesses.",
 
 		Type =
 			"LifetimeEarnings",
@@ -311,7 +311,7 @@ QuestConfig.Quests = {
 			"GROWING PROFITS",
 
 		Description =
-			"Earn $5,000 from your businesses.",
+			"Earn ,000 from your businesses.",
 
 		Type =
 			"LifetimeEarnings",
@@ -329,7 +329,7 @@ QuestConfig.Quests = {
 			"SERIOUS BUSINESS",
 
 		Description =
-			"Earn $10,000 from your businesses.",
+			"Earn ,000 from your businesses.",
 
 		Type =
 			"LifetimeEarnings",
@@ -345,16 +345,16 @@ QuestConfig.Quests = {
 	Earn25000 = {
 		DisplayName =
 			"BIG PROFITS",
-	
+
 		Description =
 			"Earn ,000 from your businesses.",
-	
+
 		Type =
 			"LifetimeEarnings",
-	
+
 		Required =
 			25_000,
-	
+
 		RewardCash =
 			3_000,
 	},
@@ -363,16 +363,16 @@ QuestConfig.Quests = {
 	Earn50000 = {
 		DisplayName =
 			"ENTREPRENEUR",
-	
+
 		Description =
 			"Earn ,000 from your businesses.",
-	
+
 		Type =
 			"LifetimeEarnings",
-	
+
 		Required =
 			50_000,
-	
+
 		RewardCash =
 			7_500,
 	},
@@ -381,16 +381,16 @@ QuestConfig.Quests = {
 	Earn100000 = {
 		DisplayName =
 			"SIX FIGURES",
-	
+
 		Description =
 			"Earn ,000 from your businesses.",
-	
+
 		Type =
 			"LifetimeEarnings",
-	
+
 		Required =
 			100_000,
-	
+
 		RewardCash =
 			15_000,
 	},
@@ -399,16 +399,16 @@ QuestConfig.Quests = {
 	Earn250000 = {
 		DisplayName =
 			"BUSINESS MOGUL",
-	
+
 		Description =
 			"Earn ,000 from your businesses.",
-	
+
 		Type =
 			"LifetimeEarnings",
-	
+
 		Required =
 			250_000,
-	
+
 		RewardCash =
 			35_000,
 	},
@@ -475,7 +475,7 @@ QuestConfig.Quests = {
 			"PERFECT RECIPE",
 
 		Description =
-			"Max out Better Lemonade.",
+			"Reach Better Lemonade Level 5.",
 
 		Type =
 			"UpgradeLevel",
@@ -551,7 +551,7 @@ QuestConfig.Quests = {
 			"PERFECT HOTDOGS",
 
 		Description =
-			"Max out Better Hotdogs.",
+			"Reach Better Hotdogs Level 5.",
 
 		Type =
 			"UpgradeLevel",
@@ -627,7 +627,7 @@ QuestConfig.Quests = {
 			"MASTER BARBER",
 
 		Description =
-			"Max out Better Haircuts.",
+			"Reach Better Haircuts Level 5.",
 
 		Type =
 			"UpgradeLevel",
@@ -731,7 +731,7 @@ QuestConfig.Quests = {
 			"LIGHTNING FAST",
 
 		Description =
-			"Max out Faster Service.",
+			"Reach Faster Service Level 5.",
 
 		Type =
 			"UpgradeLevel",
@@ -831,7 +831,7 @@ QuestConfig.Quests = {
 			"EXPRESS SERVICE",
 
 		Description =
-			"Max out Hotdog Faster Service.",
+			"Reach Hotdog Faster Service Level 5.",
 
 		Type =
 			"UpgradeLevel",
@@ -931,7 +931,7 @@ QuestConfig.Quests = {
 			"LIGHTNING CUTS",
 
 		Description =
-			"Max out Faster Haircuts.",
+			"Reach Faster Haircuts Level 5.",
 
 		Type =
 			"UpgradeLevel",

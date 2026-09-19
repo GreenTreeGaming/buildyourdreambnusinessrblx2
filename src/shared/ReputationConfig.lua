@@ -1,15 +1,17 @@
 local ReputationConfig = {}
 
--- Reputation 1-10 stays fast so early-game unlocks
--- still happen at a good pace.
+-- Early reputation still moves quickly so the
+-- first few minutes stay rewarding.
 ReputationConfig.BaseSalesPerLevel = 25
 
--- Scaling begins after Reputation 10.
-ReputationConfig.GrowthStartLevel = 10
+-- Scaling now begins much earlier.
+-- This prevents every important business unlock
+-- from happening while reputation is still flat.
+ReputationConfig.GrowthStartLevel = 4
 
--- Every reputation level after 10 requires
--- 5 more sales than the previous one.
-ReputationConfig.SalesGrowthPerLevel = 5
+-- Every reputation level after the growth point
+-- requires 6 additional sales over the previous one.
+ReputationConfig.SalesGrowthPerLevel = 6
 
 
 function ReputationConfig.GetSalesRequiredForNextLevel(

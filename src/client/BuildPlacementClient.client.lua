@@ -693,10 +693,12 @@ local function getBusinessButtonText(
 
 
 	local price =
-		config.AdditionalStandCost
-		or 0
-
-
+		BusinessConfig.GetStandPurchaseCost(
+			businessName,
+			businessCount
+		)
+	
+	
 	return `{displayName} - {FormatNumber.Currency(price)}`
 end
 
