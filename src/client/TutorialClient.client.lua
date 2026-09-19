@@ -29,6 +29,20 @@ local plotsFolder =
 	)
 
 
+local shared =
+	ReplicatedStorage:WaitForChild(
+		"Shared"
+	)
+
+
+local BusinessConfig =
+	require(
+		shared:WaitForChild(
+			"BusinessConfig"
+		)
+	)
+
+
 local remotes =
 	ReplicatedStorage:WaitForChild(
 		"Remotes"
@@ -62,10 +76,12 @@ local tutorialFrame =
 		"Frame"
 	) :: Frame
 
+
 local skipButton =
 	tutorialFrame:WaitForChild(
 		"SkipBtn"
 	) :: GuiButton
+
 
 local title =
 	tutorialFrame:WaitForChild(
@@ -152,6 +168,16 @@ local manageMain =
 
 
 --==================================================
+-- DAILY REWARDS
+--==================================================
+
+local dailyRewardsGui =
+	playerGui:FindFirstChild(
+		"DailyRewards"
+	) :: ScreenGui?
+
+
+--==================================================
 -- CASH
 --==================================================
 
@@ -201,39 +227,42 @@ local SIDE_POSITION =
 --==================================================
 -- TIMING
 --==================================================
+--
+-- The old tutorial used many 4-5 second messages.
+-- Keep this one fast enough that the player is
+-- constantly doing something.
+--==================================================
 
 local FRAME_TWEEN_TIME =
-	0.42
-
-
-local TEXT_FADE_TIME =
-	0.22
-
-
--- Small empty pause between sentences.
-local TEXT_CLEAR_DELAY =
 	0.30
 
 
+local TEXT_FADE_TIME =
+	0.14
+
+
+local TEXT_CLEAR_DELAY =
+	0.12
+
+
 local CAMERA_TWEEN_TIME =
-	0.9
+	0.65
 
 
 local CAMERA_HOLD_TIME =
-	1.25
+	0.55
 
 
--- Increased from the previous version.
 local SHORT_MESSAGE_TIME =
-	3.2
+	1.8
 
 
 local NORMAL_MESSAGE_TIME =
-	4.2
+	2.4
 
 
 local LONG_MESSAGE_TIME =
-	5
+	3.0
 
 
 --==================================================
@@ -271,9 +300,11 @@ local textTweenInfo =
 local running =
 	false
 
+
 local tutorialThread:
 	thread? =
 	nil
+
 
 local activeFrameTween:
 	Tween? =
@@ -284,6 +315,22 @@ local activeTextTween:
 	Tween? =
 	nil
 
+
+local activeHighlight:
+	Frame? =
+	nil
+
+
+local activeHighlightPulseThread:
+	thread? =
+	nil
+
+
+local dailyRewardsConnection:
+	RBXScriptConnection? =
+	nil
+
+
 local TUTORIAL_HIGHLIGHT_COLOR =
 	Color3.fromRGB(
 		255,
@@ -291,37 +338,37 @@ local TUTORIAL_HIGHLIGHT_COLOR =
 		102
 	)
 
+
 local TUTORIAL_HIGHLIGHT_FILL_TRANSPARENCY =
 	0.86
+
 
 local TUTORIAL_HIGHLIGHT_IDLE_TRANSPARENCY =
 	0.18
 
+
 local TUTORIAL_HIGHLIGHT_PULSE_TRANSPARENCY =
 	0.45
+
 
 local TUTORIAL_HIGHLIGHT_THICKNESS =
 	3
 
+
 local TUTORIAL_HIGHLIGHT_PULSE_THICKNESS =
 	5
+
 
 local TUTORIAL_HIGHLIGHT_SIZE_OFFSET =
 	18
 
+
 local TUTORIAL_HIGHLIGHT_PULSE_SCALE =
 	1.06
 
+
 local TUTORIAL_HIGHLIGHT_PULSE_TIME =
-	0.65
-
-local activeHighlight:
-	Frame? =
-	nil
-
-local activeHighlightPulseThread:
-	thread? =
-	nil
+	0.55
 
 
 --==================================================
@@ -336,7 +383,6 @@ local function cancelFrameTween()
 
 		activeFrameTween =
 			nil
-
 	end
 end
 
@@ -361,7 +407,6 @@ local function tweenFrameTo(
 
 	activeFrameTween:Play()
 
-
 	activeFrameTween.Completed:Wait()
 
 
@@ -384,7 +429,6 @@ local function tweenTextTransparency(
 
 		activeTextTween =
 			nil
-
 	end
 
 
@@ -400,7 +444,6 @@ local function tweenTextTransparency(
 
 
 	activeTextTween:Play()
-
 
 	activeTextTween.Completed:Wait()
 
@@ -462,6 +505,84 @@ end
 
 
 --==================================================
+-- DAILY REWARD SUPPRESSION
+--==================================================
+--
+-- Daily Rewards normally auto-opens shortly after
+-- joining. Prevent it from covering the first-time
+-- tutorial, then show it after the tutorial finishes.
+--==================================================
+
+local function beginSuppressingDailyRewards()
+
+	dailyRewardsGui =
+		playerGui:FindFirstChild(
+			"DailyRewards"
+		) :: ScreenGui?
+
+
+	if not dailyRewardsGui then
+		return
+	end
+
+
+	dailyRewardsGui.Enabled =
+		false
+
+
+	if dailyRewardsConnection then
+
+		dailyRewardsConnection:Disconnect()
+
+		dailyRewardsConnection =
+			nil
+	end
+
+
+	dailyRewardsConnection =
+		dailyRewardsGui
+			:GetPropertyChangedSignal(
+				"Enabled"
+			)
+			:Connect(
+				function()
+
+					if running
+						and dailyRewardsGui
+						.Enabled then
+
+						dailyRewardsGui.Enabled =
+							false
+					end
+				end
+			)
+end
+
+
+local function stopSuppressingDailyRewards(
+	showRewards: boolean
+)
+
+	if dailyRewardsConnection then
+
+		dailyRewardsConnection:Disconnect()
+
+		dailyRewardsConnection =
+			nil
+	end
+
+
+	if showRewards
+		and dailyRewardsGui
+		and dailyRewardsGui.Parent then
+
+		dailyRewardsGui.Enabled =
+			true
+	end
+end
+
+
+--==================================================
 -- PLOT HELPERS
 --==================================================
 
@@ -484,7 +605,9 @@ local function getOwnedPlot():
 
 
 		if plot
-			and plot:IsA("Model")
+			and plot:IsA(
+				"Model"
+			)
 			and plot:GetAttribute(
 				"OwnerUserId"
 			) == player.UserId then
@@ -529,16 +652,13 @@ local function waitForOwnedPlot():
 
 
 		if plot then
-
 			return plot
-
 		end
 
 
 		task.wait(
 			0.1
 		)
-
 	end
 
 
@@ -559,9 +679,7 @@ local function getPlacedBusinesses(
 
 
 	if existing then
-
 		return existing
-
 	end
 
 
@@ -586,7 +704,6 @@ local function getBusinessType(
 		and businessType ~= "" then
 
 		return businessType
-
 	end
 
 
@@ -629,7 +746,6 @@ local function findLemonadeStand(
 		) == "LemonadeStand" then
 
 			return child
-
 		end
 	end
 
@@ -649,9 +765,7 @@ local function waitForLemonadeStand(
 
 
 	if existing then
-
 		return existing
-
 	end
 
 
@@ -664,7 +778,9 @@ local function waitForLemonadeStand(
 	while player.Parent do
 
 		local child =
-			placedBusinesses.ChildAdded:Wait()
+			placedBusinesses
+				.ChildAdded
+				:Wait()
 
 
 		if not child:IsA(
@@ -672,12 +788,11 @@ local function waitForLemonadeStand(
 		) then
 
 			continue
-
 		end
 
 
-		-- Give placement code one frame to finish setting
-		-- attributes on the new model.
+		-- Give placement code one frame to finish
+		-- setting the model's attributes.
 		task.wait()
 
 
@@ -686,7 +801,6 @@ local function waitForLemonadeStand(
 		) ~= player.UserId then
 
 			continue
-
 		end
 
 
@@ -695,7 +809,6 @@ local function waitForLemonadeStand(
 		) == "LemonadeStand" then
 
 			return child
-
 		end
 	end
 
@@ -703,6 +816,66 @@ local function waitForLemonadeStand(
 	error(
 		"Player left while waiting for Lemonade Stand."
 	)
+end
+
+
+--==================================================
+-- FIRST SALE
+--==================================================
+
+local function getTotalSales(
+	stand: Model
+): number
+
+	local sales =
+		stand:GetAttribute(
+			"TotalSales"
+		)
+
+
+	if typeof(sales)
+		~= "number" then
+
+		return 0
+	end
+
+
+	return math.max(
+		0,
+		math.floor(
+			sales
+		)
+	)
+end
+
+
+local function waitForFirstSale(
+	stand: Model
+)
+
+	if getTotalSales(
+		stand
+	) >= 1 then
+
+		return
+	end
+
+
+	while player.Parent
+		and stand.Parent do
+
+		stand:GetAttributeChangedSignal(
+			"TotalSales"
+		):Wait()
+
+
+		if getTotalSales(
+			stand
+		) >= 1 then
+
+			return
+		end
+	end
 end
 
 
@@ -782,14 +955,8 @@ local function showPlotCamera(
 
 
 	showTimedMessage(
-		"This is your plot. Everything you build will grow from here.",
-		NORMAL_MESSAGE_TIME
-	)
-
-
-	showTimedMessage(
-		"You can place businesses around your plot, upgrade them, and eventually expand into much bigger businesses.",
-		LONG_MESSAGE_TIME
+		"This is your plot. Turn it into a business empire.",
+		SHORT_MESSAGE_TIME
 	)
 
 
@@ -823,7 +990,6 @@ local function showPlotCamera(
 
 		camera.CameraSubject =
 			previousCameraSubject
-
 	end
 end
 
@@ -832,22 +998,12 @@ end
 -- UI WAIT HELPERS
 --==================================================
 
-local function waitForButtonPress(
-	button: GuiButton
-)
-
-	button.Activated:Wait()
-end
-
-
 local function waitUntilVisible(
 	object: GuiObject
 )
 
 	if object.Visible then
-
 		return
-
 	end
 
 
@@ -857,7 +1013,6 @@ local function waitUntilVisible(
 		object:GetPropertyChangedSignal(
 			"Visible"
 		):Wait()
-
 	end
 end
 
@@ -867,9 +1022,7 @@ local function waitUntilHidden(
 )
 
 	if not object.Visible then
-
 		return
-
 	end
 
 
@@ -879,7 +1032,6 @@ local function waitUntilHidden(
 		object:GetPropertyChangedSignal(
 			"Visible"
 		):Wait()
-
 	end
 end
 
@@ -911,13 +1063,86 @@ local function getLemonadeButton():
 		) then
 
 		return existing
-
 	end
 
 
 	return businessScrollingFrame:WaitForChild(
 		"LemonadeStand"
 	) :: TextButton
+end
+
+
+--==================================================
+-- QUEST CLAIM HELPERS
+--==================================================
+
+local function findFirstSaleClaimButton():
+	GuiButton?
+
+	local card =
+		questsMain:FindFirstChild(
+			"FirstSale",
+			true
+		)
+
+
+	if not card then
+		return nil
+	end
+
+
+	local complete =
+		card:FindFirstChild(
+			"Complete",
+			true
+		)
+
+
+	if complete
+		and complete:IsA(
+			"GuiButton"
+		) then
+
+		return complete
+	end
+
+
+	return nil
+end
+
+
+local function waitForFirstSaleClaimButton(
+	timeout: number
+):
+	GuiButton?
+
+	local startedAt =
+		time()
+
+
+	while player.Parent
+		and time() - startedAt
+			< timeout do
+
+		local button =
+			findFirstSaleClaimButton()
+
+
+		if button
+			and button.Visible
+			and button.Active then
+
+			return button
+		end
+
+
+		task.wait(
+			0.1
+		)
+	end
+
+
+	return nil
 end
 
 
@@ -938,18 +1163,54 @@ local function getBetterLemonadeNextCost(
 	if typeof(currentLevel)
 		~= "number" then
 
-		currentLevel = 0
-
+		currentLevel =
+			0
 	end
 
 
-	-- Better Lemonade Level 1 currently costs $100.
-	-- Keeping this helper here means the tutorial can
-	-- easily be changed later if the first upgrade changes.
-	if currentLevel < 1 then
+	local lemonadeConfig =
+		BusinessConfig.LemonadeStand
+
+
+	if not lemonadeConfig
+		or type(
+			lemonadeConfig.Upgrades
+		) ~= "table"
+		or type(
+			lemonadeConfig.Upgrades.SaleValue
+		) ~= "table"
+		or type(
+			lemonadeConfig
+				.Upgrades
+				.SaleValue
+				.Levels
+		) ~= "table" then
 
 		return 100
+	end
 
+
+	local nextDefinition =
+		lemonadeConfig
+			.Upgrades
+			.SaleValue
+			.Levels[
+				currentLevel + 2
+			]
+
+
+	if type(nextDefinition)
+			== "table"
+		and typeof(
+			nextDefinition.Cost
+		) == "number" then
+
+		return math.max(
+			0,
+			math.floor(
+				nextDefinition.Cost
+			)
+		)
 	end
 
 
@@ -961,18 +1222,18 @@ local function waitForCash(
 	requiredCash: number
 )
 
-	if cash.Value >= requiredCash then
+	if cash.Value
+		>= requiredCash then
 
 		return
-
 	end
 
 
 	while player.Parent
-		and cash.Value < requiredCash do
+		and cash.Value
+			< requiredCash do
 
 		cash.Changed:Wait()
-
 	end
 end
 
@@ -997,13 +1258,12 @@ local function waitForSaleValueUpgrade(
 
 
 	if hasUpgrade() then
-
 		return
-
 	end
 
 
-	while player.Parent do
+	while player.Parent
+		and stand.Parent do
 
 		stand:GetAttributeChangedSignal(
 			"SaleValueLevel"
@@ -1011,9 +1271,7 @@ local function waitForSaleValueUpgrade(
 
 
 		if hasUpgrade() then
-
 			return
-
 		end
 	end
 end
@@ -1033,6 +1291,10 @@ local function showTutorial()
 		HIDDEN_POSITION
 
 
+	title.Text =
+		"TUTORIAL"
+
+
 	tutorialText.Text =
 		""
 
@@ -1049,6 +1311,11 @@ local function showTutorial()
 		NORMAL_POSITION
 	)
 end
+
+
+--==================================================
+-- BUTTON HIGHLIGHT
+--==================================================
 
 local function clearButtonHighlight()
 
@@ -1073,151 +1340,28 @@ local function clearButtonHighlight()
 end
 
 
-local function finishTutorial()
-	clearButtonHighlight()
-
-	showTimedMessage(
-		"That's everything you need to get started!",
-		NORMAL_MESSAGE_TIME
-	)
-
-
-	showTimedMessage(
-		"Keep serving customers, completing quests, upgrading your businesses, and building your dream business!",
-		LONG_MESSAGE_TIME
-	)
-
-
-	clearText()
-
-
-	completeTutorialRemote:FireServer()
-
-
-	tweenFrameTo(
-		HIDDEN_POSITION
-	)
-
-
-	tutorialFrame.Visible =
-		false
-
-
-	running =
-		false
-end
-
-local function skipTutorial()
-
-	if not running then
-		return
-	end
-
-
-	running =
-		false
-
-	clearButtonHighlight()
-
-
-	-- Mark the tutorial completed on the server.
-	-- The server already immediately saves this state.
-	completeTutorialRemote:FireServer()
-
-
-	-- Stop any tutorial tweens that may currently be running.
-	if activeFrameTween then
-
-		activeFrameTween:Cancel()
-
-		activeFrameTween =
-			nil
-
-	end
-
-
-	if activeTextTween then
-
-		activeTextTween:Cancel()
-
-		activeTextTween =
-			nil
-
-	end
-
-
-	-- Completely remove the tutorial UI immediately.
-	tutorialFrame.Visible =
-		false
-
-	tutorialGui.Enabled =
-		false
-
-
-	-- The tutorial temporarily takes control of the camera
-	-- during the plot introduction. Restore it in case the
-	-- player skips during that section.
-	local character =
-		player.Character
-
-	local humanoid =
-		character
-			and character:FindFirstChildOfClass(
-				"Humanoid"
-			)
-
-	if humanoid then
-
-		camera.CameraSubject =
-			humanoid
-
-	end
-
-	camera.CameraType =
-		Enum.CameraType.Custom
-
-
-	-- Most importantly, actually stop the tutorial coroutine.
-	-- Otherwise it could continue waiting for buttons,
-	-- cash, upgrades, etc. after being skipped.
-	if tutorialThread then
-
-		task.cancel(
-			tutorialThread
-		)
-
-		tutorialThread =
-			nil
-
-	end
-end
-
-skipButton.Activated:Connect(
-	skipTutorial
-)
-
---==================================================
--- BUTTON HIGHLIGHT
---==================================================
-
 local function getButtonCornerRadius(
 	button: GuiButton
 ): UDim
+
 	local uiCorner =
 		button:FindFirstChildWhichIsA(
 			"UICorner"
 		)
 
+
 	if uiCorner then
-		return uiCorner.CornerRadius
+
+		return uiCorner
+			.CornerRadius
 	end
+
 
 	return UDim.new(
 		0,
 		12
 	)
 end
-
 
 
 local function highlightButton(
@@ -1239,16 +1383,21 @@ local function highlightButton(
 
 
 	local aura =
-		Instance.new("Frame")
+		Instance.new(
+			"Frame"
+		)
+
 
 	aura.Name =
 		"TutorialHighlight"
+
 
 	aura.AnchorPoint =
 		Vector2.new(
 			0.5,
 			0.5
 		)
+
 
 	aura.Position =
 		UDim2.new(
@@ -1258,6 +1407,7 @@ local function highlightButton(
 			0
 		)
 
+
 	aura.Size =
 		UDim2.new(
 			1,
@@ -1266,14 +1416,18 @@ local function highlightButton(
 			TUTORIAL_HIGHLIGHT_SIZE_OFFSET
 		)
 
+
 	aura.BackgroundColor3 =
 		highlightColor
+
 
 	aura.BackgroundTransparency =
 		TUTORIAL_HIGHLIGHT_FILL_TRANSPARENCY
 
+
 	aura.BorderSizePixel =
 		0
+
 
 	aura.ZIndex =
 		math.max(
@@ -1281,43 +1435,58 @@ local function highlightButton(
 			button.ZIndex - 1
 		)
 
+
 	aura.Parent =
 		button
 
 
 	local auraCorner =
-		Instance.new("UICorner")
+		Instance.new(
+			"UICorner"
+		)
+
 
 	auraCorner.CornerRadius =
 		getButtonCornerRadius(
 			button
 		)
 
+
 	auraCorner.Parent =
 		aura
 
 
 	local auraStroke =
-		Instance.new("UIStroke")
+		Instance.new(
+			"UIStroke"
+		)
+
 
 	auraStroke.Color =
 		highlightColor
 
+
 	auraStroke.Thickness =
 		TUTORIAL_HIGHLIGHT_THICKNESS
 
+
 	auraStroke.Transparency =
 		TUTORIAL_HIGHLIGHT_IDLE_TRANSPARENCY
+
 
 	auraStroke.Parent =
 		aura
 
 
 	local auraScale =
-		Instance.new("UIScale")
+		Instance.new(
+			"UIScale"
+		)
+
 
 	auraScale.Scale =
 		1
+
 
 	auraScale.Parent =
 		aura
@@ -1328,93 +1497,110 @@ local function highlightButton(
 
 
 	activeHighlightPulseThread =
-		task.spawn(function()
+		task.spawn(
+			function()
 
-			while running
-				and aura.Parent
-				and button.Parent do
+				while running
+					and aura.Parent
+					and button.Parent do
 
-				local growTween =
-					TweenService:Create(
-						auraScale,
-						TweenInfo.new(
-							TUTORIAL_HIGHLIGHT_PULSE_TIME,
-							Enum.EasingStyle.Sine,
-							Enum.EasingDirection.Out
-						),
-						{
-							Scale =
-								TUTORIAL_HIGHLIGHT_PULSE_SCALE,
-						}
-					)
+					local growTween =
+						TweenService:Create(
+							auraScale,
 
-				local strokeGrowTween =
-					TweenService:Create(
-						auraStroke,
-						TweenInfo.new(
-							TUTORIAL_HIGHLIGHT_PULSE_TIME,
-							Enum.EasingStyle.Sine,
-							Enum.EasingDirection.Out
-						),
-						{
-							Transparency =
-								TUTORIAL_HIGHLIGHT_PULSE_TRANSPARENCY,
+							TweenInfo.new(
+								TUTORIAL_HIGHLIGHT_PULSE_TIME,
+								Enum.EasingStyle.Sine,
+								Enum.EasingDirection.Out
+							),
 
-							Thickness =
-								TUTORIAL_HIGHLIGHT_PULSE_THICKNESS,
-						}
-					)
-
-				growTween:Play()
-				strokeGrowTween:Play()
-
-				growTween.Completed:Wait()
+							{
+								Scale =
+									TUTORIAL_HIGHLIGHT_PULSE_SCALE,
+							}
+						)
 
 
-				if not running
-					or not aura.Parent
-					or not button.Parent then
+					local strokeGrowTween =
+						TweenService:Create(
+							auraStroke,
 
-					break
+							TweenInfo.new(
+								TUTORIAL_HIGHLIGHT_PULSE_TIME,
+								Enum.EasingStyle.Sine,
+								Enum.EasingDirection.Out
+							),
+
+							{
+								Transparency =
+									TUTORIAL_HIGHLIGHT_PULSE_TRANSPARENCY,
+
+								Thickness =
+									TUTORIAL_HIGHLIGHT_PULSE_THICKNESS,
+							}
+						)
+
+
+					growTween:Play()
+					strokeGrowTween:Play()
+
+
+					growTween.Completed:Wait()
+
+
+					if not running
+						or not aura.Parent
+						or not button.Parent then
+
+						break
+					end
+
+
+					local shrinkTween =
+						TweenService:Create(
+							auraScale,
+
+							TweenInfo.new(
+								TUTORIAL_HIGHLIGHT_PULSE_TIME,
+								Enum.EasingStyle.Sine,
+								Enum.EasingDirection.InOut
+							),
+
+							{
+								Scale =
+									1,
+							}
+						)
+
+
+					local strokeShrinkTween =
+						TweenService:Create(
+							auraStroke,
+
+							TweenInfo.new(
+								TUTORIAL_HIGHLIGHT_PULSE_TIME,
+								Enum.EasingStyle.Sine,
+								Enum.EasingDirection.InOut
+							),
+
+							{
+								Transparency =
+									TUTORIAL_HIGHLIGHT_IDLE_TRANSPARENCY,
+
+								Thickness =
+									TUTORIAL_HIGHLIGHT_THICKNESS,
+							}
+						)
+
+
+					shrinkTween:Play()
+					strokeShrinkTween:Play()
+
+
+					shrinkTween.Completed:Wait()
 				end
-
-
-				local shrinkTween =
-					TweenService:Create(
-						auraScale,
-						TweenInfo.new(
-							TUTORIAL_HIGHLIGHT_PULSE_TIME,
-							Enum.EasingStyle.Sine,
-							Enum.EasingDirection.InOut
-						),
-						{
-							Scale = 1,
-						}
-					)
-
-				local strokeShrinkTween =
-					TweenService:Create(
-						auraStroke,
-						TweenInfo.new(
-							TUTORIAL_HIGHLIGHT_PULSE_TIME,
-							Enum.EasingStyle.Sine,
-							Enum.EasingDirection.InOut
-						),
-						{
-							Transparency =
-								TUTORIAL_HIGHLIGHT_IDLE_TRANSPARENCY,
-
-							Thickness =
-								TUTORIAL_HIGHLIGHT_THICKNESS,
-						}
-					)
-
-				shrinkTween:Play()
-				strokeShrinkTween:Play()
-
-				shrinkTween.Completed:Wait()
 			end
-		end)
+		)
 end
 
 
@@ -1428,10 +1614,170 @@ local function waitForHighlightedButtonPress(
 		color
 	)
 
+
 	button.Activated:Wait()
+
 
 	clearButtonHighlight()
 end
+
+
+--==================================================
+-- RESTORE CAMERA
+--==================================================
+
+local function restorePlayerCamera()
+
+	local character =
+		player.Character
+
+
+	local humanoid =
+		character
+			and character:FindFirstChildOfClass(
+				"Humanoid"
+			)
+
+
+	camera.CameraType =
+		Enum.CameraType.Custom
+
+
+	if humanoid then
+
+		camera.CameraSubject =
+			humanoid
+	end
+end
+
+
+--==================================================
+-- FINISH
+--==================================================
+
+local function finishTutorial()
+
+	clearButtonHighlight()
+
+
+	showTimedMessage(
+		"Keep growing your reputation to unlock bigger businesses.",
+		SHORT_MESSAGE_TIME
+	)
+
+
+	showTimedMessage(
+		"Quests, achievements, marketing, plot expansions, daily rewards, and licenses will help your empire grow.",
+		NORMAL_MESSAGE_TIME
+	)
+
+
+	showTimedMessage(
+		"You're ready. Go from broke to boss!",
+		SHORT_MESSAGE_TIME
+	)
+
+
+	clearText()
+
+
+	completeTutorialRemote:FireServer()
+
+
+	tweenFrameTo(
+		HIDDEN_POSITION
+	)
+
+
+	tutorialFrame.Visible =
+		false
+
+
+	tutorialGui.Enabled =
+		false
+
+
+	running =
+		false
+
+
+	stopSuppressingDailyRewards(
+		true
+	)
+end
+
+
+--==================================================
+-- SKIP
+--==================================================
+
+local function skipTutorial()
+
+	if not running then
+		return
+	end
+
+
+	running =
+		false
+
+
+	clearButtonHighlight()
+
+
+	completeTutorialRemote:FireServer()
+
+
+	if activeFrameTween then
+
+		activeFrameTween:Cancel()
+
+		activeFrameTween =
+			nil
+	end
+
+
+	if activeTextTween then
+
+		activeTextTween:Cancel()
+
+		activeTextTween =
+			nil
+	end
+
+
+	tutorialFrame.Visible =
+		false
+
+
+	tutorialGui.Enabled =
+		false
+
+
+	restorePlayerCamera()
+
+
+	stopSuppressingDailyRewards(
+		true
+	)
+
+
+	if tutorialThread then
+
+		task.cancel(
+			tutorialThread
+		)
+
+		tutorialThread =
+			nil
+	end
+end
+
+
+skipButton.Activated:Connect(
+	skipTutorial
+)
+
 
 --==================================================
 -- MAIN TUTORIAL
@@ -1440,14 +1786,15 @@ end
 local function runTutorial()
 
 	if running then
-
 		return
-
 	end
 
 
 	running =
 		true
+
+
+	beginSuppressingDailyRewards()
 
 
 	local plot =
@@ -1458,40 +1805,18 @@ local function runTutorial()
 
 
 	--==================================================
-	-- INTRO
+	-- 1. VERY SHORT INTRO
 	--==================================================
 
 	showTimedMessage(
-		"Welcome to Broke To Boss!",
-		NORMAL_MESSAGE_TIME
-	)
-
-
-	showTimedMessage(
-		"Start with a small business, serve customers, earn cash, and turn your plot into a growing business empire.",
-		LONG_MESSAGE_TIME
-	)
-
-
-	showTimedMessage(
-		"This quick tutorial will walk you through the basics.",
+		"Welcome to Broke To Boss! Start small, build businesses, and grow your empire.",
 		NORMAL_MESSAGE_TIME
 	)
 
 
 	--==================================================
-	-- SHOW PLOT
+	-- 2. SHOW PLOT
 	--==================================================
-
-	setTutorialText(
-		"First, let's take a look at your plot."
-	)
-
-
-	task.wait(
-		1.5
-	)
-
 
 	showPlotCamera(
 		plot
@@ -1499,17 +1824,17 @@ local function runTutorial()
 
 
 	--==================================================
-	-- ADD BUTTON
+	-- 3. PLACE FIRST BUSINESS
 	--==================================================
 
 	setTutorialText(
-		"Let's open your first business. Click the Add button on the left side of your screen."
+		"Let's start earning. Click Add."
 	)
 
 
 	waitForHighlightedButtonPress(
-	addButton
-)
+		addButton
+	)
 
 
 	local lemonadeStand =
@@ -1520,12 +1845,8 @@ local function runTutorial()
 
 	if not lemonadeStand then
 
-		--==============================================
-		-- SELECT LEMONADE
-		--==============================================
-
 		setTutorialText(
-			"Great! Select the Lemonade Stand. Your very first one is completely free."
+			"Choose the Lemonade Stand. Your first one is FREE."
 		)
 
 
@@ -1534,27 +1855,25 @@ local function runTutorial()
 
 
 		waitForHighlightedButtonPress(
-	lemonadeButton
-)
+			lemonadeButton
+		)
 
-		-- Wait for the real placement controls.
+
 		waitUntilVisible(
 			addButtons
 		)
 
 
-		-- Move tutorial away from Rotate / Place / Cancel.
 		tweenFrameTo(
 			SIDE_POSITION
 		)
 
 
 		setTutorialText(
-			"Now choose where you want your Lemonade Stand. You can rotate it, then press Place when you're happy with it."
+			"Pick a spot, rotate it if you want, then press Place."
 		)
 
 
-		-- Only advances when placement actually succeeds.
 		lemonadeStand =
 			waitForLemonadeStand(
 				plot
@@ -1565,57 +1884,53 @@ local function runTutorial()
 			NORMAL_POSITION
 		)
 
-
 	else
 
 		showTimedMessage(
-			"You already have a Lemonade Stand, so we'll use that one.",
-			NORMAL_MESSAGE_TIME
+			"We'll use the Lemonade Stand you already placed.",
+			SHORT_MESSAGE_TIME
 		)
-
 	end
 
 
 	--==================================================
-	-- FIRST BUSINESS
+	-- 4. FIRST CUSTOMER
 	--==================================================
 
 	showTimedMessage(
-		"Nice! Your first business is officially open.",
+		"Nice! Customers visit automatically and pay you when they're served.",
 		NORMAL_MESSAGE_TIME
-	)
-
-
-	showTimedMessage(
-		"Customers will automatically visit your businesses. Once they're served, you'll earn cash.",
-		LONG_MESSAGE_TIME
-	)
-
-
-	--==================================================
-	-- QUESTS
-	--==================================================
-
-	showTimedMessage(
-		"Placing your first business also unlocks your first quests.",
-		NORMAL_MESSAGE_TIME
-	)
-
-
-	showTimedMessage(
-		"Quests give you goals to work toward and reward you with extra cash as you play.",
-		LONG_MESSAGE_TIME
 	)
 
 
 	setTutorialText(
-		"Click the Quests button to take a look."
+		"Watch your first customer get served."
+	)
+
+
+	waitForFirstSale(
+		lemonadeStand
+	)
+
+
+	showTimedMessage(
+		"First sale! Your businesses keep earning while you build and upgrade.",
+		SHORT_MESSAGE_TIME
+	)
+
+
+	--==================================================
+	-- 5. QUESTS + FIRST CLAIM
+	--==================================================
+
+	setTutorialText(
+		"Quests give you extra cash for progressing. Open Quests."
 	)
 
 
 	waitForHighlightedButtonPress(
-	questsOpenButton
-)
+		questsOpenButton
+	)
 
 
 	waitUntilVisible(
@@ -1623,20 +1938,40 @@ local function runTutorial()
 	)
 
 
-	showTimedMessage(
-		"These will progress naturally while you build, serve customers, upgrade businesses, and expand.",
-		LONG_MESSAGE_TIME
-	)
+	local firstSaleClaimButton =
+		waitForFirstSaleClaimButton(
+			5
+		)
 
 
-	showTimedMessage(
-		"When a quest is finished, come back here and claim its reward. These rewards are especially useful early on.",
-		LONG_MESSAGE_TIME
-	)
+	if firstSaleClaimButton then
+
+		setTutorialText(
+			"Your first quest is complete. Claim the reward!"
+		)
+
+
+		waitForHighlightedButtonPress(
+			firstSaleClaimButton
+		)
+
+
+		showTimedMessage(
+			"Perfect. New quests replace completed ones, so you'll always have goals.",
+			SHORT_MESSAGE_TIME
+		)
+
+	else
+
+		showTimedMessage(
+			"Quests track your sales, earnings, upgrades, and business growth.",
+			NORMAL_MESSAGE_TIME
+		)
+	end
 
 
 	setTutorialText(
-		"Close the Quests menu when you're ready to continue."
+		"Close Quests when you're ready."
 	)
 
 
@@ -1646,65 +1981,30 @@ local function runTutorial()
 
 
 	--==================================================
-	-- MANAGE INTRO
+	-- 6. MANAGE BUSINESS
 	--==================================================
 
-	showTimedMessage(
-		"Next, let's look at how you improve a business.",
-		NORMAL_MESSAGE_TIME
-	)
-
-
 	setTutorialText(
-		"Walk over to your Lemonade Stand and press Manage."
+		"Now walk to your Lemonade Stand and press Manage."
 	)
 
 
 	waitForManageMenu()
 
 
-	-- Manage menu is in the center, so get out of its way.
 	tweenFrameTo(
 		SIDE_POSITION
 	)
 
 
-	--==================================================
-	-- EXPLAIN MANAGEMENT
-	--==================================================
-
 	showTimedMessage(
-		"This is the Manage menu. Every stand has upgrades that make it more powerful.",
-		LONG_MESSAGE_TIME
-	)
-
-
-	showTimedMessage(
-		"Better Lemonade increases how much cash you earn from every customer you serve.",
+		"Here you can improve earnings, service speed, queue size, and the stand itself.",
 		NORMAL_MESSAGE_TIME
 	)
 
 
-	showTimedMessage(
-		"Faster Service reduces the time it takes to serve each customer.",
-		NORMAL_MESSAGE_TIME
-	)
-
-
-	showTimedMessage(
-		"Longer Queue lets more customers wait at the stand instead of leaving when it's busy.",
-		LONG_MESSAGE_TIME
-	)
-
-
-	showTimedMessage(
-		"Upgrading the stand's appearance is also important. Better-looking stands earn more and attract customers more effectively.",
-		LONG_MESSAGE_TIME
-	)
-
-
 	--==================================================
-	-- WAIT FOR ENOUGH CASH
+	-- 7. FIRST UPGRADE
 	--==================================================
 
 	local firstUpgradeCost =
@@ -1714,33 +2014,32 @@ local function runTutorial()
 
 
 	if firstUpgradeCost > 0
-		and cash.Value < firstUpgradeCost then
+		and cash.Value
+			< firstUpgradeCost then
 
 		setTutorialText(
-			`Better Lemonade costs ${firstUpgradeCost}. You don't have to buy it yet — let your stand serve customers until you have enough cash.`
+			`Better Lemonade costs $. Let customers earn the cash you need.`
 		)
 
 
 		waitForCash(
 			firstUpgradeCost
 		)
-
-
-		showTimedMessage(
-			`You now have enough cash! Let's spend ${firstUpgradeCost} on your first Better Lemonade upgrade.`,
-			NORMAL_MESSAGE_TIME
-		)
-
 	end
 
 
-	--==================================================
-	-- REQUIRE UPGRADE
-	--==================================================
+	if firstUpgradeCost > 0 then
 
-	setTutorialText(
-		"Upgrade Better Lemonade once."
-	)
+		setTutorialText(
+			`Buy Better Lemonade for $. It increases every sale.`
+		)
+
+	else
+
+		setTutorialText(
+			"You've already upgraded Better Lemonade!"
+		)
+	end
 
 
 	waitForSaleValueUpgrade(
@@ -1749,23 +2048,13 @@ local function runTutorial()
 
 
 	showTimedMessage(
-		"Perfect! That stand now earns more cash from every sale.",
-		NORMAL_MESSAGE_TIME
+		"Great! Reinvesting your cash makes every business stronger.",
+		SHORT_MESSAGE_TIME
 	)
 
-
-	showTimedMessage(
-		"Later upgrades become much more powerful, so keep reinvesting some of the money your businesses make.",
-		LONG_MESSAGE_TIME
-	)
-
-
-	--==================================================
-	-- LEAVE MANAGE MENU
-	--==================================================
 
 	setTutorialText(
-		"Close the Manage menu when you're ready."
+		"Close the Manage menu."
 	)
 
 
@@ -1780,18 +2069,18 @@ local function runTutorial()
 
 
 	--==================================================
-	-- FINAL PROGRESSION
+	-- 8. SHORT GAME OVERVIEW
 	--==================================================
 
 	showTimedMessage(
-		"As you earn more cash and reputation, you'll unlock completely new types of businesses.",
-		LONG_MESSAGE_TIME
+		"Serve customers to raise Reputation and unlock Hotdogs, Haircuts, Coffee, and future businesses.",
+		NORMAL_MESSAGE_TIME
 	)
 
 
 	showTimedMessage(
-		"New businesses earn more, while your older businesses can continue generating money alongside them.",
-		LONG_MESSAGE_TIME
+		"Marketing brings more customers, and Plot Expansions give you more room to build.",
+		NORMAL_MESSAGE_TIME
 	)
 
 
@@ -1818,7 +2107,6 @@ local success,
 
 			return getTutorialStateRemote
 				:InvokeServer()
-
 		end
 	)
 
