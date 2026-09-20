@@ -7,6 +7,11 @@ local MarketplaceService =
 local ReplicatedStorage =
 	game:GetService("ReplicatedStorage")
 
+local ServerStorage =
+	game:GetService(
+		"ServerStorage"
+	)
+
 
 local ShopConfig =
 	require(
@@ -41,6 +46,10 @@ local AnalyticsTracker =
 local BENEFIT_REFRESH_INTERVAL =
 	1
 
+local spawnPurchasedCustomer =
+	ServerStorage:WaitForChild(
+		"SpawnPurchasedCustomer"
+	) :: BindableFunction
 
 --==================================================
 -- HELPERS
@@ -602,6 +611,54 @@ local function grantDeveloperProduct(
 				)
 			end
 	end
+
+	if product.RewardType
+	== "GoldenCustomer" then
+
+	local success,
+		spawned =
+		pcall(
+			function()
+
+				return spawnPurchasedCustomer:
+					Invoke(
+						player,
+						"Golden"
+					)
+			end
+		)
+
+
+	if not success then
+
+		warn(
+			`Failed to spawn purchased Golden Customer for {player.Name}: {spawned}`
+		)
+
+		return false,
+			nil
+	end
+
+
+	if spawned ~= true then
+
+		warn(
+			`Could not spawn purchased Golden Customer for {player.Name}.`
+		)
+
+		return false,
+			nil
+	end
+
+	player:SetAttribute(
+	"GoldenCustomerPurchasedAt",
+	os.time()
+)
+
+
+	return true,
+		nil
+end
 
 
 	warn(

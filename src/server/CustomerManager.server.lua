@@ -232,6 +232,19 @@ local plotNextSpawnTimes: {
 -- CUSTOMER VISUAL EFFECTS
 --==================================================
 
+local STAR_TEXTURE =
+	"rbxassetid://6490035152"
+
+local SPARKLE_TEXTURE =
+	"rbxasset://textures/particles/sparkles_main.dds"
+
+local FIRE_SPARK_TEXTURE =
+	"rbxasset://textures/particles/fire_sparks_main.dds"
+
+local SMOKE_TEXTURE =
+	"rbxasset://textures/particles/smoke_main.dds"
+
+
 local function createParticleEmitter(
 	parent: BasePart,
 	name: string,
@@ -244,31 +257,46 @@ local function createParticleEmitter(
 ): ParticleEmitter
 
 	local emitter =
-		Instance.new("ParticleEmitter")
+		Instance.new(
+			"ParticleEmitter"
+		)
+
 
 	emitter.Name =
 		name
 
+
 	emitter.Texture =
 		texture
+
 
 	emitter.Color =
 		color
 
+
 	emitter.Rate =
 		rate
+
 
 	emitter.Lifetime =
 		lifetime
 
+
 	emitter.Speed =
 		speed
+
 
 	emitter.Size =
 		size
 
+
 	emitter.LightEmission =
 		0.35
+
+
+	emitter.LightInfluence =
+		0
+
 
 	emitter.SpreadAngle =
 		Vector2.new(
@@ -276,17 +304,39 @@ local function createParticleEmitter(
 			180
 		)
 
+
 	emitter.Rotation =
 		NumberRange.new(
 			0,
 			360
 		)
 
+
 	emitter.RotSpeed =
 		NumberRange.new(
 			-35,
 			35
 		)
+
+
+	emitter.Transparency =
+		NumberSequence.new({
+			NumberSequenceKeypoint.new(
+				0,
+				0.15
+			),
+
+			NumberSequenceKeypoint.new(
+				0.7,
+				0.25
+			),
+
+			NumberSequenceKeypoint.new(
+				1,
+				1
+			),
+		})
+
 
 	emitter.Parent =
 		parent
@@ -296,14 +346,62 @@ local function createParticleEmitter(
 end
 
 
+local function createHighlight(
+	customer: Model,
+	color: Color3,
+	transparency: number?
+): Highlight
+
+	local highlight =
+		Instance.new(
+			"Highlight"
+		)
+
+
+	highlight.Name =
+		"CustomerTypeOutline"
+
+
+	highlight.Adornee =
+		customer
+
+
+	highlight.FillTransparency =
+		1
+
+
+	highlight.OutlineColor =
+		color
+
+
+	highlight.OutlineTransparency =
+		transparency
+		or 0
+
+
+	-- The outline does NOT show through buildings.
+	highlight.DepthMode =
+		Enum.HighlightDepthMode.Occluded
+
+
+	highlight.Parent =
+		customer
+
+
+	return highlight
+end
+
+
 local function addCustomerVisualEffects(
 	customer: Model,
 	customerType: string
 )
+
 	local rootPart =
 		customer:FindFirstChild(
 			"HumanoidRootPart"
 		)
+
 
 	local head =
 		customer:FindFirstChild(
@@ -312,9 +410,13 @@ local function addCustomerVisualEffects(
 
 
 	if not rootPart
-		or not rootPart:IsA("BasePart")
+		or not rootPart:IsA(
+			"BasePart"
+		)
 		or not head
-		or not head:IsA("BasePart") then
+		or not head:IsA(
+			"BasePart"
+		) then
 
 		return
 	end
@@ -336,182 +438,96 @@ local function addCustomerVisualEffects(
 
 
 	--==================================================
--- CUSTOMER TYPE OUTLINE
---==================================================
+	-- REGULAR
+	--==================================================
+	--
+	-- Regular customers intentionally receive no VFX.
+	-- This makes special customers much easier to notice.
+	--==================================================
 
-if customerType ~= "Regular" then
+	if customerType
+		== "Regular" then
 
-	local highlight =
-		Instance.new("Highlight")
+		customer:SetAttribute(
+			"CustomerEffectsInitialized",
+			true
+		)
 
-	highlight.Name =
-		"CustomerTypeOutline"
+		return
+	end
 
-	highlight.Adornee =
-		customer
 
-	highlight.FillTransparency =
-		1
+	--==================================================
+	-- TYPE OUTLINE
+	--==================================================
 
-	highlight.OutlineColor =
-		typeConfig.TextColor
-
-	-- Slightly stronger than before.
-	highlight.OutlineTransparency =
+	createHighlight(
+		customer,
+		typeConfig.TextColor,
 		0
-
-	highlight.DepthMode =
-		Enum.HighlightDepthMode.Occluded
-
-	highlight.Parent =
-		customer
-end
+	)
 
 
 	--==================================================
-	-- VIP
+	-- GENEROUS
+	--==================================================
+	--
+	-- Soft cyan sparkles.
+	-- This is intentionally subtle because Generous
+	-- customers are still fairly common.
 	--==================================================
 
-	if customerType == "VIP" then
+	if customerType
+		== "Generous" then
 
-		createParticleEmitter(
-			head,
-			"VIPSparkles",
-
-			"rbxasset://textures/particles/sparkles_main.dds",
-
-			ColorSequence.new(
-				Color3.fromRGB(
-					255,
-					222,
-					73
-				)
-			),
-
-			4,
-
-			NumberRange.new(
-				0.45,
-				0.8
-			),
-
-			NumberRange.new(
-				0.2,
-				0.7
-			),
-
-			NumberSequence.new({
-				NumberSequenceKeypoint.new(
-					0,
-					0.16
-				),
-
-				NumberSequenceKeypoint.new(
-					0.5,
-					0.22
-				),
-
-				NumberSequenceKeypoint.new(
-					1,
-					0
-				),
-			})
-		)
-
-
-	--==================================================
-	-- CELEBRITY
-	--==================================================
-
-	elseif customerType == "Celebrity" then
-
-		createParticleEmitter(
-			head,
-			"CelebrityStars",
-
-			"rbxasset://textures/particles/sparkles_main.dds",
-
-			ColorSequence.new(
-				Color3.fromRGB(
-					255,
-					102,
-					213
-				)
-			),
-
-			7,
-
-			NumberRange.new(
-				0.55,
-				0.95
-			),
-
-			NumberRange.new(
-				0.3,
-				0.9
-			),
-
-			NumberSequence.new({
-				NumberSequenceKeypoint.new(
-					0,
-					0.2
-				),
-
-				NumberSequenceKeypoint.new(
-					0.5,
-					0.28
-				),
-
-				NumberSequenceKeypoint.new(
-					1,
-					0
-				),
-			})
-		)
-
-
-	--==================================================
-	-- BILLIONAIRE
-	--==================================================
-
-	elseif customerType == "Billionaire" then
-
-		local emitter =
+		local sparkles =
 			createParticleEmitter(
 				rootPart,
-				"BillionaireCash",
+				"GenerousSparkles",
 
-				"rbxasset://textures/particles/sparkles_main.dds",
+				SPARKLE_TEXTURE,
 
-				ColorSequence.new(
-					Color3.fromRGB(
-						77,
-						255,
-						126
-					)
-				),
+				ColorSequence.new({
+					ColorSequenceKeypoint.new(
+						0,
+						Color3.fromRGB(
+							190,
+							245,
+							255
+						)
+					),
 
-				6,
+					ColorSequenceKeypoint.new(
+						1,
+						Color3.fromRGB(
+							83,
+							207,
+							255
+						)
+					),
+				}),
+
+				2.5,
 
 				NumberRange.new(
-					0.7,
-					1.1
+					0.55,
+					0.9
 				),
 
 				NumberRange.new(
-					0.6,
-					1.2
+					0.15,
+					0.45
 				),
 
 				NumberSequence.new({
 					NumberSequenceKeypoint.new(
 						0,
-						0.22
+						0.09
 					),
 
 					NumberSequenceKeypoint.new(
-						0.7,
-						0.3
+						0.45,
+						0.16
 					),
 
 					NumberSequenceKeypoint.new(
@@ -522,40 +538,515 @@ end
 			)
 
 
-		emitter.Acceleration =
+		sparkles.Acceleration =
 			Vector3.new(
 				0,
-				2.2,
+				1.2,
 				0
 			)
 
 
-	--==================================================
-	-- GOLDEN
-	--==================================================
+		sparkles.LightEmission =
+			0.5
 
-	elseif customerType == "Golden" then
 
-		local sparkles =
-			createParticleEmitter(
-				head,
-				"GoldenSparkles",
-
-				"rbxasset://textures/particles/sparkles_main.dds",
-
-				ColorSequence.new(
-					Color3.fromRGB(
-						255,
-						214,
-						65
-					)
+		sparkles.Transparency =
+			NumberSequence.new({
+				NumberSequenceKeypoint.new(
+					0,
+					0.3
 				),
 
-				9,
+				NumberSequenceKeypoint.new(
+					0.7,
+					0.45
+				),
+
+				NumberSequenceKeypoint.new(
+					1,
+					1
+				),
+			})
+
+
+	--==================================================
+	-- RICH
+	--==================================================
+	--
+	-- Emerald-green rising particles.
+	-- Feels like little money / wealth sparks without
+	-- being so intense that it competes with Billionaire.
+	--==================================================
+
+	elseif customerType
+		== "Rich" then
+
+		local moneySparks =
+			createParticleEmitter(
+				rootPart,
+				"RichMoneySparks",
+
+				FIRE_SPARK_TEXTURE,
+
+				ColorSequence.new({
+					ColorSequenceKeypoint.new(
+						0,
+						Color3.fromRGB(
+							75,
+							255,
+							152
+						)
+					),
+
+					ColorSequenceKeypoint.new(
+						1,
+						Color3.fromRGB(
+							20,
+							185,
+							92
+						)
+					),
+				}),
+
+				4,
+
+				NumberRange.new(
+					0.65,
+					1
+				),
+
+				NumberRange.new(
+					0.25,
+					0.7
+				),
+
+				NumberSequence.new({
+					NumberSequenceKeypoint.new(
+						0,
+						0.09
+					),
+
+					NumberSequenceKeypoint.new(
+						0.5,
+						0.14
+					),
+
+					NumberSequenceKeypoint.new(
+						1,
+						0
+					),
+				})
+			)
+
+
+		moneySparks.Acceleration =
+			Vector3.new(
+				0,
+				2.4,
+				0
+			)
+
+
+		moneySparks.LightEmission =
+			0.55
+
+
+		moneySparks.Drag =
+			1
+
+
+	--==================================================
+	-- VIP
+	--==================================================
+	--
+	-- Clean golden stars surrounding the head.
+	--==================================================
+
+	elseif customerType
+		== "VIP" then
+
+		local stars =
+			createParticleEmitter(
+				head,
+				"VIPStars",
+
+				STAR_TEXTURE,
+
+				ColorSequence.new({
+					ColorSequenceKeypoint.new(
+						0,
+						Color3.fromRGB(
+							255,
+							247,
+							163
+						)
+					),
+
+					ColorSequenceKeypoint.new(
+						1,
+						Color3.fromRGB(
+							255,
+							203,
+							45
+						)
+					),
+				}),
+
+				4,
 
 				NumberRange.new(
 					0.55,
 					0.9
+				),
+
+				NumberRange.new(
+					0.1,
+					0.5
+				),
+
+				NumberSequence.new({
+					NumberSequenceKeypoint.new(
+						0,
+						0
+					),
+
+					NumberSequenceKeypoint.new(
+						0.18,
+						0.25
+					),
+
+					NumberSequenceKeypoint.new(
+						0.65,
+						0.18
+					),
+
+					NumberSequenceKeypoint.new(
+						1,
+						0
+					),
+				})
+			)
+
+
+		stars.LightEmission =
+			0.85
+
+
+		stars.RotSpeed =
+			NumberRange.new(
+				-65,
+				65
+			)
+
+
+	--==================================================
+	-- CELEBRITY
+	--==================================================
+	--
+	-- Pink / white stars and occasional brighter flashes.
+	-- Gives a paparazzi / camera-flash feel.
+	--==================================================
+
+	elseif customerType
+		== "Celebrity" then
+
+		local stars =
+			createParticleEmitter(
+				head,
+				"CelebrityStars",
+
+				STAR_TEXTURE,
+
+				ColorSequence.new({
+					ColorSequenceKeypoint.new(
+						0,
+						Color3.fromRGB(
+							255,
+							215,
+							250
+						)
+					),
+
+					ColorSequenceKeypoint.new(
+						0.45,
+						Color3.fromRGB(
+							255,
+							94,
+							213
+						)
+					),
+
+					ColorSequenceKeypoint.new(
+						1,
+						Color3.fromRGB(
+							255,
+							166,
+							234
+						)
+					),
+				}),
+
+				6,
+
+				NumberRange.new(
+					0.5,
+					0.85
+				),
+
+				NumberRange.new(
+					0.2,
+					0.75
+				),
+
+				NumberSequence.new({
+					NumberSequenceKeypoint.new(
+						0,
+						0
+					),
+
+					NumberSequenceKeypoint.new(
+						0.15,
+						0.28
+					),
+
+					NumberSequenceKeypoint.new(
+						0.65,
+						0.2
+					),
+
+					NumberSequenceKeypoint.new(
+						1,
+						0
+					),
+				})
+			)
+
+
+		stars.LightEmission =
+			0.9
+
+
+		stars.RotSpeed =
+			NumberRange.new(
+				-100,
+				100
+			)
+
+
+		local flashes =
+			createParticleEmitter(
+				head,
+				"CelebrityFlashes",
+
+				SPARKLE_TEXTURE,
+
+				ColorSequence.new(
+					Color3.fromRGB(
+						255,
+						245,
+						255
+					)
+				),
+
+				1.5,
+
+				NumberRange.new(
+					0.25,
+					0.4
+				),
+
+				NumberRange.new(
+					0,
+					0.2
+				),
+
+				NumberSequence.new({
+					NumberSequenceKeypoint.new(
+						0,
+						0
+					),
+
+					NumberSequenceKeypoint.new(
+						0.15,
+						0.42
+					),
+
+					NumberSequenceKeypoint.new(
+						1,
+						0
+					),
+				})
+			)
+
+
+		flashes.LightEmission =
+			1
+
+
+		flashes.Transparency =
+			NumberSequence.new({
+				NumberSequenceKeypoint.new(
+					0,
+					1
+				),
+
+				NumberSequenceKeypoint.new(
+					0.12,
+					0
+				),
+
+				NumberSequenceKeypoint.new(
+					0.6,
+					0.25
+				),
+
+				NumberSequenceKeypoint.new(
+					1,
+					1
+				),
+			})
+
+
+	--==================================================
+	-- INFLUENCER
+	--==================================================
+	--
+	-- Purple/cyan digital aura plus neon sparks.
+	--==================================================
+
+	elseif customerType
+		== "Influencer" then
+
+		local aura =
+			createParticleEmitter(
+				rootPart,
+				"InfluencerAura",
+
+				SMOKE_TEXTURE,
+
+				ColorSequence.new({
+					ColorSequenceKeypoint.new(
+						0,
+						Color3.fromRGB(
+							174,
+							72,
+							255
+						)
+					),
+
+					ColorSequenceKeypoint.new(
+						0.5,
+						Color3.fromRGB(
+							116,
+							86,
+							255
+						)
+					),
+
+					ColorSequenceKeypoint.new(
+						1,
+						Color3.fromRGB(
+							75,
+							218,
+							255
+						)
+					),
+				}),
+
+				3,
+
+				NumberRange.new(
+					0.8,
+					1.25
+				),
+
+				NumberRange.new(
+					0.05,
+					0.2
+				),
+
+				NumberSequence.new({
+					NumberSequenceKeypoint.new(
+						0,
+						0.2
+					),
+
+					NumberSequenceKeypoint.new(
+						0.4,
+						0.48
+					),
+
+					NumberSequenceKeypoint.new(
+						1,
+						0.15
+					),
+				})
+			)
+
+
+		aura.LightEmission =
+			0.7
+
+
+		aura.Transparency =
+			NumberSequence.new({
+				NumberSequenceKeypoint.new(
+					0,
+					0.72
+				),
+
+				NumberSequenceKeypoint.new(
+					0.45,
+					0.82
+				),
+
+				NumberSequenceKeypoint.new(
+					1,
+					1
+				),
+			})
+
+
+		aura.Acceleration =
+			Vector3.new(
+				0,
+				0.6,
+				0
+			)
+
+
+		local digitalSparks =
+			createParticleEmitter(
+				head,
+				"InfluencerDigitalSparks",
+
+				STAR_TEXTURE,
+
+				ColorSequence.new({
+					ColorSequenceKeypoint.new(
+						0,
+						Color3.fromRGB(
+							219,
+							132,
+							255
+						)
+					),
+
+					ColorSequenceKeypoint.new(
+						1,
+						Color3.fromRGB(
+							82,
+							222,
+							255
+						)
+					),
+				}),
+
+				4,
+
+				NumberRange.new(
+					0.4,
+					0.75
 				),
 
 				NumberRange.new(
@@ -566,12 +1057,12 @@ end
 				NumberSequence.new({
 					NumberSequenceKeypoint.new(
 						0,
-						0.18
+						0
 					),
 
 					NumberSequenceKeypoint.new(
-						0.5,
-						0.3
+						0.2,
+						0.19
 					),
 
 					NumberSequenceKeypoint.new(
@@ -582,8 +1073,463 @@ end
 			)
 
 
-		sparkles.LightEmission =
-			0.65
+		digitalSparks.LightEmission =
+			0.9
+
+
+		digitalSparks.RotSpeed =
+			NumberRange.new(
+				-120,
+				120
+			)
+
+
+	--==================================================
+	-- BILLIONAIRE
+	--==================================================
+	--
+	-- Much stronger wealth effect.
+	-- Green/cyan particles rise continuously around them.
+	--==================================================
+
+	elseif customerType
+		== "Billionaire" then
+
+		local moneySparks =
+			createParticleEmitter(
+				rootPart,
+				"BillionaireMoney",
+
+				FIRE_SPARK_TEXTURE,
+
+				ColorSequence.new({
+					ColorSequenceKeypoint.new(
+						0,
+						Color3.fromRGB(
+							76,
+							255,
+							128
+						)
+					),
+
+					ColorSequenceKeypoint.new(
+						0.5,
+						Color3.fromRGB(
+							45,
+							241,
+							188
+						)
+					),
+
+					ColorSequenceKeypoint.new(
+						1,
+						Color3.fromRGB(
+							67,
+							211,
+							255
+						)
+					),
+				}),
+
+				7,
+
+				NumberRange.new(
+					0.75,
+					1.25
+				),
+
+				NumberRange.new(
+					0.45,
+					1
+				),
+
+				NumberSequence.new({
+					NumberSequenceKeypoint.new(
+						0,
+						0.12
+					),
+
+					NumberSequenceKeypoint.new(
+						0.55,
+						0.2
+					),
+
+					NumberSequenceKeypoint.new(
+						1,
+						0
+					),
+				})
+			)
+
+
+		moneySparks.Acceleration =
+			Vector3.new(
+				0,
+				3.2,
+				0
+			)
+
+
+		moneySparks.LightEmission =
+			0.8
+
+
+		moneySparks.Drag =
+			1.2
+
+
+		local billionaireSparkles =
+			createParticleEmitter(
+				head,
+				"BillionaireSparkles",
+
+				SPARKLE_TEXTURE,
+
+				ColorSequence.new({
+					ColorSequenceKeypoint.new(
+						0,
+						Color3.fromRGB(
+							218,
+							255,
+							235
+						)
+					),
+
+					ColorSequenceKeypoint.new(
+						1,
+						Color3.fromRGB(
+							58,
+							224,
+							255
+						)
+					),
+				}),
+
+				3,
+
+				NumberRange.new(
+					0.45,
+					0.8
+				),
+
+				NumberRange.new(
+					0.1,
+					0.5
+				),
+
+				NumberSequence.new({
+					NumberSequenceKeypoint.new(
+						0,
+						0.1
+					),
+
+					NumberSequenceKeypoint.new(
+						0.45,
+						0.22
+					),
+
+					NumberSequenceKeypoint.new(
+						1,
+						0
+					),
+				})
+			)
+
+
+		billionaireSparkles.LightEmission =
+			0.9
+
+
+	--==================================================
+	-- GOLDEN
+	--==================================================
+	--
+	-- Jackpot customer.
+	--
+	-- Golden should visually overpower every other type:
+	-- 1. gold star particles
+	-- 2. body aura
+	-- 3. rising gold sparks
+	-- 4. subtle PointLight
+	--==================================================
+
+	elseif customerType
+		== "Golden" then
+
+		local stars =
+			createParticleEmitter(
+				head,
+				"GoldenStars",
+
+				STAR_TEXTURE,
+
+				ColorSequence.new({
+					ColorSequenceKeypoint.new(
+						0,
+						Color3.fromRGB(
+							255,
+							251,
+							181
+						)
+					),
+
+					ColorSequenceKeypoint.new(
+						0.45,
+						Color3.fromRGB(
+							255,
+							220,
+							55
+						)
+					),
+
+					ColorSequenceKeypoint.new(
+						1,
+						Color3.fromRGB(
+							255,
+							169,
+							13
+						)
+					),
+				}),
+
+				9,
+
+				NumberRange.new(
+					0.55,
+					1
+				),
+
+				NumberRange.new(
+					0.2,
+					0.8
+				),
+
+				NumberSequence.new({
+					NumberSequenceKeypoint.new(
+						0,
+						0
+					),
+
+					NumberSequenceKeypoint.new(
+						0.15,
+						0.34
+					),
+
+					NumberSequenceKeypoint.new(
+						0.6,
+						0.25
+					),
+
+					NumberSequenceKeypoint.new(
+						1,
+						0
+					),
+				})
+			)
+
+
+		stars.LightEmission =
+			1
+
+
+		stars.RotSpeed =
+			NumberRange.new(
+				-110,
+				110
+			)
+
+
+		local aura =
+			createParticleEmitter(
+				rootPart,
+				"GoldenAura",
+
+				SMOKE_TEXTURE,
+
+				ColorSequence.new({
+					ColorSequenceKeypoint.new(
+						0,
+						Color3.fromRGB(
+							255,
+							226,
+							78
+						)
+					),
+
+					ColorSequenceKeypoint.new(
+						1,
+						Color3.fromRGB(
+							255,
+							161,
+							11
+						)
+					),
+				}),
+
+				4,
+
+				NumberRange.new(
+					0.7,
+					1.1
+				),
+
+				NumberRange.new(
+					0.05,
+					0.2
+				),
+
+				NumberSequence.new({
+					NumberSequenceKeypoint.new(
+						0,
+						0.32
+					),
+
+					NumberSequenceKeypoint.new(
+						0.45,
+						0.6
+					),
+
+					NumberSequenceKeypoint.new(
+						1,
+						0.18
+					),
+				})
+			)
+
+
+		aura.LightEmission =
+			0.8
+
+
+		aura.Transparency =
+			NumberSequence.new({
+				NumberSequenceKeypoint.new(
+					0,
+					0.72
+				),
+
+				NumberSequenceKeypoint.new(
+					0.55,
+					0.84
+				),
+
+				NumberSequenceKeypoint.new(
+					1,
+					1
+				),
+			})
+
+
+		aura.Acceleration =
+			Vector3.new(
+				0,
+				0.75,
+				0
+			)
+
+
+		local risingSparks =
+			createParticleEmitter(
+				rootPart,
+				"GoldenRisingSparks",
+
+				FIRE_SPARK_TEXTURE,
+
+				ColorSequence.new({
+					ColorSequenceKeypoint.new(
+						0,
+						Color3.fromRGB(
+							255,
+							247,
+							153
+						)
+					),
+
+					ColorSequenceKeypoint.new(
+						1,
+						Color3.fromRGB(
+							255,
+							177,
+							13
+						)
+					),
+				}),
+
+				7,
+
+				NumberRange.new(
+					0.6,
+					1.1
+				),
+
+				NumberRange.new(
+					0.3,
+					0.8
+				),
+
+				NumberSequence.new({
+					NumberSequenceKeypoint.new(
+						0,
+						0.09
+					),
+
+					NumberSequenceKeypoint.new(
+						0.45,
+						0.17
+					),
+
+					NumberSequenceKeypoint.new(
+						1,
+						0
+					),
+				})
+			)
+
+
+		risingSparks.Acceleration =
+			Vector3.new(
+				0,
+				3,
+				0
+			)
+
+
+		risingSparks.LightEmission =
+			1
+
+
+		local glow =
+			Instance.new(
+				"PointLight"
+			)
+
+
+		glow.Name =
+			"GoldenCustomerGlow"
+
+
+		glow.Color =
+			Color3.fromRGB(
+				255,
+				203,
+				57
+			)
+
+
+		glow.Brightness =
+			1.15
+
+
+		glow.Range =
+			6
+
+
+		glow.Shadows =
+			false
+
+
+		glow.Parent =
+			rootPart
 	end
 
 
@@ -657,7 +1603,8 @@ end
 
 local function setupCustomerInfo(
 	plot: Model,
-	customer: Model
+	customer: Model,
+	forcedCustomerType: string?
 )
 	if customer:GetAttribute(
 		"CustomerInfoInitialized"
@@ -734,11 +1681,31 @@ if typeof(ownerUserId)
 end
 
 
-local customerType,
+local customerType
+local typeConfig
+
+
+if forcedCustomerType
+	and CustomerTypes.Types[
+		forcedCustomerType
+	] then
+
+	customerType =
+		forcedCustomerType
+
 	typeConfig =
-	CustomerTypes.GetRandomType(
-		rareCustomerMultiplier
-	)
+		CustomerTypes.Get(
+			forcedCustomerType
+		)
+
+else
+
+	customerType,
+		typeConfig =
+		CustomerTypes.GetRandomType(
+			rareCustomerMultiplier
+		)
+end
 
 
 	--==================================================
@@ -4674,7 +5641,8 @@ end
 
 local function spawnCustomerForStand(
 	plot: Model,
-	stand: Model
+	stand: Model,
+	forcedCustomerType: string?
 ): boolean
 
 	if not standIsAvailable(
@@ -4820,9 +5788,9 @@ customer:PivotTo(
 
 setupCustomerInfo(
 	plot,
-	customer
+	customer,
+	forcedCustomerType
 )
-
 
 	local entry: QueueEntry = {
 	customer =
@@ -4881,6 +5849,161 @@ setupCustomerInfo(
 
 	return true
 end
+
+--==================================================
+-- PURCHASED CUSTOMER SPAWNING
+--==================================================
+
+local spawnPurchasedCustomer =
+	ServerStorage:FindFirstChild(
+		"SpawnPurchasedCustomer"
+	)
+
+
+if not spawnPurchasedCustomer then
+
+	spawnPurchasedCustomer =
+		Instance.new(
+			"BindableFunction"
+		)
+
+	spawnPurchasedCustomer.Name =
+		"SpawnPurchasedCustomer"
+
+	spawnPurchasedCustomer.Parent =
+		ServerStorage
+end
+
+
+if not spawnPurchasedCustomer:IsA(
+	"BindableFunction"
+) then
+
+	error(
+		"ServerStorage.SpawnPurchasedCustomer must be a BindableFunction."
+	)
+end
+
+
+spawnPurchasedCustomer.OnInvoke =
+	function(
+		player: Player,
+		customerType: string
+	): boolean
+
+		if not player
+			or not player.Parent then
+
+			return false
+		end
+
+
+		if typeof(customerType)
+				~= "string"
+			or not CustomerTypes.Types[
+				customerType
+			] then
+
+			return false
+		end
+
+
+		-- Find this player's plot.
+		local playerPlot:
+			Model? =
+			nil
+
+
+		for _, plot in
+			plotsFolder:GetChildren()
+		do
+
+			if not plot:IsA(
+				"Model"
+			) then
+
+				continue
+			end
+
+
+			if plot:GetAttribute(
+				"OwnerUserId"
+			) == player.UserId then
+
+				playerPlot =
+					plot
+
+				break
+			end
+		end
+
+
+		if not playerPlot then
+
+			return false
+		end
+
+
+		-- Find an available business with room
+		-- for the purchased customer.
+		local availableStands:
+			{Model} =
+			{}
+
+
+		for _, stand in
+			getSupportedBusinesses(
+				playerPlot
+			)
+		do
+
+			if not standIsAvailable(
+				stand
+			) then
+
+				continue
+			end
+
+
+			local hasSpace =
+				getStandQueueSpace(
+					stand
+				)
+
+
+			if hasSpace then
+
+				table.insert(
+					availableStands,
+					stand
+				)
+			end
+		end
+
+
+		if #availableStands == 0 then
+
+			return false
+		end
+
+
+		-- Pick one available business.
+		local selectedStand =
+			availableStands[
+				randomGenerator:
+					NextInteger(
+						1,
+						#availableStands
+					)
+			]
+
+
+		return spawnCustomerForStand(
+			playerPlot,
+			selectedStand,
+			customerType
+		)
+	end
 
 
 --==================================================

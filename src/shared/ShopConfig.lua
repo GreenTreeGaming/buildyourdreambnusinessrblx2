@@ -73,6 +73,14 @@ ShopConfig.DeveloperProducts = {
 		BoostName = "CashBoost",
 		Duration = 15 * 60,
 	},
+
+	GoldenCustomer = {
+		FrameName = "GoldenCustomer",
+
+		Id = 3713917157,
+
+		RewardType = "GoldenCustomer",
+	},
 }
 
 -- VIP should be useful without becoming mandatory.
