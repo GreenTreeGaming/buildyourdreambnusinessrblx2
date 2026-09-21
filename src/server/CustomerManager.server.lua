@@ -1974,22 +1974,90 @@ local function getPlotCustomerLimit(
 	plot: Model
 ): number
 
-	local value =
+	-- Marketing owns the BASE customer limit.
+	local baseLimit =
 		plot:GetAttribute(
 			"CustomerLimit"
 		)
 
 
-	if typeof(value) ~= "number"
-		or value < 1 then
+	if typeof(baseLimit)
+			~= "number"
+		or baseLimit < 1 then
 
-		return BASE_PLOT_CUSTOMER_LIMIT
+		baseLimit =
+			BASE_PLOT_CUSTOMER_LIMIT
+	end
+
+
+	baseLimit =
+		math.max(
+			1,
+			math.floor(
+				baseLimit
+			)
+		)
+
+
+	--==================================================
+	-- X2 CUSTOMERS GAMEPASS
+	--==================================================
+
+	local limitMultiplier =
+		1
+
+
+	local ownerUserId =
+		plot:GetAttribute(
+			"OwnerUserId"
+		)
+
+
+	if typeof(ownerUserId)
+		== "number" then
+
+		local owner =
+			Players:GetPlayerByUserId(
+				ownerUserId
+			)
+
+
+		if owner then
+
+			local playerMultiplier =
+				owner:GetAttribute(
+					"CustomerLimitMultiplier"
+				)
+
+
+			if typeof(playerMultiplier)
+					== "number"
+				and playerMultiplier >= 1 then
+
+				limitMultiplier =
+					playerMultiplier
+
+			elseif owner:GetAttribute(
+				"Has2xCustomers"
+			) == true then
+
+				-- Fallback in case ownership replicated
+				-- before the benefit refresh ran.
+				limitMultiplier =
+					2
+			end
+		end
 	end
 
 
 	return math.max(
 		1,
-		math.floor(value)
+
+		math.floor(
+			baseLimit
+				* limitMultiplier
+				+ 0.5
+		)
 	)
 end
 

@@ -13,6 +13,13 @@ local TweenService =
 local UserInputService =
 	game:GetService("UserInputService")
 
+local X2_CUSTOMERS_COLOR =
+	Color3.fromRGB(
+		65,
+		220,
+		255
+	)
+
 
 local FormatNumber =
 	require(
@@ -681,6 +688,17 @@ local marketingPanel =
 		marketingFrame
 	)
 
+local normalCustomerLimitTitleColor =
+	marketingPanel
+		.StatOneTitle
+		.TextColor3
+
+
+local normalCustomerLimitSubtitleColor =
+	marketingPanel
+		.StatOneSubtitle
+		.TextColor3
+
 
 local plotPanel =
 	getPanel(
@@ -775,6 +793,58 @@ local activeMenuTween:
 --==================================================
 -- FORMAT HELPERS
 --==================================================
+
+local function getDisplayedCustomerLimit(
+	baseLimit: number?
+): (
+	number?,
+	boolean
+)
+
+	if typeof(baseLimit)
+		~= "number" then
+
+		return nil,
+			false
+	end
+
+
+	local has2xCustomers =
+		player:GetAttribute(
+			"Has2xCustomers"
+		) == true
+
+
+	local multiplier =
+		player:GetAttribute(
+			"CustomerLimitMultiplier"
+		)
+
+
+	if typeof(multiplier)
+			~= "number"
+		or multiplier < 1 then
+
+		multiplier =
+			has2xCustomers
+				and 2
+				or 1
+	end
+
+
+	return
+		math.max(
+			1,
+
+			math.floor(
+				baseLimit
+					* multiplier
+					+ 0.5
+			)
+		),
+
+		has2xCustomers
+end
 
 local function formatCurrency(
 	value: number
@@ -955,17 +1025,52 @@ local function updateMarketingInterface(
 		or "Bring more customers to your businesses."
 
 
-	marketingPanel.StatOneTitle.Text =
-		"Customer Limit"
-
-
+	local displayedCustomerLimit,
+		has2xCustomers =
+		getDisplayedCustomerLimit(
+			state.CustomerLimit
+		)
+	
+	
+	if has2xCustomers then
+	
+		marketingPanel.StatOneTitle.Text =
+			"Customer Limit • 2X"
+	
+	
+		marketingPanel.StatOneTitle.TextColor3 =
+			X2_CUSTOMERS_COLOR
+	
+	
+		marketingPanel.StatOneSubtitle.TextColor3 =
+			X2_CUSTOMERS_COLOR
+	
+	else
+	
+		marketingPanel.StatOneTitle.Text =
+			"Customer Limit"
+	
+	
+		marketingPanel.StatOneTitle.TextColor3 =
+			normalCustomerLimitTitleColor
+	
+	
+		marketingPanel.StatOneSubtitle.TextColor3 =
+			normalCustomerLimitSubtitleColor
+	end
+	
+	
 	marketingPanel.StatOneSubtitle.Text =
-		typeof(state.CustomerLimit)
-				== "number"
-			and FormatNumber.Compact(
-				state.CustomerLimit
+		if typeof(displayedCustomerLimit)
+				== "number" then
+	
+			FormatNumber.Compact(
+				displayedCustomerLimit
 			)
-			or "--"
+	
+		else
+	
+			"--"
 
 
 	marketingPanel.StatTwoTitle.Text =
@@ -2244,6 +2349,51 @@ reputationPanel.ProgressBar.Size =
 		reputationPanel.ProgressBar.Size.Y.Scale,
 		reputationPanel.ProgressBar.Size.Y.Offset
 	)
+
+player:GetAttributeChangedSignal(
+	"Has2xCustomers"
+):Connect(
+	function()
+
+		if not menuOpen
+			or currentTab
+				~= "Marketing" then
+
+			return
+		end
+
+
+		if currentMarketingState then
+
+			updateMarketingInterface(
+				currentMarketingState
+			)
+		end
+	end
+)
+
+
+player:GetAttributeChangedSignal(
+	"CustomerLimitMultiplier"
+):Connect(
+	function()
+
+		if not menuOpen
+			or currentTab
+				~= "Marketing" then
+
+			return
+		end
+
+
+		if currentMarketingState then
+
+			updateMarketingInterface(
+				currentMarketingState
+			)
+		end
+	end
+)
 
 
 --==================================================

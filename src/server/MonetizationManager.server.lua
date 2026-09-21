@@ -152,8 +152,12 @@ local function refreshGamePassOwnership(
 
 	local cashPass =
 		ShopConfig.GamePasses.x2Cash
-
-
+	
+	
+	local customerPass =
+		ShopConfig.GamePasses.x2Customers
+	
+	
 	local vipPass =
 		ShopConfig.GamePasses.VIP
 
@@ -163,8 +167,15 @@ local function refreshGamePassOwnership(
 			player,
 			cashPass.Id
 		)
-
-
+	
+	
+	local has2xCustomers =
+		ownsGamePass(
+			player,
+			customerPass.Id
+		)
+	
+	
 	local hasVIP =
 		ownsGamePass(
 			player,
@@ -176,8 +187,14 @@ local function refreshGamePassOwnership(
 		"Has2xCash",
 		has2xCash
 	)
-
-
+	
+	
+	player:SetAttribute(
+		"Has2xCustomers",
+		has2xCustomers
+	)
+	
+	
 	player:SetAttribute(
 		"HasVIP",
 		hasVIP
@@ -423,6 +440,21 @@ local function refreshBenefits(
 			player,
 			"ReputationBoost"
 		)
+	)
+
+	local has2xCustomers =
+		player:GetAttribute(
+			"Has2xCustomers"
+		) == true
+	
+	
+	player:SetAttribute(
+		"CustomerLimitMultiplier",
+	
+		if has2xCustomers then
+			ShopConfig.CustomerLimitGamePassMultiplier
+		else
+			1
 	)
 
 	local hasVIP =
@@ -1008,17 +1040,27 @@ MarketplaceService
 					.GamePasses
 					.x2Cash
 					.Id then
-
+			
 				productName =
 					"2xCash"
-
-
+			
+			
+			elseif gamePassId
+				== ShopConfig
+					.GamePasses
+					.x2Customers
+					.Id then
+			
+				productName =
+					"2xCustomers"
+			
+			
 			elseif gamePassId
 				== ShopConfig
 					.GamePasses
 					.VIP
 					.Id then
-
+			
 				productName =
 					"VIP"
 			end

@@ -7,6 +7,12 @@ ShopConfig.GamePasses = {
 		Id = 1947903714,
 	},
 
+	x2Customers = {
+		FrameName = "x2Customers",
+
+		Id = 1988012265,
+	},
+
 	VIP = {
 		FrameName = "VIP",
 
@@ -74,36 +80,69 @@ ShopConfig.DeveloperProducts = {
 
 	GoldenCustomer = {
 		FrameName = "Only9Robux",
-	
+
 		Id = 3713917157,
-	
+
 		RewardType = "GoldenCustomer",
 	},
 }
+
 
 --==================================================
 -- VIP GAMEPASS
 --==================================================
 
 -- 20% faster customer spawning.
-ShopConfig.VIPCustomerMultiplier = 1.20
+ShopConfig.VIPCustomerMultiplier =
+	1.20
 
 -- 10% more cash from every completed sale.
-ShopConfig.VIPCashMultiplier = 1.10
+ShopConfig.VIPCashMultiplier =
+	1.10
 
 -- 25% better rare-customer odds.
-ShopConfig.VIPRareCustomerMultiplier = 1.25
+ShopConfig.VIPRareCustomerMultiplier =
+	1.25
 
 -- One additional stand for every business type.
-ShopConfig.VIPPlacementBonus = 1
+ShopConfig.VIPPlacementBonus =
+	1
 
--- Permanent 2x Cash stays genuinely 2x because that is
--- what the gamepass promises.
-ShopConfig.CashGamePassMultiplier = 2
 
--- Temporary boosts.
-ShopConfig.CashBoostMultiplier = 2
-ShopConfig.CustomerRushMultiplier = 2
-ShopConfig.ReputationBoostMultiplier = 2
+--==================================================
+-- X2 CASH GAMEPASS
+--==================================================
+
+ShopConfig.CashGamePassMultiplier =
+	2
+
+
+--==================================================
+-- X2 CUSTOMERS GAMEPASS
+--==================================================
+
+-- Doubles the maximum number of customers
+-- allowed on the player's plot.
+--
+-- Example:
+-- Marketing limit 20 -> 40
+-- Marketing limit 75 -> 150
+ShopConfig.CustomerLimitGamePassMultiplier =
+	2
+
+
+--==================================================
+-- TEMPORARY BOOSTS
+--==================================================
+
+ShopConfig.CashBoostMultiplier =
+	2
+
+ShopConfig.CustomerRushMultiplier =
+	2
+
+ShopConfig.ReputationBoostMultiplier =
+	2
+
 
 return ShopConfig
