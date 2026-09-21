@@ -4,14 +4,16 @@ local ReputationConfig = {}
 -- first few minutes stay rewarding.
 ReputationConfig.BaseSalesPerLevel = 25
 
--- Scaling now begins much earlier.
--- This prevents every important business unlock
--- from happening while reputation is still flat.
+-- Scaling begins at Reputation 4.
 ReputationConfig.GrowthStartLevel = 4
 
 -- Every reputation level after the growth point
--- requires 6 additional sales over the previous one.
-ReputationConfig.SalesGrowthPerLevel = 6
+-- requires 5 additional sales over the previous one.
+--
+-- This is intentionally slightly softer than the
+-- previous +6 curve so later rebirths do not become
+-- almost entirely a customer-count grind.
+ReputationConfig.SalesGrowthPerLevel = 5
 
 
 function ReputationConfig.GetSalesRequiredForNextLevel(

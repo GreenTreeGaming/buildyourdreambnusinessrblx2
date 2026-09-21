@@ -38,7 +38,9 @@ AchievementConfig.Categories = {
 	},
 }
 
+
 AchievementConfig.Achievements = {
+
 	--==================================================
 	-- CUSTOMERS
 	--==================================================
@@ -106,7 +108,6 @@ AchievementConfig.Achievements = {
 			{
 				Goal = 3,
 				Reward = 750,
-
 				Description =
 					"Discover 3 different customer types!",
 			},
@@ -114,7 +115,6 @@ AchievementConfig.Achievements = {
 			{
 				Goal = 5,
 				Reward = 5000,
-
 				Description =
 					"Discover 5 different customer types!",
 			},
@@ -122,12 +122,12 @@ AchievementConfig.Achievements = {
 			{
 				Goal = 8,
 				Reward = 50000,
-
 				Description =
 					"Discover every customer type!",
 			},
 		},
 	},
+
 
 	--==================================================
 	-- RARE CUSTOMERS
@@ -198,7 +198,6 @@ AchievementConfig.Achievements = {
 			{
 				Goal = 1,
 				Reward = 1500,
-
 				Description =
 					"Serve your first Celebrity customer!",
 			},
@@ -206,7 +205,6 @@ AchievementConfig.Achievements = {
 			{
 				Goal = 10,
 				Reward = 10000,
-
 				Description =
 					"Serve 10 Celebrity customers!",
 			},
@@ -214,7 +212,6 @@ AchievementConfig.Achievements = {
 			{
 				Goal = 50,
 				Reward = 50000,
-
 				Description =
 					"Serve 50 Celebrity customers!",
 			},
@@ -222,7 +219,6 @@ AchievementConfig.Achievements = {
 			{
 				Goal = 250,
 				Reward = 250000,
-
 				Description =
 					"Serve 250 Celebrity customers!",
 			},
@@ -247,7 +243,6 @@ AchievementConfig.Achievements = {
 			{
 				Goal = 1,
 				Reward = 7500,
-
 				Description =
 					"Serve your first Billionaire customer!",
 			},
@@ -255,7 +250,6 @@ AchievementConfig.Achievements = {
 			{
 				Goal = 5,
 				Reward = 35000,
-
 				Description =
 					"Serve 5 Billionaire customers!",
 			},
@@ -263,7 +257,6 @@ AchievementConfig.Achievements = {
 			{
 				Goal = 25,
 				Reward = 175000,
-
 				Description =
 					"Serve 25 Billionaire customers!",
 			},
@@ -271,7 +264,6 @@ AchievementConfig.Achievements = {
 			{
 				Goal = 100,
 				Reward = 700000,
-
 				Description =
 					"Serve 100 Billionaire customers!",
 			},
@@ -296,7 +288,6 @@ AchievementConfig.Achievements = {
 			{
 				Goal = 1,
 				Reward = 15000,
-
 				Description =
 					"Serve your first Golden customer!",
 			},
@@ -304,7 +295,6 @@ AchievementConfig.Achievements = {
 			{
 				Goal = 3,
 				Reward = 75000,
-
 				Description =
 					"Serve 3 Golden customers!",
 			},
@@ -312,7 +302,6 @@ AchievementConfig.Achievements = {
 			{
 				Goal = 10,
 				Reward = 300000,
-
 				Description =
 					"Serve 10 Golden customers!",
 			},
@@ -320,12 +309,12 @@ AchievementConfig.Achievements = {
 			{
 				Goal = 25,
 				Reward = 750000,
-
 				Description =
 					"Serve 25 Golden customers!",
 			},
 		},
 	},
+
 
 	--==================================================
 	-- BUSINESS
@@ -349,7 +338,6 @@ AchievementConfig.Achievements = {
 			{
 				Goal = 2,
 				Reward = 500,
-
 				Description =
 					"Upgrade a Lemonade Stand to Tier 2!",
 			},
@@ -357,7 +345,6 @@ AchievementConfig.Achievements = {
 			{
 				Goal = 3,
 				Reward = 2000,
-
 				Description =
 					"Upgrade a Lemonade Stand to Tier 3!",
 			},
@@ -365,7 +352,6 @@ AchievementConfig.Achievements = {
 			{
 				Goal = 5,
 				Reward = 15000,
-
 				Description =
 					"Upgrade a Lemonade Stand to Tier 5!",
 			},
@@ -390,7 +376,6 @@ AchievementConfig.Achievements = {
 			{
 				Goal = 1,
 				Reward = 1500,
-
 				Description =
 					"Own your first Hotdog Stand!",
 			},
@@ -398,7 +383,6 @@ AchievementConfig.Achievements = {
 			{
 				Goal = 3,
 				Reward = 7500,
-
 				Description =
 					"Own 3 Hotdog Stands!",
 			},
@@ -406,7 +390,6 @@ AchievementConfig.Achievements = {
 			{
 				Goal = 6,
 				Reward = 30000,
-
 				Description =
 					"Own 6 Hotdog Stands!",
 			},
@@ -414,7 +397,6 @@ AchievementConfig.Achievements = {
 			{
 				Goal = 12,
 				Reward = 125000,
-
 				Description =
 					"Own 12 Hotdog Stands!",
 			},
@@ -431,17 +413,82 @@ AchievementConfig.Achievements = {
 		Order = 22,
 
 		Metric = {
-			Type = "BusinessUnlocked",
+			Type = "OwnedBusinessCount",
 			BusinessType = "HaircutStand",
 		},
 
 		Tiers = {
 			{
 				Goal = 1,
-				Reward = 10000,
-
+				Reward = 10_000,
 				Description =
-					"Unlock the Haircut Stand!",
+					"Own your first Haircut Stand!",
+			},
+
+			{
+				Goal = 3,
+				Reward = 25_000,
+				Description =
+					"Own 3 Haircut Stands!",
+			},
+
+			{
+				Goal = 6,
+				Reward = 75_000,
+				Description =
+					"Own 6 Haircut Stands!",
+			},
+
+			{
+				Goal = 10,
+				Reward = 250_000,
+				Description =
+					"Own 10 Haircut Stands!",
+			},
+		},
+	},
+
+	{
+		Id = "CoffeeMogul",
+
+		DisplayName = "Coffee Mogul",
+
+		Category = "Business",
+
+		Order = 23,
+
+		Metric = {
+			Type = "OwnedBusinessCount",
+			BusinessType = "CoffeeStand",
+		},
+
+		Tiers = {
+			{
+				Goal = 1,
+				Reward = 25_000,
+				Description =
+					"Own your first Coffee Stand!",
+			},
+
+			{
+				Goal = 3,
+				Reward = 75_000,
+				Description =
+					"Own 3 Coffee Stands!",
+			},
+
+			{
+				Goal = 5,
+				Reward = 200_000,
+				Description =
+					"Own 5 Coffee Stands!",
+			},
+
+			{
+				Goal = 8,
+				Reward = 750_000,
+				Description =
+					"Own 8 Coffee Stands!",
 			},
 		},
 	},
@@ -453,7 +500,7 @@ AchievementConfig.Achievements = {
 
 		Category = "Business",
 
-		Order = 23,
+		Order = 24,
 
 		Metric = {
 			Type = "FullyUpgradedBusinesses",
@@ -463,7 +510,6 @@ AchievementConfig.Achievements = {
 			{
 				Goal = 1,
 				Reward = 25000,
-
 				Description =
 					"Fully upgrade one business!",
 			},
@@ -471,7 +517,6 @@ AchievementConfig.Achievements = {
 			{
 				Goal = 3,
 				Reward = 125000,
-
 				Description =
 					"Fully upgrade 3 businesses!",
 			},
@@ -479,12 +524,12 @@ AchievementConfig.Achievements = {
 			{
 				Goal = 10,
 				Reward = 750000,
-
 				Description =
 					"Fully upgrade 10 businesses!",
 			},
 		},
 	},
+
 
 	--==================================================
 	-- MONEY
@@ -507,44 +552,40 @@ AchievementConfig.Achievements = {
 			{
 				Goal = 10000,
 				Reward = 1000,
-
 				Description =
-					"Earn $10,000 from your businesses!",
+					"Earn 10,000 from your businesses!",
 			},
 
 			{
 				Goal = 100000,
 				Reward = 7500,
-
 				Description =
-					"Earn $100,000 from your businesses!",
+					"Earn 100,000 from your businesses!",
 			},
 
 			{
 				Goal = 1000000,
 				Reward = 50000,
-
 				Description =
-					"Earn $1,000,000 from your businesses!",
+					"Earn 1,000,000 from your businesses!",
 			},
 
 			{
 				Goal = 10000000,
 				Reward = 300000,
-
 				Description =
-					"Earn $10,000,000 from your businesses!",
+					"Earn 10,000,000 from your businesses!",
 			},
 
 			{
 				Goal = 100000000,
 				Reward = 1500000,
-
 				Description =
-					"Earn $100,000,000 from your businesses!",
+					"Earn 100,000,000 from your businesses!",
 			},
 		},
 	},
 }
+
 
 return AchievementConfig
