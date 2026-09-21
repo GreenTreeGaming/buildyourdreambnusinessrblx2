@@ -21,7 +21,7 @@ RebirthConfig.BaseRequiredCash =
 	50_000_000
 
 RebirthConfig.CashGrowthPerRebirth =
-	3
+	2
 
 
 RebirthConfig.RequiredBusiness =

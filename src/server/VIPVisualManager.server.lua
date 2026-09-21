@@ -1,22 +1,24 @@
 local Players =
-	game:GetService("Players")
+	game:GetService(
+		"Players"
+	)
 
 
 --==================================================
 -- CONSTANTS
 --==================================================
 
-local VIP_VISUAL_NAME =
-	"VIPVisuals"
+local VISUAL_ROOT_NAME =
+	"PlayerStatusVisuals"
 
-local GOLD =
+local VIP_GOLD =
 	Color3.fromRGB(
 		255,
 		210,
 		45
 	)
 
-local LIGHT_GOLD =
+local VIP_LIGHT_GOLD =
 	Color3.fromRGB(
 		255,
 		241,
@@ -25,17 +27,144 @@ local LIGHT_GOLD =
 
 
 --==================================================
+-- REBIRTH TIERS
+--==================================================
+
+local REBIRTH_TIERS = {
+	{
+		Minimum = 20,
+
+		Name = "MYTHIC EMPIRE",
+
+		Color =
+			Color3.fromRGB(
+				255,
+				86,
+				225
+			),
+
+		Stroke =
+			Color3.fromRGB(
+				120,
+				25,
+				105
+			),
+	},
+
+	{
+		Minimum = 10,
+
+		Name = "DIAMOND EMPIRE",
+
+		Color =
+			Color3.fromRGB(
+				99,
+				231,
+				255
+			),
+
+		Stroke =
+			Color3.fromRGB(
+				24,
+				104,
+				140
+			),
+	},
+
+	{
+		Minimum = 5,
+
+		Name = "GOLD EMPIRE",
+
+		Color =
+			Color3.fromRGB(
+				255,
+				205,
+				49
+			),
+
+		Stroke =
+			Color3.fromRGB(
+				142,
+				87,
+				8
+			),
+	},
+
+	{
+		Minimum = 3,
+
+		Name = "SILVER EMPIRE",
+
+		Color =
+			Color3.fromRGB(
+				210,
+				222,
+				235
+			),
+
+		Stroke =
+			Color3.fromRGB(
+				89,
+				102,
+				120
+			),
+	},
+
+	{
+		Minimum = 1,
+
+		Name = "BRONZE EMPIRE",
+
+		Color =
+			Color3.fromRGB(
+				216,
+				137,
+				75
+			),
+
+		Stroke =
+			Color3.fromRGB(
+				105,
+				53,
+				22
+			),
+	},
+}
+
+
+local function getRebirthTier(
+	rebirths: number
+)
+
+	for _, tier in
+		REBIRTH_TIERS do
+
+		if rebirths
+			>= tier.Minimum then
+
+			return tier
+		end
+	end
+
+
+	return nil
+end
+
+
+--==================================================
 -- CLEANUP
 --==================================================
 
-local function removeVIPVisuals(
+local function removeStatusVisuals(
 	character: Model
 )
+
 	for _, descendant in
 		character:GetDescendants() do
 
 		if descendant.Name
-			== VIP_VISUAL_NAME then
+			== VISUAL_ROOT_NAME then
 
 			descendant:Destroy()
 		end
@@ -44,12 +173,87 @@ end
 
 
 --==================================================
--- OVERHEAD TAG
+-- LABEL HELPER
 --==================================================
 
-local function createVIPTag(
+local function createTagLabel(
+	parent: Instance,
+	text: string,
+	color: Color3,
+	strokeColor: Color3,
+	position: UDim2,
+	heightScale: number
+)
+
+	local label =
+		Instance.new(
+			"TextLabel"
+		)
+
+	label.Name =
+		VISUAL_ROOT_NAME
+
+	label.BackgroundTransparency =
+		1
+
+	label.Size =
+		UDim2.new(
+			1,
+			0,
+			heightScale,
+			0
+		)
+
+	label.Position =
+		position
+
+	label.Text =
+		text
+
+	label.TextColor3 =
+		color
+
+	label.TextStrokeColor3 =
+		strokeColor
+
+	label.TextStrokeTransparency =
+		0
+
+	label.Font =
+		Enum.Font.GothamBlack
+
+	label.TextScaled =
+		true
+
+	label.Parent =
+		parent
+
+
+	local constraint =
+		Instance.new(
+			"UITextSizeConstraint"
+		)
+
+	constraint.MinTextSize =
+		9
+
+	constraint.MaxTextSize =
+		18
+
+	constraint.Parent =
+		label
+end
+
+
+--==================================================
+-- OVERHEAD STATUS
+--==================================================
+
+local function createOverheadTags(
+	player: Player,
 	character: Model
 )
+
 	local head =
 		character:FindFirstChild(
 			"Head"
@@ -65,118 +269,212 @@ local function createVIPTag(
 	end
 
 
+	local hasVIP =
+		player:GetAttribute(
+			"HasVIP"
+		) == true
+
+
+	local rebirths =
+		player:GetAttribute(
+			"Rebirths"
+		)
+
+
+	if typeof(rebirths)
+		~= "number" then
+
+		rebirths =
+			0
+	end
+
+
+	rebirths =
+		math.max(
+			0,
+			math.floor(
+				rebirths
+			)
+		)
+
+
+	local rebirthTier =
+		getRebirthTier(
+			rebirths
+		)
+
+
+	if not hasVIP
+		and not rebirthTier then
+
+		return
+	end
+
+
+	local lineCount =
+		0
+
+
+	if hasVIP then
+
+		lineCount +=
+			1
+	end
+
+
+	if rebirthTier then
+
+		lineCount +=
+			1
+	end
+
+
 	local billboard =
 		Instance.new(
 			"BillboardGui"
 		)
 
 	billboard.Name =
-		VIP_VISUAL_NAME
+		VISUAL_ROOT_NAME
 
 	billboard.Adornee =
 		head
-
-	billboard.Size =
-		UDim2.fromOffset(
-			120,
-			30
-		)
-
-	billboard.StudsOffset =
-		Vector3.new(
-			0,
-			2.6,
-			0
-		)
 
 	billboard.AlwaysOnTop =
 		false
 
 	billboard.MaxDistance =
-		75
+		80
+
+	billboard.Size =
+		UDim2.fromOffset(
+			180,
+			lineCount == 2
+				and 48
+				or 26
+		)
+
+	billboard.StudsOffset =
+		Vector3.new(
+			0,
+			lineCount == 2
+				and 3.0
+				or 2.75,
+			0
+		)
 
 	billboard.Parent =
 		head
 
 
-	local label =
-		Instance.new(
-			"TextLabel"
+	if hasVIP
+		and rebirthTier then
+
+		createTagLabel(
+			billboard,
+
+			"★ VIP ★",
+
+			VIP_GOLD,
+
+			Color3.fromRGB(
+				92,
+				60,
+				0
+			),
+
+			UDim2.fromScale(
+				0,
+				0
+			),
+
+			0.5
 		)
 
-	label.Name =
-		"VIP"
 
-	label.Size =
-		UDim2.fromScale(
-			1,
+		createTagLabel(
+			billboard,
+
+			`◆ {rebirthTier.Name} ◆`,
+
+			rebirthTier.Color,
+
+			rebirthTier.Stroke,
+
+			UDim2.fromScale(
+				0,
+				0.5
+			),
+
+			0.5
+		)
+
+
+	elseif hasVIP then
+
+		createTagLabel(
+			billboard,
+
+			"★ VIP ★",
+
+			VIP_GOLD,
+
+			Color3.fromRGB(
+				92,
+				60,
+				0
+			),
+
+			UDim2.fromScale(
+				0,
+				0
+			),
+
 			1
 		)
 
-	label.BackgroundTransparency =
-		1
 
-	label.Text =
-		"★ VIP ★"
+	elseif rebirthTier then
 
-	label.TextColor3 =
-		GOLD
+		createTagLabel(
+			billboard,
 
-	label.TextStrokeColor3 =
-		Color3.fromRGB(
-			92,
-			60,
-			0
+			`◆ {rebirthTier.Name} ◆`,
+
+			rebirthTier.Color,
+
+			rebirthTier.Stroke,
+
+			UDim2.fromScale(
+				0,
+				0
+			),
+
+			1
 		)
-
-	label.TextStrokeTransparency =
-		0
-
-	label.Font =
-		Enum.Font.GothamBlack
-
-	label.TextScaled =
-		true
-
-	label.Parent =
-		billboard
-
-
-	local constraint =
-		Instance.new(
-			"UITextSizeConstraint"
-		)
-
-	constraint.MinTextSize =
-		10
-
-	constraint.MaxTextSize =
-		20
-
-	constraint.Parent =
-		label
+	end
 end
 
 
 --==================================================
--- GOLD OUTLINE
+-- VIP GOLD OUTLINE
 --==================================================
 
 local function createVIPHighlight(
 	character: Model
 )
+
 	local highlight =
 		Instance.new(
 			"Highlight"
 		)
 
 	highlight.Name =
-		VIP_VISUAL_NAME
+		VISUAL_ROOT_NAME
 
 	highlight.Adornee =
 		character
 
-	-- Outline only.
 	highlight.FillTransparency =
 		1
 
@@ -184,9 +482,8 @@ local function createVIPHighlight(
 		0.25
 
 	highlight.OutlineColor =
-		GOLD
+		VIP_GOLD
 
-	-- Do not show through walls.
 	highlight.DepthMode =
 		Enum.HighlightDepthMode.Occluded
 
@@ -196,12 +493,13 @@ end
 
 
 --==================================================
--- GOLD SPARKLES
+-- VIP SPARKLES
 --==================================================
 
 local function createVIPSparkles(
 	character: Model
 )
+
 	local root =
 		character:FindFirstChild(
 			"HumanoidRootPart"
@@ -223,7 +521,7 @@ local function createVIPSparkles(
 		)
 
 	attachment.Name =
-		VIP_VISUAL_NAME
+		VISUAL_ROOT_NAME
 
 	attachment.Position =
 		Vector3.new(
@@ -242,7 +540,7 @@ local function createVIPSparkles(
 		)
 
 	particles.Name =
-		VIP_VISUAL_NAME
+		VISUAL_ROOT_NAME
 
 	particles.Texture =
 		"rbxasset://textures/particles/sparkles_main.dds"
@@ -252,12 +550,12 @@ local function createVIPSparkles(
 			{
 				ColorSequenceKeypoint.new(
 					0,
-					LIGHT_GOLD
+					VIP_LIGHT_GOLD
 				),
 
 				ColorSequenceKeypoint.new(
 					1,
-					GOLD
+					VIP_GOLD
 				),
 			}
 		)
@@ -302,7 +600,6 @@ local function createVIPSparkles(
 			}
 		)
 
-	-- Intentionally subtle.
 	particles.Rate =
 		3
 
@@ -349,34 +646,34 @@ end
 -- APPLY
 --==================================================
 
-local function applyVIPVisuals(
+local function applyStatusVisuals(
 	player: Player,
 	character: Model
 )
-	removeVIPVisuals(
+
+	removeStatusVisuals(
+		character
+	)
+
+
+	createOverheadTags(
+		player,
 		character
 	)
 
 
 	if player:GetAttribute(
 		"HasVIP"
-	) ~= true then
+	) == true then
 
-		return
+		createVIPHighlight(
+			character
+		)
+
+		createVIPSparkles(
+			character
+		)
 	end
-
-
-	createVIPTag(
-		character
-	)
-
-	createVIPHighlight(
-		character
-	)
-
-	createVIPSparkles(
-		character
-	)
 end
 
 
@@ -387,6 +684,7 @@ end
 local function setupPlayer(
 	player: Player
 )
+
 	player.CharacterAdded:Connect(
 		function(
 			character: Model
@@ -402,7 +700,8 @@ local function setupPlayer(
 				10
 			)
 
-			applyVIPVisuals(
+
+			applyStatusVisuals(
 				player,
 				character
 			)
@@ -421,7 +720,27 @@ local function setupPlayer(
 
 			if character then
 
-				applyVIPVisuals(
+				applyStatusVisuals(
+					player,
+					character
+				)
+			end
+		end
+	)
+
+
+	player:GetAttributeChangedSignal(
+		"Rebirths"
+	):Connect(
+		function()
+
+			local character =
+				player.Character
+
+
+			if character then
+
+				applyStatusVisuals(
 					player,
 					character
 				)
@@ -433,7 +752,7 @@ local function setupPlayer(
 	if player.Character then
 
 		task.defer(
-			applyVIPVisuals,
+			applyStatusVisuals,
 			player,
 			player.Character
 		)
