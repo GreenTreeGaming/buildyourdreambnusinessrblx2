@@ -566,6 +566,69 @@ local function getBusinessCount(
 	)
 end
 
+local function getMaximumPlaced(
+	config: {[any]: any}
+): number
+
+	local maximumPlaced =
+		config.MaximumPlaced
+		or math.huge
+
+
+	if maximumPlaced
+		== math.huge then
+
+		return maximumPlaced
+	end
+
+
+	--==================================================
+	-- LICENSE BONUS
+	--==================================================
+
+	local licensePlacementBonus =
+		player:GetAttribute(
+			"LicensePlacementBonus"
+		)
+
+
+	if typeof(
+		licensePlacementBonus
+	) == "number"
+		and licensePlacementBonus > 0 then
+
+		maximumPlaced +=
+			math.floor(
+				licensePlacementBonus
+			)
+	end
+
+
+	--==================================================
+	-- VIP BONUS
+	--==================================================
+
+	local vipPlacementBonus =
+		player:GetAttribute(
+			"VIPPlacementBonus"
+		)
+
+
+	if typeof(
+		vipPlacementBonus
+	) == "number"
+		and vipPlacementBonus > 0 then
+
+		maximumPlaced +=
+			math.floor(
+				vipPlacementBonus
+			)
+	end
+
+
+	return maximumPlaced
+end
+
 type BusinessUnlockState = {
 	Unlocked: boolean,
 	CanUnlock: boolean,
@@ -642,8 +705,9 @@ local function canPlaceAnyBusiness(): boolean
 
 
 		local maximumPlaced =
-			config.MaximumPlaced
-			or math.huge
+			getMaximumPlaced(
+				config
+			)
 
 
 		if isBusinessUnlocked(
@@ -4373,8 +4437,9 @@ local function startPlacement(
 	if not editingExisting then
 
 		local maximumPlaced =
-			businessConfig.MaximumPlaced
-			or math.huge
+			getMaximumPlaced(
+				businessConfig
+			)
 
 
 		local currentCount =

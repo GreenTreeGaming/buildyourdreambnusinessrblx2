@@ -1663,19 +1663,44 @@ if typeof(ownerUserId)
 
 
 	if owner then
-
-		local multiplier =
+	
+		--==================================================
+		-- LICENSE RARE CUSTOMER BONUS
+		--==================================================
+	
+		local licenseMultiplier =
 			owner:GetAttribute(
 				"LicenseRareCustomerMultiplier"
 			)
-
-
-		if typeof(multiplier)
-				== "number"
-			and multiplier >= 1 then
-
-			rareCustomerMultiplier =
-				multiplier
+	
+	
+		if typeof(
+			licenseMultiplier
+		) == "number"
+			and licenseMultiplier >= 1 then
+	
+			rareCustomerMultiplier *=
+				licenseMultiplier
+		end
+	
+	
+		--==================================================
+		-- VIP RARE CUSTOMER BONUS
+		--==================================================
+	
+		local vipMultiplier =
+			owner:GetAttribute(
+				"VIPRareCustomerMultiplier"
+			)
+	
+	
+		if typeof(
+			vipMultiplier
+		) == "number"
+			and vipMultiplier >= 1 then
+	
+			rareCustomerMultiplier *=
+				vipMultiplier
 		end
 	end
 end

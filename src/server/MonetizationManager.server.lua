@@ -265,6 +265,15 @@ local function refreshBenefits(
 				.CashGamePassMultiplier
 	end
 
+	if player:GetAttribute(
+		"HasVIP"
+	) == true then
+	
+		cashMultiplier *=
+			ShopConfig
+				.VIPCashMultiplier
+	end
+
 
 	if cashBoostActive then
 
@@ -384,6 +393,31 @@ local function refreshBenefits(
 			player,
 			"ReputationBoost"
 		)
+	)
+
+	local hasVIP =
+		player:GetAttribute(
+			"HasVIP"
+		) == true
+	
+	
+	player:SetAttribute(
+		"VIPRareCustomerMultiplier",
+	
+		if hasVIP then
+			ShopConfig.VIPRareCustomerMultiplier
+		else
+			1
+	)
+	
+	
+	player:SetAttribute(
+		"VIPPlacementBonus",
+	
+		if hasVIP then
+			ShopConfig.VIPPlacementBonus
+		else
+			0
 	)
 end
 

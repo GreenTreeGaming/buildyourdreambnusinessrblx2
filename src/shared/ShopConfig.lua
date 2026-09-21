@@ -81,8 +81,21 @@ ShopConfig.DeveloperProducts = {
 	},
 }
 
--- VIP should be useful without becoming mandatory.
-ShopConfig.VIPCustomerMultiplier = 1.15
+--==================================================
+-- VIP GAMEPASS
+--==================================================
+
+-- 20% faster customer spawning.
+ShopConfig.VIPCustomerMultiplier = 1.20
+
+-- 10% more cash from every completed sale.
+ShopConfig.VIPCashMultiplier = 1.10
+
+-- 25% better rare-customer odds.
+ShopConfig.VIPRareCustomerMultiplier = 1.25
+
+-- One additional stand for every business type.
+ShopConfig.VIPPlacementBonus = 1
 
 -- Permanent 2x Cash stays genuinely 2x because that is
 -- what the gamepass promises.

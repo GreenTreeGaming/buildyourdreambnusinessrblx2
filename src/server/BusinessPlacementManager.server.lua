@@ -988,22 +988,51 @@ local maximumPlaced =
 	or math.huge
 
 
-local licensePlacementBonus =
-	player:GetAttribute(
-		"LicensePlacementBonus"
-	)
+if maximumPlaced
+	~= math.huge then
+
+	--==================================================
+	-- LICENSE PLACEMENT BONUS
+	--==================================================
+
+	local licensePlacementBonus =
+		player:GetAttribute(
+			"LicensePlacementBonus"
+		)
 
 
-if maximumPlaced ~= math.huge
-	and typeof(
+	if typeof(
 		licensePlacementBonus
 	) == "number"
-	and licensePlacementBonus > 0 then
+		and licensePlacementBonus > 0 then
 
-	maximumPlaced +=
-		math.floor(
-			licensePlacementBonus
+		maximumPlaced +=
+			math.floor(
+				licensePlacementBonus
+			)
+	end
+
+
+	--==================================================
+	-- VIP PLACEMENT BONUS
+	--==================================================
+
+	local vipPlacementBonus =
+		player:GetAttribute(
+			"VIPPlacementBonus"
 		)
+
+
+	if typeof(
+		vipPlacementBonus
+	) == "number"
+		and vipPlacementBonus > 0 then
+
+		maximumPlaced +=
+			math.floor(
+				vipPlacementBonus
+			)
+	end
 end
 
 if not editedStand
