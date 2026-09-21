@@ -4,15 +4,13 @@ ShopConfig.GamePasses = {
 	x2Cash = {
 		FrameName = "x2Cash",
 
-		-- Id = 1947903714,
-		Id = 1,
+		Id = 1947903714,
 	},
 
 	VIP = {
 		FrameName = "VIP",
 
-		-- Id = 1947879804,
-		Id = 1,
+		Id = 1947879804,
 	},
 }
 
@@ -23,7 +21,7 @@ ShopConfig.DeveloperProducts = {
 		Id = 3708663397,
 
 		RewardType = "Cash",
-		Amount = 2_000,
+		Amount = 5_000,
 	},
 
 	MediumFunding = {
@@ -32,7 +30,7 @@ ShopConfig.DeveloperProducts = {
 		Id = 3708663411,
 
 		RewardType = "Cash",
-		Amount = 10_000,
+		Amount = 25_000,
 	},
 
 	LargeFunding = {
@@ -41,7 +39,7 @@ ShopConfig.DeveloperProducts = {
 		Id = 3708663422,
 
 		RewardType = "Cash",
-		Amount = 35_000,
+		Amount = 100_000,
 	},
 
 	CustomerRush = {
@@ -75,10 +73,10 @@ ShopConfig.DeveloperProducts = {
 	},
 
 	GoldenCustomer = {
-		FrameName = "GoldenCustomer",
-
+		FrameName = "Only9Robux",
+	
 		Id = 3713917157,
-
+	
 		RewardType = "GoldenCustomer",
 	},
 }

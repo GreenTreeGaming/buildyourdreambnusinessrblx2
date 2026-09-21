@@ -23,6 +23,13 @@ local ShopConfig =
 			:WaitForChild("ShopConfig")
 	)
 
+local FormatNumber =
+	require(
+		ReplicatedStorage
+			:WaitForChild("Shared")
+			:WaitForChild("FormatNumber")
+	)
+
 local shopGui =
 	playerGui:WaitForChild("Shop")
 
@@ -392,11 +399,17 @@ shopOpen =
 local function getBuyButton(
 	card: Instance
 ): TextButton?
+
 	local button =
-		card:FindFirstChild("Buy")
+		card:FindFirstChild(
+			"Buy",
+			true
+		)
 
 	if button
-		and button:IsA("TextButton") then
+		and button:IsA(
+			"TextButton"
+		) then
 
 		return button
 	end
@@ -588,7 +601,7 @@ local function refreshGamePass(
 	if price then
 		setButtonText(
 			button,
-			`Purchase - R{price}`
+			`Purchase - R${price}`
 		)
 	else
 		setButtonText(
@@ -668,26 +681,105 @@ local function setupGamePass(
 	)
 end
 
+local function updateFundingTitle(
+	card: Instance,
+	config: {[any]: any}
+)
+	if config.RewardType
+		~= "Cash" then
+
+		return
+	end
+
+
+	if typeof(config.Amount)
+		~= "number" then
+
+		return
+	end
+
+
+	local title =
+		card:FindFirstChild(
+			"Title",
+			true
+		)
+
+
+	if not title
+		or not title:IsA(
+			"TextLabel"
+		) then
+
+		return
+	end
+
+
+	local fundingName
+
+
+	if config.FrameName
+		== "SmallFunding" then
+
+		fundingName =
+			"Small Funding"
+
+	elseif config.FrameName
+		== "MediumFunding" then
+
+		fundingName =
+			"Medium Funding"
+
+	elseif config.FrameName
+		== "LargeFunding" then
+
+		fundingName =
+			"Large Funding"
+
+	else
+
+		return
+	end
+
+
+	title.Text =
+		`{fundingName} - {FormatNumber.Currency(config.Amount)}`
+end
+
 local function setupDeveloperProduct(
 	config: {[any]: any}
 )
+
 	local card =
-		devProductsFrame:FindFirstChild(
-			config.FrameName
+		scrollingFrame:FindFirstChild(
+			config.FrameName,
+			true
 		)
+
 
 	if not card then
 		warn(
 			`[Shop] Developer product frame "{config.FrameName}" was not found.`
 		)
-
+	
 		return
 	end
+	
+	
+	updateFundingTitle(
+		card,
+		config
+	)
+
 
 	local button =
-		getBuyButton(card)
+		getBuyButton(
+			card
+		)
+
 
 	if not button then
+
 		warn(
 			`[Shop] {card:GetFullName()} is missing Buy.`
 		)
@@ -695,7 +787,9 @@ local function setupDeveloperProduct(
 		return
 	end
 
+
 	if config.Id <= 0 then
+
 		setButtonText(
 			button,
 			"Set Product ID"
@@ -709,17 +803,28 @@ local function setupDeveloperProduct(
 		return
 	end
 
-	local success, productInfo =
-		pcall(function()
-			return MarketplaceService:
-				GetProductInfo(
-					config.Id,
-					Enum.InfoType.Product
-				)
-		end)
+
+	--==================================================
+	-- GET LIVE PRODUCT INFO
+	--==================================================
+
+	local success,
+		productInfo =
+		pcall(
+			function()
+
+				return MarketplaceService:
+					GetProductInfo(
+						config.Id,
+						Enum.InfoType.Product
+					)
+			end
+		)
+
 
 	if not success
-		or type(productInfo) ~= "table" then
+		or type(productInfo)
+			~= "table" then
 
 		warn(
 			`[Shop] Could not load developer product {config.FrameName} ({config.Id}): {productInfo}`
@@ -738,13 +843,16 @@ local function setupDeveloperProduct(
 		return
 	end
 
-	print(
-		`[Shop] Loaded {config.FrameName}: ID={config.Id}, Name={tostring(productInfo.Name)}, Price={tostring(productInfo.PriceInRobux)}, IsForSale={tostring(productInfo.IsForSale)}`
-	)
 
-	if productInfo.IsForSale ~= true then
+	--==================================================
+	-- CHECK IF PRODUCT IS FOR SALE
+	--==================================================
+
+	if productInfo.IsForSale
+		~= true then
+
 		warn(
-			`[Shop] Developer product {config.FrameName} ({config.Id}) is NOT currently for sale.`
+			`[Shop] Developer product {config.FrameName} ({config.Id}) is not currently for sale.`
 		)
 
 		setButtonText(
@@ -760,54 +868,72 @@ local function setupDeveloperProduct(
 		return
 	end
 
+
+	--==================================================
+	-- DYNAMIC PRICE
+	--==================================================
+
 	local price =
 		productInfo.PriceInRobux
 
-	if typeof(price) == "number" then
+
+	if typeof(price)
+		== "number" then
+
 		setButtonText(
 			button,
 			`Purchase - R${price}`
 		)
+
 	else
+
 		setButtonText(
 			button,
 			"Purchase"
 		)
 	end
 
+
 	setButtonEnabled(
 		button,
 		true
 	)
 
+
+	--==================================================
+	-- PURCHASE PROMPT
+	--==================================================
+
 	button.Activated:Connect(
 		function()
-			print(
-				`[Shop] Purchase button clicked: {config.FrameName}, product ID {config.Id}`
-			)
+
+			if not button.Active then
+				return
+			end
+
 
 			local promptSuccess,
 				promptError =
-				pcall(function()
+				pcall(
+					function()
 
-					MarketplaceService:
-						PromptProductPurchase(
-							player,
-							config.Id
-						)
-				end)
+						MarketplaceService:
+							PromptProductPurchase(
+								player,
+								config.Id
+							)
+					end
+				)
+
 
 			if not promptSuccess then
+
 				warn(
-					`[Shop] PromptProductPurchase FAILED for {config.FrameName} ({config.Id}): {promptError}`
+					`[Shop] PromptProductPurchase failed for {config.FrameName} ({config.Id}): {promptError}`
 				)
 
 				return
 			end
-
-			print(
-				`[Shop] PromptProductPurchase called successfully for {config.FrameName}.`
-			)
 		end
 	)
 end

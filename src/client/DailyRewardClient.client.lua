@@ -106,6 +106,38 @@ local CLOSE_TWEEN =
 		Enum.EasingDirection.In
 	)
 
+local CLAIM_BUTTON_COLORS = {
+	Claim = Color3.fromRGB(
+		79,
+		255,
+		91
+	),
+
+	Claimed = Color3.fromRGB(
+		92,
+		155,
+		214
+	),
+
+	Locked = Color3.fromRGB(
+		255,
+		91,
+		91
+	),
+
+	Countdown = Color3.fromRGB(
+		255,
+		201,
+		61
+	),
+
+	Claiming = Color3.fromRGB(
+		255,
+		156,
+		48
+	),
+}
+
 
 --==================================================
 -- GRADIENT STYLES
@@ -420,6 +452,23 @@ local activeWindowTween: Tween? =
 --==================================================
 -- FORMATTING
 --==================================================
+
+local function setClaimButtonStyle(
+	button: TextButton,
+	state: string
+)
+	local color =
+		CLAIM_BUTTON_COLORS[
+			state
+		]
+
+	if not color then
+		return
+	end
+
+	button.BackgroundColor3 =
+		color
+end
 
 local function setClaimButtonText(
 	button: TextButton,
@@ -888,10 +937,19 @@ local function refreshCards()
 		end
 
 
+		--==================================================
+		-- COMPLETED ENTIRE CYCLE
+		--==================================================
+
 		if completedCycleToday then
 			setClaimButtonText(
 				claimButton,
 				"CLAIMED"
+			)
+
+			setClaimButtonStyle(
+				claimButton,
+				"Claimed"
 			)
 
 			claimButton.Active =
@@ -903,6 +961,10 @@ local function refreshCards()
 			continue
 		end
 
+
+		--==================================================
+		-- ALREADY CLAIMED DAYS
+		--==================================================
 
 		if day < nextDay then
 			setClaimButtonText(
@@ -910,6 +972,11 @@ local function refreshCards()
 				"CLAIMED"
 			)
 
+			setClaimButtonStyle(
+				claimButton,
+				"Claimed"
+			)
+
 			claimButton.Active =
 				false
 
@@ -920,11 +987,22 @@ local function refreshCards()
 		end
 
 
+		--==================================================
+		-- CURRENT DAY
+		--==================================================
+
 		if day == nextDay then
+
 			if canClaim then
+
 				setClaimButtonText(
 					claimButton,
 					"CLAIM"
+				)
+
+				setClaimButtonStyle(
+					claimButton,
+					"Claim"
 				)
 
 				claimButton.Active =
@@ -932,7 +1010,9 @@ local function refreshCards()
 
 				claimButton.AutoButtonColor =
 					not claiming
+
 			else
+
 				if lastRewardDay
 					== day then
 
@@ -940,12 +1020,24 @@ local function refreshCards()
 						claimButton,
 						"CLAIMED"
 					)
+
+					setClaimButtonStyle(
+						claimButton,
+						"Claimed"
+					)
+
 				else
+
 					setClaimButtonText(
 						claimButton,
 						formatCountdown(
 							remaining
 						)
+					)
+
+					setClaimButtonStyle(
+						claimButton,
+						"Countdown"
 					)
 				end
 
@@ -960,9 +1052,18 @@ local function refreshCards()
 		end
 
 
+		--==================================================
+		-- FUTURE / LOCKED DAYS
+		--==================================================
+
 		setClaimButtonText(
 			claimButton,
 			"LOCKED"
+		)
+
+		setClaimButtonStyle(
+			claimButton,
+			"Locked"
 		)
 
 		claimButton.Active =
@@ -1104,6 +1205,11 @@ local function claimReward(
 	setClaimButtonText(
 		claimButton,
 		"CLAIMING..."
+	)
+	
+	setClaimButtonStyle(
+		claimButton,
+		"Claiming"
 	)
 
 
