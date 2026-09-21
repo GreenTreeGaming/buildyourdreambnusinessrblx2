@@ -1702,6 +1702,25 @@ if typeof(ownerUserId)
 			rareCustomerMultiplier *=
 				vipMultiplier
 		end
+
+		--==================================================
+		-- REBIRTH RARE CUSTOMER BONUS
+		--==================================================
+		
+		local rebirthMultiplier =
+			owner:GetAttribute(
+				"RebirthRareCustomerMultiplier"
+			)
+		
+		
+		if typeof(
+			rebirthMultiplier
+		) == "number"
+			and rebirthMultiplier >= 1 then
+		
+			rareCustomerMultiplier *=
+				rebirthMultiplier
+		end
 	end
 end
 
@@ -6243,7 +6262,7 @@ while true do
 		local selectedStand =
 			chooseStandForCustomer(
 				plot,
-				customer
+				nil
 			)
 
 

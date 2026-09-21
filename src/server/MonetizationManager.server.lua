@@ -274,6 +274,21 @@ local function refreshBenefits(
 				.VIPCashMultiplier
 	end
 
+	local rebirthCashMultiplier =
+		player:GetAttribute(
+			"RebirthCashMultiplier"
+		)
+	
+	
+	if typeof(
+		rebirthCashMultiplier
+	) == "number"
+		and rebirthCashMultiplier >= 1 then
+	
+		cashMultiplier *=
+			rebirthCashMultiplier
+	end
+
 
 	if cashBoostActive then
 
@@ -294,6 +309,21 @@ local function refreshBenefits(
 		customerMultiplier *=
 			ShopConfig
 				.VIPCustomerMultiplier
+	end
+
+	local rebirthCustomerMultiplier =
+		player:GetAttribute(
+			"RebirthCustomerMultiplier"
+		)
+	
+	
+	if typeof(
+		rebirthCustomerMultiplier
+	) == "number"
+		and rebirthCustomerMultiplier >= 1 then
+	
+		customerMultiplier *=
+			rebirthCustomerMultiplier
 	end
 
 
