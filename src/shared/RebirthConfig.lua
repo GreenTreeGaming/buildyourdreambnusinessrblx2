@@ -10,19 +10,6 @@ local RebirthConfig = {}
 -- $500K
 -- Haircut Stand unlocked
 
-RebirthConfig.BaseRequiredReputation =
-	15
-
-RebirthConfig.ReputationIncreasePerRebirth =
-	10
-
-
-RebirthConfig.BaseRequiredCash =
-	500_000
-
-RebirthConfig.CashGrowthPerRebirth =
-	2
-
 
 RebirthConfig.RequiredBusiness =
 	"HaircutStand"
@@ -136,13 +123,6 @@ function RebirthConfig.GetRequirements(
 			)
 			* 10_000
 	end
-
-
-	requiredCash =
-		math.floor(
-			requiredCash
-			+ 0.5
-		)
 
 
 	return {
