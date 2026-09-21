@@ -462,6 +462,159 @@ local function setButtonEnabled(
 		enabled
 end
 
+local function setupGoldenCustomerOffer()
+
+	local offer =
+		scrollingFrame:WaitForChild(
+			"Only9Robux"
+		)
+
+	local frame =
+		offer:WaitForChild(
+			"Frame"
+		)
+
+	local buyButton =
+		frame:WaitForChild(
+			"Buy"
+		) :: TextButton
+
+	local inText =
+		buyButton:WaitForChild(
+			"InText"
+		) :: TextLabel
+
+
+	local config =
+		ShopConfig.DeveloperProducts.GoldenCustomer
+
+
+	if not config then
+		warn(
+			"[Shop] GoldenCustomer config is missing."
+		)
+
+		return
+	end
+
+
+	local productId =
+		config.Id
+
+
+	--==================================================
+	-- LOAD LIVE ROBUX PRICE
+	--==================================================
+
+	local success,
+		productInfo =
+		pcall(function()
+
+			return MarketplaceService:
+				GetProductInfo(
+					productId,
+					Enum.InfoType.Product
+				)
+		end)
+
+
+	if not success then
+
+		warn(
+			"[Shop] Failed to load Golden Customer product:",
+			productInfo
+		)
+
+		inText.Text =
+			"Purchase"
+
+		return
+	end
+
+
+	local price =
+		productInfo.PriceInRobux
+
+
+	if typeof(price)
+		== "number" then
+
+		inText.Text =
+			`Purchase - R${price}`
+
+	else
+
+		inText.Text =
+			"Purchase"
+	end
+
+
+	--==================================================
+	-- ENABLE BUTTON
+	--==================================================
+
+	buyButton.Active =
+		true
+
+	buyButton.Selectable =
+		true
+
+	buyButton.AutoButtonColor =
+		true
+
+
+	print(
+		"[Shop] Golden Customer connected:",
+		buyButton:GetFullName(),
+		"Product:",
+		productId,
+		"Price:",
+		price
+	)
+
+
+	--==================================================
+	-- PURCHASE
+	--==================================================
+
+	buyButton.Activated:Connect(
+		function()
+
+			print(
+				"[Shop] Golden Customer Buy clicked."
+			)
+
+
+			local promptSuccess,
+				promptError =
+				pcall(function()
+
+					MarketplaceService:
+						PromptProductPurchase(
+							player,
+							productId
+						)
+				end)
+
+
+			if not promptSuccess then
+
+				warn(
+					"[Shop] Golden Customer purchase prompt failed:",
+					promptError
+				)
+
+				return
+			end
+
+
+			print(
+				"[Shop] Golden Customer purchase prompt opened."
+			)
+		end
+	)
+end
+
 local function getProductPrice(
 	id: number,
 	infoType: Enum.InfoType
@@ -1110,8 +1263,14 @@ for key, config in
 	)
 end
 
-for _, config in
+setupGoldenCustomerOffer()
+
+for key, config in
 	ShopConfig.DeveloperProducts do
+
+	if key == "GoldenCustomer" then
+		continue
+	end
 
 	setupDeveloperProduct(
 		config
