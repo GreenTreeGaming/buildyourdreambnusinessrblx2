@@ -436,6 +436,75 @@ local function buildRequirementState(
 		end
 	end
 
+	--==================================================
+	-- REBIRTHS
+	--==================================================
+	
+	local requiredRebirths =
+		requirements.RebirthsRequired
+	
+	
+	if typeof(requiredRebirths)
+		== "number" then
+	
+		local currentRebirths =
+			player:GetAttribute(
+				"Rebirths"
+			)
+	
+	
+		if typeof(currentRebirths)
+			~= "number" then
+	
+			currentRebirths =
+				0
+		end
+	
+	
+		currentRebirths =
+			math.max(
+				0,
+				math.floor(
+					currentRebirths
+				)
+			)
+	
+	
+		local completed =
+			currentRebirths
+				>= requiredRebirths
+	
+	
+		table.insert(
+			requirementStates,
+			{
+				Type =
+					"Rebirths",
+	
+				Current =
+					currentRebirths,
+	
+				Required =
+					requiredRebirths,
+	
+				Completed =
+					completed,
+			}
+		)
+	
+	
+		if not completed then
+	
+			table.insert(
+				missingRequirements,
+	
+				requiredRebirths == 1
+					and "1 Rebirth"
+					or `{requiredRebirths} Rebirths`
+			)
+		end
+	end
+
 
 	--==================================================
 	-- LIFETIME EARNINGS

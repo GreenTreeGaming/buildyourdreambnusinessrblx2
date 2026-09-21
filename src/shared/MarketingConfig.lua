@@ -27,9 +27,9 @@ local MarketingConfig = {
 
 			TemplateName = nil,
 
-			CustomerLimit = 7,
-			MinimumSpawnInterval = 1.75,
-			MaximumSpawnInterval = 3.2,
+			CustomerLimit = 8,
+			MinimumSpawnInterval = 1.7,
+			MaximumSpawnInterval = 3.1,
 		},
 
 		{
@@ -42,14 +42,14 @@ local MarketingConfig = {
 
 			TemplateName = nil,
 
-			CustomerLimit = 8,
-			MinimumSpawnInterval = 1.65,
-			MaximumSpawnInterval = 3.0,
+			CustomerLimit = 10,
+			MinimumSpawnInterval = 1.6,
+			MaximumSpawnInterval = 2.9,
 		},
 
 		{
 			Level = 3,
-			Cost = 2000,
+			Cost = 2_000,
 
 			DisplayName = "Sidewalk Sign",
 			Description =
@@ -57,14 +57,14 @@ local MarketingConfig = {
 
 			TemplateName = nil,
 
-			CustomerLimit = 9,
-			MinimumSpawnInterval = 1.55,
-			MaximumSpawnInterval = 2.8,
+			CustomerLimit = 13,
+			MinimumSpawnInterval = 1.5,
+			MaximumSpawnInterval = 2.7,
 		},
 
 		{
 			Level = 4,
-			Cost = 5000,
+			Cost = 5_000,
 
 			DisplayName = "Local Posters",
 			Description =
@@ -72,14 +72,14 @@ local MarketingConfig = {
 
 			TemplateName = nil,
 
-			CustomerLimit = 10,
-			MinimumSpawnInterval = 1.45,
-			MaximumSpawnInterval = 2.6,
+			CustomerLimit = 16,
+			MinimumSpawnInterval = 1.4,
+			MaximumSpawnInterval = 2.5,
 		},
 
 		{
 			Level = 5,
-			Cost = 12000,
+			Cost = 12_000,
 
 			DisplayName = "Street Team",
 			Description =
@@ -87,14 +87,14 @@ local MarketingConfig = {
 
 			TemplateName = nil,
 
-			CustomerLimit = 11,
-			MinimumSpawnInterval = 1.38,
-			MaximumSpawnInterval = 2.45,
+			CustomerLimit = 20,
+			MinimumSpawnInterval = 1.3,
+			MaximumSpawnInterval = 2.3,
 		},
 
 		{
 			Level = 6,
-			Cost = 30000,
+			Cost = 30_000,
 
 			DisplayName = "Community Sponsorship",
 			Description =
@@ -102,14 +102,14 @@ local MarketingConfig = {
 
 			TemplateName = nil,
 
-			CustomerLimit = 12,
-			MinimumSpawnInterval = 1.3,
-			MaximumSpawnInterval = 2.3,
+			CustomerLimit = 24,
+			MinimumSpawnInterval = 1.22,
+			MaximumSpawnInterval = 2.1,
 		},
 
 		{
 			Level = 7,
-			Cost = 75000,
+			Cost = 75_000,
 
 			DisplayName = "Newspaper Ads",
 			Description =
@@ -117,14 +117,14 @@ local MarketingConfig = {
 
 			TemplateName = nil,
 
-			CustomerLimit = 13,
-			MinimumSpawnInterval = 1.23,
-			MaximumSpawnInterval = 2.2,
+			CustomerLimit = 28,
+			MinimumSpawnInterval = 1.14,
+			MaximumSpawnInterval = 1.95,
 		},
 
 		{
 			Level = 8,
-			Cost = 180000,
+			Cost = 180_000,
 
 			DisplayName = "Bus Stop Ads",
 			Description =
@@ -132,14 +132,14 @@ local MarketingConfig = {
 
 			TemplateName = nil,
 
-			CustomerLimit = 14,
-			MinimumSpawnInterval = 1.17,
-			MaximumSpawnInterval = 2.05,
+			CustomerLimit = 33,
+			MinimumSpawnInterval = 1.07,
+			MaximumSpawnInterval = 1.8,
 		},
 
 		{
 			Level = 9,
-			Cost = 450000,
+			Cost = 450_000,
 
 			DisplayName = "Local Radio",
 			Description =
@@ -147,14 +147,14 @@ local MarketingConfig = {
 
 			TemplateName = nil,
 
-			CustomerLimit = 15,
-			MinimumSpawnInterval = 1.12,
-			MaximumSpawnInterval = 1.95,
+			CustomerLimit = 38,
+			MinimumSpawnInterval = 1.0,
+			MaximumSpawnInterval = 1.68,
 		},
 
 		{
 			Level = 10,
-			Cost = 1000000,
+			Cost = 1_000_000,
 
 			DisplayName = "Search Ads",
 			Description =
@@ -162,14 +162,14 @@ local MarketingConfig = {
 
 			TemplateName = nil,
 
-			CustomerLimit = 16,
-			MinimumSpawnInterval = 1.08,
-			MaximumSpawnInterval = 1.85,
+			CustomerLimit = 44,
+			MinimumSpawnInterval = 0.94,
+			MaximumSpawnInterval = 1.56,
 		},
 
 		{
 			Level = 11,
-			Cost = 2500000,
+			Cost = 2_500_000,
 
 			DisplayName = "Delivery Van Wraps",
 			Description =
@@ -177,73 +177,69 @@ local MarketingConfig = {
 
 			TemplateName = nil,
 
-			CustomerLimit = 17,
-			MinimumSpawnInterval = 1.04,
-			MaximumSpawnInterval = 1.75,
+			CustomerLimit = 50,
+			MinimumSpawnInterval = 0.88,
+			MaximumSpawnInterval = 1.45,
 		},
 
 		{
 			Level = 12,
-		
 			Cost = 4_000_000,
-		
+
 			DisplayName = "Event Sponsorship",
 			Description =
 				"Put your business in front of large crowds.",
-		
+
 			TemplateName = nil,
-		
-			CustomerLimit = 18,
-			MinimumSpawnInterval = 1.0,
-			MaximumSpawnInterval = 1.65,
+
+			CustomerLimit = 56,
+			MinimumSpawnInterval = 0.82,
+			MaximumSpawnInterval = 1.35,
 		},
-		
+
 		{
 			Level = 13,
-		
 			Cost = 7_500_000,
-		
+
 			DisplayName = "Digital Billboard",
 			Description =
 				"Run high-visibility advertisements across the city.",
-		
+
 			TemplateName = nil,
-		
-			CustomerLimit = 20,
-			MinimumSpawnInterval = 0.98,
-			MaximumSpawnInterval = 1.58,
+
+			CustomerLimit = 62,
+			MinimumSpawnInterval = 0.76,
+			MaximumSpawnInterval = 1.25,
 		},
-		
+
 		{
 			Level = 14,
-		
 			Cost = 13_000_000,
-		
+
 			DisplayName = "Influencer Campaign",
 			Description =
 				"Create major buzz around your growing business.",
-		
+
 			TemplateName = nil,
-		
-			CustomerLimit = 22,
-			MinimumSpawnInterval = 0.96,
-			MaximumSpawnInterval = 1.5,
+
+			CustomerLimit = 68,
+			MinimumSpawnInterval = 0.7,
+			MaximumSpawnInterval = 1.16,
 		},
-		
+
 		{
 			Level = 15,
-		
 			Cost = 22_000_000,
-		
+
 			DisplayName = "City-Wide Campaign",
 			Description =
 				"Your brand is known throughout the entire city.",
-		
+
 			TemplateName = nil,
-		
-			CustomerLimit = 24,
-			MinimumSpawnInterval = 0.95,
-			MaximumSpawnInterval = 1.45,
+
+			CustomerLimit = 75,
+			MinimumSpawnInterval = 0.65,
+			MaximumSpawnInterval = 1.08,
 		},
 	},
 }

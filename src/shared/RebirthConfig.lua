@@ -6,29 +6,29 @@ local RebirthConfig = {}
 --==================================================
 
 -- First rebirth:
--- Rep 50
--- $50M
--- Coffee Stand unlocked
+-- Rep 15
+-- $500K
+-- Haircut Stand unlocked
 
 RebirthConfig.BaseRequiredReputation =
-	50
+	15
 
 RebirthConfig.ReputationIncreasePerRebirth =
-	15
+	10
 
 
 RebirthConfig.BaseRequiredCash =
-	50_000_000
+	500_000
 
 RebirthConfig.CashGrowthPerRebirth =
 	2
 
 
 RebirthConfig.RequiredBusiness =
-	"CoffeeStand"
+	"HaircutStand"
 
 RebirthConfig.RequiredBusinessDisplayName =
-	"Coffee Stand"
+	"Haircut Stand"
 
 
 --==================================================
@@ -78,20 +78,64 @@ function RebirthConfig.GetRequirements(
 
 
 	local requiredReputation =
-		RebirthConfig.BaseRequiredReputation
-		+ (
-			currentRebirths
-			* RebirthConfig
-				.ReputationIncreasePerRebirth
+		math.floor(
+			15
+				+ 7 * currentRebirths
+				+ 2.5 * (
+					currentRebirths
+					^ 1.35
+				)
+				+ 0.5
 		)
-
-
+	
+	
+	local growthFactor =
+		(
+			1
+			+ 0.55 * currentRebirths
+			+ 0.11 * (
+				currentRebirths
+				^ 2
+			)
+		)
+		^ 1.15
+	
+	
 	local requiredCash =
-		RebirthConfig.BaseRequiredCash
-		* (
-			RebirthConfig.CashGrowthPerRebirth
-			^ currentRebirths
-		)
+		500_000
+		* growthFactor
+	
+	
+	if requiredCash >= 10_000_000 then
+	
+		requiredCash =
+			math.floor(
+				requiredCash
+					/ 100_000
+					+ 0.5
+			)
+			* 100_000
+	
+	elseif requiredCash >= 1_000_000 then
+	
+		requiredCash =
+			math.floor(
+				requiredCash
+					/ 50_000
+					+ 0.5
+			)
+			* 50_000
+	
+	else
+	
+		requiredCash =
+			math.floor(
+				requiredCash
+					/ 10_000
+					+ 0.5
+			)
+			* 10_000
+	end
 
 
 	requiredCash =

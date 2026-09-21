@@ -95,6 +95,14 @@ local closeButton =
 		"Close"
 	) :: GuiButton
 
+closeButton.Active =
+	true
+
+closeButton.Selectable =
+	true
+
+closeButton.ZIndex =
+	50
 
 local frame =
 	main:WaitForChild(
@@ -248,7 +256,7 @@ local rebirthStroke =
 --==================================================
 
 local CHECK_IMAGE =
-	"rbxassetid://15900022302"
+	"rbxassetid://15900022256"
 
 local X_IMAGE =
 	"rbxassetid://72291248971478"

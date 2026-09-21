@@ -820,10 +820,12 @@ local BusinessConfig = {
 			"Serve premium coffee, attract wealthier customers, and turn your stand into a bustling café.",
 
 		UnlockRequirements = {
+			RebirthsRequired = 1,
+		
 			ReputationLevel = 18,
-
-			LifetimeEarnings = 1000000,
-
+		
+			LifetimeEarnings = 1_000_000,
+		
 			BusinessLevel = {
 				BusinessType = "HaircutStand",
 				Level = 4,
