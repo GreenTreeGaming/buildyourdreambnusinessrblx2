@@ -618,10 +618,6 @@ end
 -- OPEN / CLOSE
 --==================================================
 
-local originalSize =
-	main.Size
-
-
 local uiScale =
 	main:FindFirstChild(
 		"RebirthOpenScale"
@@ -646,6 +642,26 @@ if not uiScale then
 end
 
 
+local activeMenuTween: Tween? =
+	nil
+
+
+local menuOpen =
+	false
+
+
+local function stopMenuTween()
+
+	if activeMenuTween then
+
+		activeMenuTween:Cancel()
+
+		activeMenuTween =
+			nil
+	end
+end
+
+
 local function openMenu()
 
 	confirmationActive =
@@ -653,6 +669,20 @@ local function openMenu()
 
 	confirmationVersion +=
 		1
+
+
+	if menuOpen
+		and main.Visible then
+
+		return
+	end
+
+
+	menuOpen =
+		true
+
+
+	stopMenuTween()
 
 
 	main.Visible =
@@ -663,20 +693,48 @@ local function openMenu()
 		0.92
 
 
-	TweenService:Create(
-		uiScale,
+	local tween =
+		TweenService:Create(
+			uiScale,
 
-		TweenInfo.new(
-			0.2,
-			Enum.EasingStyle.Back,
-			Enum.EasingDirection.Out
-		),
+			TweenInfo.new(
+				0.2,
+				Enum.EasingStyle.Back,
+				Enum.EasingDirection.Out
+			),
 
-		{
-			Scale =
-				1,
-		}
-	):Play()
+			{
+				Scale =
+					1,
+			}
+		)
+
+
+	activeMenuTween =
+		tween
+
+
+	tween.Completed:Once(
+		function()
+
+			if activeMenuTween
+				~= tween then
+
+				return
+			end
+
+
+			activeMenuTween =
+				nil
+
+
+			uiScale.Scale =
+				1
+		end
+	)
+
+
+	tween:Play()
 
 
 	refreshState()
@@ -692,10 +750,72 @@ local function closeMenu()
 		1
 
 
-	main.Visible =
-		false
-end
+	if not main.Visible then
 
+		menuOpen =
+			false
+
+		return
+	end
+
+
+	menuOpen =
+		false
+
+
+	stopMenuTween()
+
+
+	local tween =
+		TweenService:Create(
+			uiScale,
+
+			TweenInfo.new(
+				0.13,
+				Enum.EasingStyle.Quad,
+				Enum.EasingDirection.In
+			),
+
+			{
+				Scale =
+					0.92,
+			}
+		)
+
+
+	activeMenuTween =
+		tween
+
+
+	tween.Completed:Once(
+		function()
+
+			if activeMenuTween
+				~= tween then
+
+				return
+			end
+
+
+			activeMenuTween =
+				nil
+
+
+			if not menuOpen then
+
+				main.Visible =
+					false
+
+
+				uiScale.Scale =
+					1
+			end
+		end
+	)
+
+
+	tween:Play()
+end
 
 --==================================================
 -- REBIRTH
@@ -941,4 +1061,10 @@ task.spawn(
 --==================================================
 
 main.Visible =
+	false
+
+uiScale.Scale =
+	1
+
+menuOpen =
 	false

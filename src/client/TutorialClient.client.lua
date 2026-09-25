@@ -228,9 +228,12 @@ local SIDE_POSITION =
 -- TIMING
 --==================================================
 --
--- The old tutorial used many 4-5 second messages.
--- Keep this one fast enough that the player is
--- constantly doing something.
+-- Tutorial pacing should feel calm and readable.
+--
+-- Informational messages remain visible long enough
+-- for a new player to actually read them, while
+-- action instructions stay visible until the player
+-- performs the requested action.
 --==================================================
 
 local FRAME_TWEEN_TIME =
@@ -238,11 +241,11 @@ local FRAME_TWEEN_TIME =
 
 
 local TEXT_FADE_TIME =
-	0.14
+	0.16
 
 
 local TEXT_CLEAR_DELAY =
-	0.12
+	0.18
 
 
 local CAMERA_TWEEN_TIME =
@@ -250,20 +253,35 @@ local CAMERA_TWEEN_TIME =
 
 
 local CAMERA_HOLD_TIME =
-	0.55
+	0.85
 
 
+-- Short confirmation / encouragement.
 local SHORT_MESSAGE_TIME =
-	1.8
-
-
-local NORMAL_MESSAGE_TIME =
-	2.4
-
-
-local LONG_MESSAGE_TIME =
 	3.0
 
+
+-- Normal one-sentence explanation.
+local NORMAL_MESSAGE_TIME =
+	4.0
+
+
+-- Longer explanation with multiple ideas.
+local LONG_MESSAGE_TIME =
+	5.25
+
+
+-- Small pause after the player completes an action.
+-- Gives them time to see the result before the
+-- tutorial immediately asks for something else.
+local ACTION_RESULT_PAUSE =
+	0.75
+
+
+-- Used for especially important moments such as
+-- the first sale and first upgrade.
+local MAJOR_RESULT_PAUSE =
+	1.0
 
 --==================================================
 -- TWEEN INFO
@@ -1661,21 +1679,21 @@ local function finishTutorial()
 
 
 	showTimedMessage(
-		"Keep growing your reputation to unlock bigger businesses.",
-		SHORT_MESSAGE_TIME
-	)
+	"Keep growing your reputation to unlock bigger businesses.",
+	NORMAL_MESSAGE_TIME
+)
 
 
-	showTimedMessage(
-		"Quests, achievements, marketing, plot expansions, daily rewards, and licenses will help your empire grow.",
-		NORMAL_MESSAGE_TIME
-	)
+showTimedMessage(
+	"Quests, achievements, marketing, plot expansions, daily rewards, and licenses will help your empire grow.",
+	LONG_MESSAGE_TIME
+)
 
 
-	showTimedMessage(
-		"You're ready. Go from broke to boss!",
-		SHORT_MESSAGE_TIME
-	)
+showTimedMessage(
+	"You're ready. Go from broke to billionare!",
+	NORMAL_MESSAGE_TIME
+)
 
 
 	clearText()
@@ -1809,9 +1827,9 @@ local function runTutorial()
 	--==================================================
 
 	showTimedMessage(
-		"Welcome to Broke To Boss! Start small, build businesses, and grow your empire.",
-		NORMAL_MESSAGE_TIME
-	)
+	"Welcome to Broke To Billionare! Start small, build businesses, and grow your empire.",
+	LONG_MESSAGE_TIME
+)
 
 
 	--==================================================
@@ -1841,6 +1859,10 @@ local function runTutorial()
 		findLemonadeStand(
 			plot
 		)
+
+	task.wait(
+	ACTION_RESULT_PAUSE
+)
 
 
 	if not lemonadeStand then
@@ -1898,9 +1920,9 @@ local function runTutorial()
 	--==================================================
 
 	showTimedMessage(
-		"Nice! Customers visit automatically and pay you when they're served.",
-		NORMAL_MESSAGE_TIME
-	)
+	"Nice! Customers visit automatically and pay you when they're served.",
+	LONG_MESSAGE_TIME
+)
 
 
 	setTutorialText(
@@ -1912,11 +1934,15 @@ local function runTutorial()
 		lemonadeStand
 	)
 
+	task.wait(
+	MAJOR_RESULT_PAUSE
+)
+
 
 	showTimedMessage(
-		"First sale! Your businesses keep earning while you build and upgrade.",
-		SHORT_MESSAGE_TIME
-	)
+	"First sale! Your businesses keep earning while you build and upgrade.",
+	NORMAL_MESSAGE_TIME
+)
 
 
 	--==================================================
@@ -1955,11 +1981,15 @@ local function runTutorial()
 			firstSaleClaimButton
 		)
 
+		task.wait(
+	ACTION_RESULT_PAUSE
+)
+
 
 		showTimedMessage(
-			"Perfect. New quests replace completed ones, so you'll always have goals.",
-			SHORT_MESSAGE_TIME
-		)
+	"Perfect. New quests replace completed ones, so you'll always have goals.",
+	NORMAL_MESSAGE_TIME
+)
 
 	else
 
@@ -1998,9 +2028,9 @@ local function runTutorial()
 
 
 	showTimedMessage(
-		"Here you can improve earnings, service speed, queue size, and the stand itself.",
-		NORMAL_MESSAGE_TIME
-	)
+	"Here you can improve earnings, service speed, queue size, and the stand itself.",
+	LONG_MESSAGE_TIME
+)
 
 
 	--==================================================
@@ -2046,11 +2076,15 @@ local function runTutorial()
 		lemonadeStand
 	)
 
+	task.wait(
+	MAJOR_RESULT_PAUSE
+)
+
 
 	showTimedMessage(
-		"Great! Reinvesting your cash makes every business stronger.",
-		SHORT_MESSAGE_TIME
-	)
+	"Great! Reinvesting your cash makes every business stronger.",
+	NORMAL_MESSAGE_TIME
+)
 
 
 	setTutorialText(
@@ -2073,15 +2107,15 @@ local function runTutorial()
 	--==================================================
 
 	showTimedMessage(
-		"Serve customers to raise Reputation and unlock Hotdogs, Haircuts, Coffee, and future businesses.",
-		NORMAL_MESSAGE_TIME
-	)
+	"Serve customers to raise Reputation and unlock Hotdogs, Haircuts, Coffee, and future businesses.",
+	LONG_MESSAGE_TIME
+)
 
 
 	showTimedMessage(
-		"Marketing brings more customers, and Plot Expansions give you more room to build.",
-		NORMAL_MESSAGE_TIME
-	)
+	"Marketing brings more customers, and Plot Expansions give you more room to build.",
+	LONG_MESSAGE_TIME
+)
 
 
 	finishTutorial()

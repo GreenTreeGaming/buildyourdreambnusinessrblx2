@@ -25,7 +25,7 @@ local BusinessConfig = require(
 		:WaitForChild("BusinessConfig")
 )
 
-local DATA_STORE_NAME = "PlayerData_v17"
+local DATA_STORE_NAME = "PlayerData_v18"
 
 -- Version 2 changed Businesses from one fixed stand
 -- into a list of uniquely identified placed businesses.
