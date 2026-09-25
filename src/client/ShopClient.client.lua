@@ -904,17 +904,10 @@ local function setupDeveloperProduct(
 )
 
 	local card =
-<<<<<<< HEAD
 		scrollingFrame:FindFirstChild(
 			config.FrameName,
 			true
 		)
-=======
-	scrollingFrame:FindFirstChild(
-		config.FrameName,
-		true
-	)
->>>>>>> 04959e1 (1)
 
 
 	if not card then

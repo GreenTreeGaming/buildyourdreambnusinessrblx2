@@ -78,17 +78,13 @@ ShopConfig.DeveloperProducts = {
 		Duration = 15 * 60,
 	},
 
-	GoldenCustomer = {
-<<<<<<< HEAD
+		GoldenCustomer = {
 		FrameName = "Only9Robux",
-=======
-	FrameName = "Only9Robux",
->>>>>>> 04959e1 (1)
 
-	Id = 3713917157,
+		Id = 3713917157,
 
-	RewardType = "GoldenCustomer",
-},
+		RewardType = "GoldenCustomer",
+	},
 }
 
 
