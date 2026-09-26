@@ -33,6 +33,13 @@ local CustomerReviews =
 			:WaitForChild("CustomerReviews")
 	)
 
+local StockService =
+	require(
+		script.Parent
+			:WaitForChild("Services")
+			:WaitForChild("StockService")
+	)
+
 local standIsAvailable: (
 	stand: Model
 ) -> boolean
@@ -3684,11 +3691,11 @@ standIsAvailable = function(
 
 
 	if not isSupportedBusiness(
-	stand
-) then
+		stand
+	) then
 
-	return false
-end
+		return false
+	end
 
 
 	if stand:GetAttribute(
@@ -3707,9 +3714,20 @@ end
 	end
 
 
+	--==================================================
+	-- STOCK
+	--==================================================
+
+	if not StockService.CanServe(
+		stand
+	) then
+
+		return false
+	end
+
+
 	return true
 end
-
 
 local function getBusinessCooldown(
 	stand: Model
@@ -5422,6 +5440,18 @@ local function rewardPlotOwner(
 		)
 
 	if not cash then
+		return false
+	end
+
+	--==================================================
+	-- CONSUME STOCK
+	--==================================================
+	
+	if not StockService.TryConsume(
+		stand,
+		1
+	) then
+	
 		return false
 	end
 

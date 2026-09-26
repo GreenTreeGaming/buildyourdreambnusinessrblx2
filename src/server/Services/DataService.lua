@@ -32,7 +32,7 @@ local DATA_STORE_NAME = "PlayerData_v18"
 --
 -- Version 3 saves each placed business's physical model level.
 -- Version 4 adds plot-wide marketing progression.
-local CURRENT_DATA_VERSION = 12
+local CURRENT_DATA_VERSION = 13
 
 local MAX_RETRIES = 3
 local RETRY_DELAY_SECONDS = 2
@@ -169,6 +169,8 @@ type SavedPlacedBusiness = {
 
 	TotalSales: number,
 	LifetimeEarnings: number,
+
+	Stock: number,
 }
 
 type PlayerProfile = {
@@ -690,6 +692,57 @@ local function sanitizeBusinessLevel(
 	return 1
 end
 
+local function getBusinessMaximumStock(
+	businessType: string,
+	level: number
+): number
+
+	local businessConfig =
+		BusinessConfig[
+			businessType
+		]
+
+
+	if type(businessConfig)
+		~= "table" then
+
+		return 0
+	end
+
+
+	local capacities =
+		businessConfig.StockCapacityByLevel
+
+
+	if type(capacities)
+		~= "table" then
+
+		return 0
+	end
+
+
+	local capacity =
+		capacities[
+			level
+		]
+
+
+	if typeof(capacity)
+			~= "number"
+		or capacity < 0 then
+
+		return 0
+	end
+
+
+	return math.max(
+		0,
+		math.floor(
+			capacity
+		)
+	)
+end
+
 local function migrateVersionOneProfile(
 	profile: {[any]: any}
 )
@@ -819,6 +872,45 @@ end
 				)
 		end
 
+		local sanitizedLevel =
+			sanitizeBusinessLevel(
+				businessType,
+				rawBusiness.Level
+			)
+		
+		
+		local maximumStock =
+			getBusinessMaximumStock(
+				businessType,
+				sanitizedLevel
+			)
+		
+		
+		local savedStock
+		
+		
+		if rawBusiness.Stock == nil then
+		
+			--
+			-- Existing players have never had stock before,
+			-- so their businesses start completely full.
+			--
+			savedStock =
+				maximumStock
+		
+		else
+		
+			savedStock =
+				math.clamp(
+					sanitizeStatistic(
+						rawBusiness.Stock
+					),
+		
+					0,
+					maximumStock
+				)
+		end
+
 		table.insert(
 			sanitized,
 						{
@@ -826,10 +918,7 @@ end
 				Type = businessType,
 
 				Level =
-					sanitizeBusinessLevel(
-						businessType,
-						rawBusiness.Level
-					),
+					sanitizedLevel,
 
 				Transform =
 					serializeCFrame(transform),
@@ -851,6 +940,9 @@ LifetimeEarnings =
 	sanitizeStatistic(
 		rawBusiness.LifetimeEarnings
 	),
+
+	Stock =
+		savedStock,
 			}
 		)
 	end
@@ -1431,6 +1523,13 @@ LifetimeEarnings =
 	sanitizeStatistic(
 		instance:GetAttribute(
 			"LifetimeEarnings"
+		)
+	),
+
+Stock =
+	sanitizeStatistic(
+		instance:GetAttribute(
+			"Stock"
 		)
 	),
 			}
@@ -2516,6 +2615,22 @@ end
 			"LifetimeEarnings",
 			sanitizeStatistic(
 				savedBusiness.LifetimeEarnings
+			)
+		)
+
+		stand:SetAttribute(
+			"Stock",
+			math.clamp(
+				sanitizeStatistic(
+					savedBusiness.Stock
+				),
+		
+				0,
+		
+				getBusinessMaximumStock(
+					savedBusiness.Type,
+					savedLevel
+				)
 			)
 		)
 

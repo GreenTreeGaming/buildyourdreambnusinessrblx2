@@ -20,6 +20,15 @@ local BusinessConfig = {
 
 		BaseServingCooldown = 5,
 
+		-- Lemonade Stand
+		StockCapacityByLevel = {
+			[1] = 15,
+			[2] = 22,
+			[3] = 32,
+			[4] = 45,
+			[5] = 65,
+		},
+
 		StandLevels = {
 			[1] = {
 				TemplateName = "LemonadeStand",
@@ -152,6 +161,15 @@ local BusinessConfig = {
 		BaseSaleValue = 45,
 
 		BaseServingCooldown = 5,
+
+		-- Hotdog Stand
+		StockCapacityByLevel = {
+			[1] = 18,
+			[2] = 27,
+			[3] = 38,
+			[4] = 52,
+			[5] = 72,
+		},
 
 		StandLevels = {
 			[1] = {
@@ -286,6 +304,15 @@ local BusinessConfig = {
 
 		BaseServingCooldown = 6,
 
+		-- Haircut Stand
+		StockCapacityByLevel = {
+			[1] = 12,
+			[2] = 18,
+			[3] = 26,
+			[4] = 36,
+			[5] = 50,
+		},
+
 		StandLevels = {
 			[1] = {
 				TemplateName = "HaircutStand",
@@ -419,6 +446,15 @@ local BusinessConfig = {
 		BaseSaleValue = 1000,
 
 		BaseServingCooldown = 6,
+
+		-- Coffee Stand
+		StockCapacityByLevel = {
+			[1] = 20,
+			[2] = 30,
+			[3] = 42,
+			[4] = 58,
+			[5] = 80,
+		},
 
 		StandLevels = {
 			[1] = {
