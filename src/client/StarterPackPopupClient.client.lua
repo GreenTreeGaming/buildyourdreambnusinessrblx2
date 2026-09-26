@@ -464,23 +464,32 @@ end
 
 
 --==================================================
+-- BUTTON SETUP
+--==================================================
+
+yesButton.Active = true
+yesButton.Selectable = true
+yesButton.AutoButtonColor = true
+
+noButton.Active = true
+noButton.Selectable = true
+noButton.AutoButtonColor = true
+
+
+--==================================================
 -- YES
 --==================================================
 
-yesButton.Activated:Connect(
+yesButton.MouseButton1Click:Connect(
 	function()
 
 		if not popupOpen then
 			return
 		end
 
-
 		closePopup()
 
-
-		openShopRequest:
-			Fire()
-
+		openShopRequest:Fire()
 
 		task.spawn(
 			scrollToStarterPack
@@ -493,13 +502,16 @@ yesButton.Activated:Connect(
 -- NO
 --==================================================
 
-noButton.Activated:Connect(
+noButton.MouseButton1Click:Connect(
 	function()
+
+		if not popupOpen then
+			return
+		end
 
 		closePopup()
 	end
 )
-
 
 --==================================================
 -- SHOW OFFER
