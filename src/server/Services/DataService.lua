@@ -95,16 +95,29 @@ local DEFAULT_PROFILE = {
 	RedeemedCodes = {},
 
 	Monetization = {
-		Boosts = {
-			CustomerRushUntil = 0,
-			ReputationBoostUntil = 0,
-			CashBoostUntil = 0,
-		},
-
-		ProcessedReceipts = {},
-
-		ReputationBonusSales = 0,
+	Boosts = {
+		CustomerRushUntil = 0,
+		ReputationBoostUntil = 0,
+		CashBoostUntil = 0,
 	},
+
+	ProcessedReceipts = {},
+
+	ReputationBonusSales = 0,
+
+	StarterPack = {
+		-- -1 means the timer has not begun yet.
+		StartedAtTimePlayed = -1,
+
+		-- Prevents the one-time rewards from
+		-- ever being granted twice.
+		RewardGranted = false,
+
+		-- Golden customers are kept pending if
+		-- the plot is currently unable to accept one.
+		GoldenCustomersPending = 0,
+	},
+},
 
 	-- Plot-wide marketing progression.
 	MarketingLevel = 0,
@@ -473,9 +486,59 @@ local function sanitizeMonetization(
 		sanitizedReceipts
 
 	monetization.ReputationBonusSales =
-		sanitizeStatistic(
-			monetization.ReputationBonusSales
+	sanitizeStatistic(
+		monetization.ReputationBonusSales
+	)
+
+
+--==================================================
+-- STARTER PACK
+--==================================================
+
+if type(
+	monetization.StarterPack
+) ~= "table" then
+
+	monetization.StarterPack =
+		deepCopy(
+			DEFAULT_PROFILE
+				.Monetization
+				.StarterPack
 		)
+end
+
+
+local starterPack =
+	monetization.StarterPack
+
+
+local startedAt =
+	starterPack.StartedAtTimePlayed
+
+
+if typeof(startedAt)
+	~= "number" then
+
+	startedAt =
+		-1
+end
+
+
+starterPack.StartedAtTimePlayed =
+	math.floor(
+		startedAt
+	)
+
+
+starterPack.RewardGranted =
+	starterPack.RewardGranted
+		== true
+
+
+starterPack.GoldenCustomersPending =
+	sanitizeStatistic(
+		starterPack.GoldenCustomersPending
+	)
 end
 
 local function getPlotTransformReference(
@@ -1877,6 +1940,191 @@ function DataService.SetTutorialCompleted(
 		"TutorialCompleted",
 		profile.TutorialCompleted
 	)
+
+
+	return true
+end
+
+--==================================================
+-- STARTER PACK
+--==================================================
+
+function DataService.GetStarterPackStartedAt(
+	player: Player
+): number
+
+	local profile =
+		profiles[player]
+
+
+	if not profile then
+		return -1
+	end
+
+
+	local monetization =
+		profile.Monetization
+
+
+	if type(monetization)
+		~= "table"
+		or type(
+			monetization.StarterPack
+		) ~= "table" then
+
+		return -1
+	end
+
+
+	local value =
+		monetization
+			.StarterPack
+			.StartedAtTimePlayed
+
+
+	if typeof(value)
+		~= "number" then
+
+		return -1
+	end
+
+
+	return math.floor(
+		value
+	)
+end
+
+
+function DataService.SetStarterPackStartedAt(
+	player: Player,
+	value: number
+): boolean
+
+	local profile =
+		profiles[player]
+
+
+	if not profile then
+		return false
+	end
+
+
+	if typeof(value)
+		~= "number" then
+
+		return false
+	end
+
+
+	profile.Monetization
+		.StarterPack
+		.StartedAtTimePlayed =
+		math.floor(
+			value
+		)
+
+
+	return true
+end
+
+
+function DataService.GetStarterPackRewardGranted(
+	player: Player
+): boolean
+
+	local profile =
+		profiles[player]
+
+
+	if not profile then
+		return false
+	end
+
+
+	return profile
+		.Monetization
+		.StarterPack
+		.RewardGranted
+		== true
+end
+
+
+function DataService.SetStarterPackRewardGranted(
+	player: Player,
+	granted: boolean
+): boolean
+
+	local profile =
+		profiles[player]
+
+
+	if not profile then
+		return false
+	end
+
+
+	profile.Monetization
+		.StarterPack
+		.RewardGranted =
+		granted == true
+
+
+	return true
+end
+
+
+function DataService.GetStarterPackGoldenPending(
+	player: Player
+): number
+
+	local profile =
+		profiles[player]
+
+
+	if not profile then
+		return 0
+	end
+
+
+	return sanitizeStatistic(
+		profile
+			.Monetization
+			.StarterPack
+			.GoldenCustomersPending
+	)
+end
+
+
+function DataService.SetStarterPackGoldenPending(
+	player: Player,
+	amount: number
+): boolean
+
+	local profile =
+		profiles[player]
+
+
+	if not profile then
+		return false
+	end
+
+
+	if typeof(amount)
+		~= "number" then
+
+		return false
+	end
+
+
+	profile.Monetization
+		.StarterPack
+		.GoldenCustomersPending =
+		math.max(
+			0,
+			math.floor(
+				amount
+			)
+		)
 
 
 	return true

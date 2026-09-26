@@ -711,15 +711,40 @@ local function grantDeveloperProduct(
 	if product.RewardType
 	== "GoldenCustomer" then
 
+	local quantity =
+		product.Quantity
+		or 1
+
+
+	if typeof(quantity)
+			~= "number"
+		or quantity <= 0 then
+
+		return false,
+			nil
+	end
+
+
+	quantity =
+		math.clamp(
+			math.floor(
+				quantity
+			),
+			1,
+			100
+		)
+
+
 	local success,
-		spawned =
+		queued =
 		pcall(
 			function()
 
 				return spawnPurchasedCustomer:
 					Invoke(
 						player,
-						"Golden"
+						"Golden",
+						quantity
 					)
 			end
 		)
@@ -728,7 +753,7 @@ local function grantDeveloperProduct(
 	if not success then
 
 		warn(
-			`Failed to spawn purchased Golden Customer for {player.Name}: {spawned}`
+			`Failed to queue {quantity} purchased Golden Customer(s) for {player.Name}: {queued}`
 		)
 
 		return false,
@@ -736,20 +761,21 @@ local function grantDeveloperProduct(
 	end
 
 
-	if spawned ~= true then
+	if queued ~= true then
 
 		warn(
-			`Could not spawn purchased Golden Customer for {player.Name}.`
+			`Could not queue {quantity} purchased Golden Customer(s) for {player.Name}.`
 		)
 
 		return false,
 			nil
 	end
 
+
 	player:SetAttribute(
-	"GoldenCustomerPurchasedAt",
-	os.time()
-)
+		"GoldenCustomerPurchasedAt",
+		os.time()
+	)
 
 
 	return true,

@@ -20,6 +20,26 @@ ShopConfig.GamePasses = {
 	},
 }
 
+
+--==================================================
+-- STARTER PACK
+--==================================================
+
+ShopConfig.StarterPack = {
+	Id = 1998116571,
+
+	-- The offer remains available for 30 minutes
+	-- of actual in-game playtime after the tutorial.
+	OfferDuration = 30 * 60,
+
+	Cash = 5_000,
+
+	CashBoostDuration = 10 * 60,
+
+	GoldenCustomers = 1,
+}
+
+
 ShopConfig.DeveloperProducts = {
 	SmallFunding = {
 		FrameName = "SmallFunding",
@@ -78,7 +98,7 @@ ShopConfig.DeveloperProducts = {
 		Duration = 15 * 60,
 	},
 
-		GoldenCustomer = {
+	GoldenCustomer = {
 		FrameName = "Only9Robux",
 
 		Id = 3713917157,
@@ -92,19 +112,15 @@ ShopConfig.DeveloperProducts = {
 -- VIP GAMEPASS
 --==================================================
 
--- 20% faster customer spawning.
 ShopConfig.VIPCustomerMultiplier =
 	1.20
 
--- 10% more cash from every completed sale.
 ShopConfig.VIPCashMultiplier =
 	1.10
 
--- 25% better rare-customer odds.
 ShopConfig.VIPRareCustomerMultiplier =
 	1.25
 
--- One additional stand for every business type.
 ShopConfig.VIPPlacementBonus =
 	1
 
@@ -121,12 +137,6 @@ ShopConfig.CashGamePassMultiplier =
 -- X2 CUSTOMERS GAMEPASS
 --==================================================
 
--- Doubles the maximum number of customers
--- allowed on the player's plot.
---
--- Example:
--- Marketing limit 20 -> 40
--- Marketing limit 75 -> 150
 ShopConfig.CustomerLimitGamePassMultiplier =
 	2
 

@@ -5966,6 +5966,269 @@ end
 -- PURCHASED CUSTOMER SPAWNING
 --==================================================
 
+local pendingPurchasedCustomers: {
+	[Player]: {
+		[string]: number
+	}
+} = {}
+
+
+local purchasedCustomerWorkers: {
+	[Player]: boolean
+} = {}
+
+
+--==================================================
+-- FIND PLAYER PLOT
+--==================================================
+
+local function getPlayerPlot(
+	player: Player
+): Model?
+
+	for _, plot in
+		plotsFolder:GetChildren()
+	do
+
+		if not plot:IsA(
+			"Model"
+		) then
+
+			continue
+		end
+
+
+		if plot:GetAttribute(
+			"OwnerUserId"
+		) == player.UserId then
+
+			return plot
+		end
+	end
+
+
+	return nil
+end
+
+
+--==================================================
+-- TRY SPAWN ONE PURCHASED CUSTOMER
+--==================================================
+
+local function trySpawnPurchasedCustomer(
+	player: Player,
+	customerType: string
+): boolean
+
+	if not player.Parent then
+		return false
+	end
+
+
+	local playerPlot =
+		getPlayerPlot(
+			player
+		)
+
+
+	if not playerPlot then
+		return false
+	end
+
+
+	-- Purchased customers still respect the player's
+	-- overall customer limit.
+	if getPlotCustomerCount(
+		playerPlot
+	) >= getPlotCustomerLimit(
+		playerPlot
+	) then
+
+		return false
+	end
+
+
+	local availableStands: {
+		Model
+	} = {}
+
+
+	for _, stand in
+		getSupportedBusinesses(
+			playerPlot
+		)
+	do
+
+		if not standIsAvailable(
+			stand
+		) then
+
+			continue
+		end
+
+
+		if getStandQueueSpace(
+			stand
+		) then
+
+			table.insert(
+				availableStands,
+				stand
+			)
+		end
+	end
+
+
+	if #availableStands == 0 then
+		return false
+	end
+
+
+	local selectedStand =
+		availableStands[
+			randomGenerator:
+				NextInteger(
+					1,
+					#availableStands
+				)
+		]
+
+
+	return spawnCustomerForStand(
+		playerPlot,
+		selectedStand,
+		customerType
+	)
+end
+
+
+--==================================================
+-- PURCHASED CUSTOMER WORKER
+--==================================================
+
+local function runPurchasedCustomerWorker(
+	player: Player
+)
+
+	if purchasedCustomerWorkers[
+		player
+	] then
+
+		return
+	end
+
+
+	purchasedCustomerWorkers[
+		player
+	] =
+		true
+
+
+	task.spawn(
+		function()
+
+			while player.Parent do
+
+				local pending =
+					pendingPurchasedCustomers[
+						player
+					]
+
+
+				if not pending then
+					break
+				end
+
+
+				local hasPending =
+					false
+
+				local spawnedAny =
+					false
+
+
+				for customerType,
+					amount in
+					pending
+				do
+
+					if amount <= 0 then
+
+						pending[
+							customerType
+						] = nil
+
+						continue
+					end
+
+
+					hasPending =
+						true
+
+
+					local spawned =
+						trySpawnPurchasedCustomer(
+							player,
+							customerType
+						)
+
+
+					if spawned then
+
+						pending[
+							customerType
+						] -= 1
+
+
+						spawnedAny =
+							true
+
+
+						if pending[
+							customerType
+						] <= 0 then
+
+							pending[
+								customerType
+							] = nil
+						end
+					end
+				end
+
+
+				if not hasPending then
+					break
+				end
+
+
+				-- Spawn quickly while space exists.
+				-- If all queues are currently full,
+				-- wait briefly and try again.
+				task.wait(
+					spawnedAny
+						and 0.15
+						or 0.5
+				)
+			end
+
+
+			pendingPurchasedCustomers[
+				player
+			] = nil
+
+
+			purchasedCustomerWorkers[
+				player
+			] = nil
+		end
+	)
+end
+
+
+--==================================================
+-- BINDABLE
+--==================================================
+
 local spawnPurchasedCustomer =
 	ServerStorage:FindFirstChild(
 		"SpawnPurchasedCustomer"
@@ -5979,8 +6242,10 @@ if not spawnPurchasedCustomer then
 			"BindableFunction"
 		)
 
+
 	spawnPurchasedCustomer.Name =
 		"SpawnPurchasedCustomer"
+
 
 	spawnPurchasedCustomer.Parent =
 		ServerStorage
@@ -6000,7 +6265,8 @@ end
 spawnPurchasedCustomer.OnInvoke =
 	function(
 		player: Player,
-		customerType: string
+		customerType: string,
+		quantity: number?
 	): boolean
 
 		if not player
@@ -6020,103 +6286,67 @@ spawnPurchasedCustomer.OnInvoke =
 		end
 
 
-		-- Find this player's plot.
-		local playerPlot:
-			Model? =
-			nil
+		local amount =
+			quantity
+			or 1
 
 
-		for _, plot in
-			plotsFolder:GetChildren()
-		do
-
-			if not plot:IsA(
-				"Model"
-			) then
-
-				continue
-			end
-
-
-			if plot:GetAttribute(
-				"OwnerUserId"
-			) == player.UserId then
-
-				playerPlot =
-					plot
-
-				break
-			end
-		end
-
-
-		if not playerPlot then
+		if typeof(amount)
+			~= "number"
+			or amount <= 0 then
 
 			return false
 		end
 
 
-		-- Find an available business with room
-		-- for the purchased customer.
-		local availableStands:
-			{Model} =
-			{}
-
-
-		for _, stand in
-			getSupportedBusinesses(
-				playerPlot
+		amount =
+			math.clamp(
+				math.floor(
+					amount
+				),
+				1,
+				100
 			)
-		do
-
-			if not standIsAvailable(
-				stand
-			) then
-
-				continue
-			end
 
 
-			local hasSpace =
-				getStandQueueSpace(
-					stand
-				)
-
-
-			if hasSpace then
-
-				table.insert(
-					availableStands,
-					stand
-				)
-			end
-		end
-
-
-		if #availableStands == 0 then
-
-			return false
-		end
-
-
-		-- Pick one available business.
-		local selectedStand =
-			availableStands[
-				randomGenerator:
-					NextInteger(
-						1,
-						#availableStands
-					)
+		local playerPending =
+			pendingPurchasedCustomers[
+				player
 			]
 
 
-		return spawnCustomerForStand(
-			playerPlot,
-			selectedStand,
-			customerType
-		)
-	end
+		if not playerPending then
 
+			playerPending =
+				{}
+
+
+			pendingPurchasedCustomers[
+				player
+			] =
+				playerPending
+		end
+
+
+		playerPending[
+			customerType
+		] =
+			(
+				playerPending[
+					customerType
+				]
+				or 0
+			)
+			+ amount
+
+
+		runPurchasedCustomerWorker(
+			player
+		)
+
+
+		return true
+	end
 
 --==================================================
 -- CLEANUP
@@ -6205,8 +6435,20 @@ Players.PlayerRemoving:Connect(
 	function(
 		player: Player
 	)
+
+		pendingPurchasedCustomers[
+			player
+		] = nil
+
+
+		purchasedCustomerWorkers[
+			player
+		] = nil
+
+
 		for _, plot in
-			plotsFolder:GetChildren() do
+			plotsFolder:GetChildren()
+		do
 
 			if not plot:IsA(
 				"Model"
