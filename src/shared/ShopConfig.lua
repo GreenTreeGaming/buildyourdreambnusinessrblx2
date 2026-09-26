@@ -99,12 +99,22 @@ ShopConfig.DeveloperProducts = {
 	},
 
 	GoldenCustomer = {
-		FrameName = "Only9Robux",
+	FrameName = "Only9Robux",
 
-		Id = 3713917157,
+	Id = 3713917157,
 
-		RewardType = "GoldenCustomer",
-	},
+	RewardType = "GoldenCustomer",
+	Quantity = 1,
+},
+
+GoldenCustomer10 = {
+	FrameName = "Only9Robux",
+
+	Id = 3714801074,
+
+	RewardType = "GoldenCustomer",
+	Quantity = 10,
+},
 }
 
 

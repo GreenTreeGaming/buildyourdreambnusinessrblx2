@@ -276,6 +276,33 @@ local function openShop()
 	tween:Play()
 end
 
+local openShopRequest =
+	shopGui:FindFirstChild(
+		"OpenShopRequest"
+	)
+
+if not openShopRequest then
+
+	openShopRequest =
+		Instance.new(
+			"BindableEvent"
+		)
+
+	openShopRequest.Name =
+		"OpenShopRequest"
+
+	openShopRequest.Parent =
+		shopGui
+end
+
+
+openShopRequest.Event:Connect(
+	function()
+
+		openShop()
+	end
+)
+
 
 local function closeShop()
 	if not main.Visible then

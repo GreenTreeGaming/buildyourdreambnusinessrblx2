@@ -103,6 +103,22 @@ local buyText =
 		"InText"
 	)
 
+local shopOpenButton =
+	shopGui:WaitForChild(
+		"OpenButton"
+	)
+
+
+local starterPackUpdate =
+	shopOpenButton:WaitForChild(
+		"Update"
+	) :: Frame
+
+
+local starterPackUpdateTitle =
+	starterPackUpdate:WaitForChild(
+		"Title"
+	) :: TextLabel
 
 --==================================================
 -- REMOTES
@@ -330,7 +346,12 @@ local function refreshState()
 			state
 		)
 
+
 		starterPack.Visible =
+			false
+
+
+		starterPackUpdate.Visible =
 			false
 
 
@@ -347,9 +368,17 @@ local function refreshState()
 			false
 
 
+		starterPackUpdate.Visible =
+			false
+
+
 		return
 	end
 
+
+	--==================================================
+	-- HIDE IF OWNED / CLAIMED / EXPIRED
+	--==================================================
 
 	if state.Visible
 		~= true then
@@ -358,10 +387,18 @@ local function refreshState()
 			false
 
 
+		starterPackUpdate.Visible =
+			false
+
+
 		if state.SecondsRemaining
 				== 0 then
 
 			timerText.Text =
+				"00:00"
+
+
+			starterPackUpdateTitle.Text =
 				"00:00"
 
 
@@ -373,6 +410,10 @@ local function refreshState()
 		return
 	end
 
+
+	--==================================================
+	-- ACTIVE OFFER
+	--==================================================
 
 	expired =
 		false
@@ -395,13 +436,25 @@ local function refreshState()
 			+ secondsRemaining
 
 
-	timerText.Text =
+	local formattedTime =
 		formatTime(
 			secondsRemaining
 		)
 
 
+	timerText.Text =
+		formattedTime
+
+
+	starterPackUpdateTitle.Text =
+		formattedTime
+
+
 	starterPack.Visible =
+		true
+
+
+	starterPackUpdate.Visible =
 		true
 
 
@@ -488,14 +541,16 @@ MarketplaceService
 
 			if wasPurchased then
 
-				-- Hide immediately. Server performs
-				-- the authoritative reward grant.
-				starterPack.Visible =
-					false
+	starterPack.Visible =
+		false
 
 
-				return
-			end
+	starterPackUpdate.Visible =
+		false
+
+
+	return
+end
 
 
 			refreshState()
@@ -554,10 +609,18 @@ task.spawn(
 					getRemainingTime()
 
 
-				timerText.Text =
+				local formattedTime =
 					formatTime(
 						remaining
 					)
+
+
+				timerText.Text =
+					formattedTime
+
+
+				starterPackUpdateTitle.Text =
+					formattedTime
 
 
 				if remaining <= 0 then
@@ -570,14 +633,20 @@ task.spawn(
 						"00:00"
 
 
+					starterPackUpdateTitle.Text =
+						"00:00"
+
+
 					setButtonEnabled(
 						false
 					)
 
 
-					-- The offer simply disappears from
-					-- the shop when the countdown ends.
 					starterPack.Visible =
+						false
+
+
+					starterPackUpdate.Visible =
 						false
 				end
 			end
@@ -590,7 +659,6 @@ task.spawn(
 	end
 )
 
-
 --==================================================
 -- INITIAL
 --==================================================
@@ -598,6 +666,9 @@ task.spawn(
 starterPack.Visible =
 	false
 
+
+starterPackUpdate.Visible =
+	false
 
 setButtonEnabled(
 	false
