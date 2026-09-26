@@ -33,7 +33,7 @@ RebirthConfig.CustomerRateBonusPerRebirth =
 
 -- Cap at +100%.
 RebirthConfig.MaximumCustomerRateBonus =
-	1.00
+	1.50
 
 
 -- +5% rare-customer odds every rebirth.
@@ -42,7 +42,7 @@ RebirthConfig.RareCustomerBonusPerRebirth =
 
 -- Cap at +50%.
 RebirthConfig.MaximumRareCustomerBonus =
-	0.50
+	0.75
 
 
 --==================================================
@@ -77,7 +77,7 @@ RebirthConfig.CashRequirements = {
 -- rebirth cash requirements continue growing
 -- automatically.
 RebirthConfig.LateCashGrowth =
-	1.45
+	1.40
 
 
 local function roundCash(
