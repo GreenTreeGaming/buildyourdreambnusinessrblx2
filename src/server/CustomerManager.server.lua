@@ -26,6 +26,13 @@ local Debris =
 local RunService =
 	game:GetService("RunService")
 
+local CustomerReviews =
+	require(
+		ReplicatedStorage
+			:WaitForChild("Shared")
+			:WaitForChild("CustomerReviews")
+	)
+
 local standIsAvailable: (
 	stand: Model
 ) -> boolean
@@ -1942,6 +1949,822 @@ notifyRareCustomer(
 	"CustomerInfoInitialized",
 	true
 )
+end
+
+--==================================================
+-- CUSTOMER REVIEW BUBBLES
+--==================================================
+
+local REVIEW_FONT =
+	Font.new(
+		"rbxassetid://12188570269",
+		Enum.FontWeight.Bold,
+		Enum.FontStyle.Normal
+	)
+
+
+local REVIEW_SUB_FONT =
+	Font.new(
+		"rbxassetid://12188570269",
+		Enum.FontWeight.Medium,
+		Enum.FontStyle.Normal
+	)
+
+
+local REVIEW_DISPLAY_TIME =
+	5.5
+
+
+local REVIEW_MAX_DISTANCE =
+	55
+
+
+local function createCustomerReviewBubble(
+	customer: Model,
+	review: string,
+	rating: number
+)
+
+	if not customer.Parent then
+		return
+	end
+
+
+	local head =
+		customer:FindFirstChild(
+			"Head"
+		)
+
+
+	if not head
+		or not head:IsA(
+			"BasePart"
+		) then
+
+		return
+	end
+
+
+	-- Remove an old review if somehow the same
+	-- customer receives another one.
+	local existing =
+		head:FindFirstChild(
+			"CustomerReview"
+		)
+
+
+	if existing then
+		existing:Destroy()
+	end
+
+
+	--==================================================
+	-- BILLBOARD
+	--==================================================
+
+	local billboard =
+		Instance.new(
+			"BillboardGui"
+		)
+
+
+	billboard.Name =
+		"CustomerReview"
+
+
+	billboard.Adornee =
+		head
+
+
+	billboard.Size =
+		UDim2.fromOffset(
+			225,
+			78
+		)
+
+
+	-- Position the review ABOVE the existing
+	-- customer name/type billboard.
+	local existingInfo =
+		head:FindFirstChild(
+			"NPCInfo"
+		)
+
+
+	local existingOffset =
+		1.5
+
+
+	if existingInfo
+		and existingInfo:IsA(
+			"BillboardGui"
+		) then
+
+		existingOffset =
+			existingInfo
+				.StudsOffsetWorldSpace
+				.Y
+	end
+
+
+	billboard.StudsOffsetWorldSpace =
+		Vector3.new(
+			0,
+			existingOffset + 2.35,
+			0
+		)
+
+
+	-- Do not show reviews through buildings.
+	billboard.AlwaysOnTop =
+		false
+
+
+	billboard.LightInfluence =
+		0
+
+
+	billboard.MaxDistance =
+		REVIEW_MAX_DISTANCE
+
+
+	billboard.Parent =
+		head
+
+
+	--==================================================
+	-- SCALE
+	--==================================================
+
+	local scale =
+		Instance.new(
+			"UIScale"
+		)
+
+
+	scale.Scale =
+		0.86
+
+
+	scale.Parent =
+		billboard
+
+
+	--==================================================
+	-- SHADOW
+	--==================================================
+
+	local shadow =
+		Instance.new(
+			"Frame"
+		)
+
+
+	shadow.Name =
+		"Shadow"
+
+
+	shadow.AnchorPoint =
+		Vector2.new(
+			0.5,
+			0.5
+		)
+
+
+	shadow.Position =
+		UDim2.new(
+			0.5,
+			3,
+			0.5,
+			4
+		)
+
+
+	shadow.Size =
+		UDim2.new(
+			1,
+			-8,
+			1,
+			-12
+		)
+
+
+	shadow.BackgroundColor3 =
+		Color3.fromRGB(
+			12,
+			18,
+			29
+		)
+
+
+	shadow.BackgroundTransparency =
+		0.42
+
+
+	shadow.BorderSizePixel =
+		0
+
+
+	shadow.ZIndex =
+		1
+
+
+	shadow.Parent =
+		billboard
+
+
+	local shadowCorner =
+		Instance.new(
+			"UICorner"
+		)
+
+
+	shadowCorner.CornerRadius =
+		UDim.new(
+			0,
+			16
+		)
+
+
+	shadowCorner.Parent =
+		shadow
+
+
+	--==================================================
+	-- MAIN BUBBLE
+	--==================================================
+
+	local bubble =
+		Instance.new(
+			"Frame"
+		)
+
+
+	bubble.Name =
+		"Bubble"
+
+
+	bubble.AnchorPoint =
+		Vector2.new(
+			0.5,
+			0.5
+		)
+
+
+	bubble.Position =
+		UDim2.fromScale(
+			0.5,
+			0.5
+		)
+
+
+	bubble.Size =
+		UDim2.new(
+			1,
+			-8,
+			1,
+			-12
+		)
+
+
+	bubble.BackgroundColor3 =
+		Color3.fromRGB(
+			250,
+			252,
+			255
+		)
+
+
+	bubble.BackgroundTransparency =
+		0.03
+
+
+	bubble.BorderSizePixel =
+		0
+
+
+	bubble.ZIndex =
+		2
+
+
+	bubble.Parent =
+		billboard
+
+
+	local corner =
+		Instance.new(
+			"UICorner"
+		)
+
+
+	corner.CornerRadius =
+		UDim.new(
+			0,
+			16
+		)
+
+
+	corner.Parent =
+		bubble
+
+
+	--==================================================
+	-- SENTIMENT BORDER
+	--==================================================
+
+	local sentimentColor =
+		CustomerReviews.GetColor(
+			rating
+		)
+
+
+	local stroke =
+		Instance.new(
+			"UIStroke"
+		)
+
+
+	stroke.Color =
+		sentimentColor
+
+
+	stroke.Thickness =
+		2.5
+
+
+	stroke.Transparency =
+		0.06
+
+
+	stroke.ApplyStrokeMode =
+		Enum.ApplyStrokeMode.Border
+
+
+	stroke.LineJoinMode =
+		Enum.LineJoinMode.Round
+
+
+	stroke.Parent =
+		bubble
+
+
+	--==================================================
+	-- LITTLE SPEECH TAIL
+	--==================================================
+
+	local tail =
+		Instance.new(
+			"Frame"
+		)
+
+
+	tail.Name =
+		"Tail"
+
+
+	tail.AnchorPoint =
+		Vector2.new(
+			0.5,
+			0.5
+		)
+
+
+	tail.Position =
+		UDim2.new(
+			0.5,
+			0,
+			1,
+			2
+		)
+
+
+	tail.Size =
+		UDim2.fromOffset(
+			18,
+			18
+		)
+
+
+	tail.Rotation =
+		45
+
+
+	tail.BackgroundColor3 =
+		bubble.BackgroundColor3
+
+
+	tail.BackgroundTransparency =
+		bubble.BackgroundTransparency
+
+
+	tail.BorderSizePixel =
+		0
+
+
+	tail.ZIndex =
+		2
+
+
+	tail.Parent =
+		bubble
+
+
+	local tailStroke =
+		Instance.new(
+			"UIStroke"
+		)
+
+
+	tailStroke.Color =
+		sentimentColor
+
+
+	tailStroke.Thickness =
+		2
+
+
+	tailStroke.Transparency =
+		0.08
+
+
+	tailStroke.Parent =
+		tail
+
+
+	--==================================================
+	-- RATING
+	--==================================================
+
+	local ratingLabel =
+		Instance.new(
+			"TextLabel"
+		)
+
+
+	ratingLabel.Name =
+		"Rating"
+
+
+	ratingLabel.Position =
+		UDim2.new(
+			0,
+			12,
+			0,
+			7
+		)
+
+
+	ratingLabel.Size =
+		UDim2.new(
+			1,
+			-24,
+			0,
+			20
+		)
+
+
+	ratingLabel.BackgroundTransparency =
+		1
+
+
+	ratingLabel.Text =
+		string.format(
+			"★ %.1f",
+			rating
+		)
+
+
+	ratingLabel.TextColor3 =
+		sentimentColor
+
+
+	ratingLabel.TextSize =
+		14
+
+
+	ratingLabel.TextXAlignment =
+		Enum.TextXAlignment.Left
+
+
+	ratingLabel.TextYAlignment =
+		Enum.TextYAlignment.Center
+
+
+	ratingLabel.FontFace =
+		REVIEW_FONT
+
+
+	ratingLabel.ZIndex =
+		3
+
+
+	ratingLabel.Parent =
+		bubble
+
+
+	--==================================================
+	-- REVIEW TEXT
+	--==================================================
+
+	local reviewLabel =
+		Instance.new(
+			"TextLabel"
+		)
+
+
+	reviewLabel.Name =
+		"Review"
+
+
+	reviewLabel.Position =
+		UDim2.new(
+			0,
+			12,
+			0,
+			29
+		)
+
+
+	reviewLabel.Size =
+		UDim2.new(
+			1,
+			-24,
+			1,
+			-37
+		)
+
+
+	reviewLabel.BackgroundTransparency =
+		1
+
+
+	reviewLabel.Text =
+		`"{review}"`
+
+
+	reviewLabel.TextColor3 =
+		Color3.fromRGB(
+			37,
+			45,
+			59
+		)
+
+
+	reviewLabel.TextWrapped =
+		true
+
+
+	reviewLabel.TextScaled =
+		true
+
+
+	reviewLabel.TextXAlignment =
+		Enum.TextXAlignment.Left
+
+
+	reviewLabel.TextYAlignment =
+		Enum.TextYAlignment.Center
+
+
+	reviewLabel.FontFace =
+		REVIEW_SUB_FONT
+
+
+	reviewLabel.ZIndex =
+		3
+
+
+	reviewLabel.Parent =
+		bubble
+
+
+	local textConstraint =
+		Instance.new(
+			"UITextSizeConstraint"
+		)
+
+
+	textConstraint.MinTextSize =
+		10
+
+
+	textConstraint.MaxTextSize =
+		14
+
+
+	textConstraint.Parent =
+		reviewLabel
+
+
+	--==================================================
+	-- OPEN ANIMATION
+	--==================================================
+
+	local openTween =
+		TweenService:Create(
+			scale,
+
+			TweenInfo.new(
+				0.22,
+				Enum.EasingStyle.Back,
+				Enum.EasingDirection.Out
+			),
+
+			{
+				Scale =
+					1,
+			}
+		)
+
+
+	openTween:Play()
+
+
+	--==================================================
+	-- CLOSE
+	--==================================================
+
+	task.delay(
+		REVIEW_DISPLAY_TIME,
+
+		function()
+
+			if not billboard.Parent then
+				return
+			end
+
+
+			local closeTween =
+				TweenService:Create(
+					scale,
+
+					TweenInfo.new(
+						0.18,
+						Enum.EasingStyle.Quad,
+						Enum.EasingDirection.In
+					),
+
+					{
+						Scale =
+							0.88,
+					}
+				)
+
+
+			local bubbleFade =
+				TweenService:Create(
+					bubble,
+
+					TweenInfo.new(
+						0.18,
+						Enum.EasingStyle.Linear
+					),
+
+					{
+						BackgroundTransparency =
+							1,
+					}
+				)
+
+
+			local textFade =
+				TweenService:Create(
+					reviewLabel,
+
+					TweenInfo.new(
+						0.16,
+						Enum.EasingStyle.Linear
+					),
+
+					{
+						TextTransparency =
+							1,
+					}
+				)
+
+
+			local ratingFade =
+				TweenService:Create(
+					ratingLabel,
+
+					TweenInfo.new(
+						0.16,
+						Enum.EasingStyle.Linear
+					),
+
+					{
+						TextTransparency =
+							1,
+					}
+				)
+
+
+			local strokeFade =
+				TweenService:Create(
+					stroke,
+
+					TweenInfo.new(
+						0.16
+					),
+
+					{
+						Transparency =
+							1,
+					}
+				)
+
+
+			local shadowFade =
+				TweenService:Create(
+					shadow,
+
+					TweenInfo.new(
+						0.16
+					),
+
+					{
+						BackgroundTransparency =
+							1,
+					}
+				)
+
+
+			closeTween:Play()
+			bubbleFade:Play()
+			textFade:Play()
+			ratingFade:Play()
+			strokeFade:Play()
+			shadowFade:Play()
+
+
+			closeTween.Completed:Once(
+				function()
+
+					if billboard.Parent then
+						billboard:Destroy()
+					end
+				end
+			)
+		end
+	)
+end
+
+
+local function showCustomerReview(
+	plot: Model,
+	customer: Model
+)
+
+	if not customer.Parent then
+		return
+	end
+
+
+	local rating =
+		plot:GetAttribute(
+			"ReputationRating"
+		)
+
+
+	if typeof(rating)
+		~= "number" then
+
+		rating =
+			3
+	end
+
+
+	rating =
+		math.clamp(
+			rating,
+			3,
+			5
+		)
+
+
+	local review =
+		CustomerReviews.GetReview(
+			rating
+		)
+
+
+	customer:SetAttribute(
+		"CustomerReview",
+		review
+	)
+
+
+	customer:SetAttribute(
+		"CustomerReviewRating",
+		rating
+	)
+
+
+	createCustomerReviewBubble(
+		customer,
+		review,
+		rating
+	)
 end
 
 --==================================================
@@ -5649,13 +6472,23 @@ local function processQueue(
 		end
 
 
-		rewardPlotOwner(
-	plot,
-	stand,
-	firstEntry.customer
-)
-
-
+		local saleSucceeded =
+			rewardPlotOwner(
+				plot,
+				stand,
+				firstEntry.customer
+			)
+		
+		
+		if saleSucceeded then
+		
+			showCustomerReview(
+				plot,
+				firstEntry.customer
+			)
+		end
+		
+		
 		firstEntry.isLeaving =
 			true
 

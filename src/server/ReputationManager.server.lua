@@ -7,6 +7,13 @@ local ReplicatedStorage =
 local Workspace =
 	game:GetService("Workspace")
 
+local CustomerReviews =
+	require(
+		ReplicatedStorage
+			:WaitForChild("Shared")
+			:WaitForChild("CustomerReviews")
+	)
+
 
 local BusinessConfig =
 	require(
@@ -81,42 +88,6 @@ type ReputationState = {
 	QueueScore: number,
 	AppearanceScore: number,
 }
-
-
-local POSITIVE_REVIEWS = {
-	"Great service! I'll definitely come back!",
-	"This place is awesome!",
-	"I love this business!",
-	"Really good service!",
-	"That was worth the wait!",
-	"The product was amazing!",
-	"I had a great experience!",
-	"This place keeps getting better!",
-}
-
-
-local AVERAGE_REVIEWS = {
-	"Pretty good, but it could be better.",
-	"The service was okay.",
-	"Not bad at all.",
-	"I'd probably come back.",
-	"The product was pretty good.",
-	"Good experience overall.",
-}
-
-
-local NEGATIVE_REVIEWS = {
-	"The line took way too long.",
-	"The service could be faster.",
-	"I expected a little more.",
-	"This place needs some upgrades.",
-	"The wait wasn't worth it.",
-}
-
-
-local randomGenerator =
-	Random.new()
-
 
 local function clampLevel(
 	value: any
@@ -276,36 +247,6 @@ local function getBusinessType(
 
 	return nil
 end
-
-local function getReview(
-	rating: number
-): string
-
-	local reviews
-
-
-	if rating >= 4.25 then
-		reviews =
-			POSITIVE_REVIEWS
-
-	elseif rating >= 3.5 then
-		reviews =
-			AVERAGE_REVIEWS
-
-	else
-		reviews =
-			NEGATIVE_REVIEWS
-	end
-
-
-	return reviews[
-		randomGenerator:NextInteger(
-			1,
-			#reviews
-		)
-	]
-end
-
 
 local function getNextUnlock(
 	rating: number
@@ -687,7 +628,7 @@ RequiredProgress =
 			customerBonus,
 
 		RecentReview =
-			getReview(
+			CustomerReviews.GetReview(
 				rating
 			),
 
