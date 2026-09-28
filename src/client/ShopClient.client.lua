@@ -1326,14 +1326,10 @@ local function submitCode()
 
 
 	if result.Success == true then
-
+	
 		codeTextBox.Text =
 			""
-
-		Notification.Success(
-			message
-		)
-
+	
 		return
 	end
 

@@ -59,22 +59,6 @@ local licenseStateUpdatedRemote =
 		"LicenseStateUpdated"
 	) :: RemoteEvent
 
-local Notification =
-	require(
-		ReplicatedStorage
-			:WaitForChild(
-				"Shared"
-			)
-			:WaitForChild(
-				"Notification"
-			)
-	)
-
-local licenseEarnedRemote =
-	remotes:WaitForChild(
-		"LicenseEarned"
-	) :: RemoteEvent
-
 --==================================================
 -- UI
 --==================================================
@@ -1235,44 +1219,4 @@ licenseStateUpdatedRemote.OnClientEvent:Connect(
 
 showTab(
 	"HowToEarn"
-)
-
-licenseEarnedRemote.OnClientEvent:Connect(
-	function(
-		amount: number,
-		sourceName: string
-	)
-
-		amount =
-			math.max(
-				1,
-				math.floor(
-					tonumber(amount)
-					or 1
-				)
-			)
-
-
-		if type(sourceName)
-			~= "string"
-			or sourceName == "" then
-
-			sourceName =
-				"License Reward"
-		end
-
-
-		local licenseWord =
-			amount == 1
-			and "License"
-			or "Licenses"
-
-
-		Notification.Success(
-			`You earned {amount} {licenseWord}! — {sourceName}`,
-				{
-					Duration = 2,
-				}
-		)
-	end
 )

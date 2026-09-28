@@ -2,7 +2,7 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local REMINDER_INTERVAL = 120 -- 2 minutes
+local REMINDER_INTERVAL = 300 -- 2 minutes
 
 local messages = {
 	"👍 Enjoying the game? Drop a Like to support us!",

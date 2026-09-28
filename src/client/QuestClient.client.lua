@@ -1049,29 +1049,15 @@ questClaimResultRemote.OnClientEvent:Connect(
 		end
 
 
-		if success then
-
-			Notification.Success(
-				message,
-
-				{
-					Title =
-						"Quest Complete!",
-
-					Duration =
-						2.25,
-				}
-			)
-
-		else
-
+		if not success then
+		
 			Notification.Error(
 				message,
-
+		
 				{
 					Title =
 						"Quest",
-
+		
 					Duration =
 						3.5,
 				}
