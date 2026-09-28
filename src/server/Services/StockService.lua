@@ -479,9 +479,17 @@ local function updateBillboard(
 		and amount:IsA(
 			"TextLabel"
 		) then
-
-		amount.Text =
-			`{currentStock}/{maxStock}`
+	
+		if currentStock <= 0 then
+	
+			amount.Text =
+				"OUT OF STOCK"
+	
+		else
+	
+			amount.Text =
+				`{currentStock}/{maxStock}`
+		end
 	end
 
 
@@ -489,82 +497,99 @@ local function updateBillboard(
 		background:FindFirstChild(
 			"Bar"
 		)
-
-
+	
+	
 	if bar
 		and bar:IsA(
 			"GuiObject"
 		) then
-
-		local fullXScale =
-			bar:GetAttribute(
-				"StockFullXScale"
+	
+		bar.AnchorPoint =
+			Vector2.new(
+				0,
+				bar.AnchorPoint.Y
 			)
-
-
-		local fullXOffset =
-			bar:GetAttribute(
-				"StockFullXOffset"
-			)
-
-
-		local fullYScale =
-			bar:GetAttribute(
-				"StockFullYScale"
-			)
-
-
-		local fullYOffset =
-			bar:GetAttribute(
-				"StockFullYOffset"
-			)
-
-
-		if typeof(fullXScale)
-			~= "number" then
-
-			fullXScale =
-				bar.Size.X.Scale
-		end
-
-
-		if typeof(fullXOffset)
-			~= "number" then
-
-			fullXOffset =
-				bar.Size.X.Offset
-		end
-
-
-		if typeof(fullYScale)
-			~= "number" then
-
-			fullYScale =
-				bar.Size.Y.Scale
-		end
-
-
-		if typeof(fullYOffset)
-			~= "number" then
-
-			fullYOffset =
-				bar.Size.Y.Offset
-		end
-
-
+	
+	
 		bar.Size =
 			UDim2.new(
-				fullXScale
-					* percentage,
-
-				math.floor(
-					fullXOffset
-						* percentage
-				),
-
-				fullYScale,
-				fullYOffset
+				percentage,
+				0,
+				bar.Size.Y.Scale,
+				bar.Size.Y.Offset
 			)
+	
+	
+		--==================================================
+		-- STOCK COLOR
+		--==================================================
+	
+		local fullColor =
+			Color3.fromRGB(
+				70,
+				220,
+				90
+			)
+	
+	
+		local middleColor =
+			Color3.fromRGB(
+				255,
+				200,
+				55
+			)
+	
+	
+		local emptyColor =
+			Color3.fromRGB(
+				235,
+				65,
+				65
+			)
+	
+	
+		local stockColor
+	
+	
+		if percentage >= 0.5 then
+	
+			--
+			-- 50% -> 100%
+			-- Yellow -> Green
+			--
+			local alpha =
+				(
+					percentage
+						- 0.5
+				) / 0.5
+	
+	
+			stockColor =
+				middleColor:Lerp(
+					fullColor,
+					alpha
+				)
+	
+		else
+	
+			--
+			-- 0% -> 50%
+			-- Red -> Yellow
+			--
+			local alpha =
+				percentage / 0.5
+	
+	
+			stockColor =
+				emptyColor:Lerp(
+					middleColor,
+					alpha
+				)
+		end
+	
+	
+		bar.BackgroundColor3 =
+			stockColor
 	end
 end
 
