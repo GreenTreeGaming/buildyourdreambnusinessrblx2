@@ -695,32 +695,37 @@ local function getNextPlotCost(
 end
 
 
-local function getStarterPlotSize():
-	number
+local function getStarterPlotDimensions():
+	(number, number)
 
 	for _, definition in
-		PlotConfig.Levels
-	do
+		PlotConfig.Levels do
 
 		if type(definition)
 				== "table"
 			and definition.Level
 				== 0
 			and typeof(
-				definition.Size
+				definition.Width
+			) == "number"
+			and typeof(
+				definition.Depth
 			) == "number" then
 
-			return definition.Size
+			return definition.Width,
+				definition.Depth
 		end
 	end
 
 
-	return 180
+	return 140,
+		120
 end
 
 
-local STARTER_PLOT_SIZE =
-	getStarterPlotSize()
+local STARTER_PLOT_WIDTH,
+	STARTER_PLOT_DEPTH =
+	getStarterPlotDimensions()
 
 
 local function getSavedReputationLevel(
@@ -1555,18 +1560,117 @@ local function checkExpandedSpaceUsed(
 	end
 
 
-	local starterHalfSize =
-		STARTER_PLOT_SIZE
+	local entrance =
+		plot:FindFirstChild(
+			"PlayerSpawn"
+		)
+
+
+	if not entrance
+		or not entrance:IsA(
+			"BasePart"
+		) then
+
+		entrance =
+			plot:FindFirstChild(
+				"CustomerSpawn"
+			)
+	end
+
+
+	if not entrance
+		or not entrance:IsA(
+			"BasePart"
+		) then
+
+		return
+	end
+
+
+	local entranceLocal =
+		ground.CFrame
+			:PointToObjectSpace(
+				entrance.Position
+			)
+
+
+	local frontAxis: string
+	local frontSign: number
+
+
+	if math.abs(
+		entranceLocal.X
+	) > math.abs(
+		entranceLocal.Z
+	) then
+
+		frontAxis =
+			"X"
+
+		frontSign =
+			entranceLocal.X >= 0
+				and 1
+				or -1
+
+	else
+
+		frontAxis =
+			"Z"
+
+		frontSign =
+			entranceLocal.Z >= 0
+				and 1
+				or -1
+	end
+
+
+	local currentDepth =
+		frontAxis == "X"
+			and ground.Size.X
+			or ground.Size.Z
+
+
+	--
+	-- The current Ground center moves backward as
+	-- the plot grows.
+	--
+	-- Reconstruct where the ORIGINAL starter-plot
+	-- center is relative to the current Ground.
+	--
+
+	local starterCenterOffset =
+		frontSign
+			* (
+				currentDepth
+				- STARTER_PLOT_DEPTH
+			)
+			/ 2
+
+
+	local starterHalfWidth =
+		STARTER_PLOT_WIDTH
+			/ 2
+
+
+	local starterHalfDepth =
+		STARTER_PLOT_DEPTH
 			/ 2
 
 
 	for _, business in
-		businesses:GetChildren()
-	do
+		businesses:GetChildren() do
 
 		if not business:IsA(
 			"Model"
 		) then
+
+			continue
+		end
+
+
+		if business:GetAttribute(
+			"OwnerUserId"
+		) ~= player.UserId then
 
 			continue
 		end
@@ -1589,18 +1693,51 @@ local function checkExpandedSpaceUsed(
 
 
 		local localPosition =
-			ground.CFrame:
-				PointToObjectSpace(
+			ground.CFrame
+				:PointToObjectSpace(
 					origin.Position
 				)
 
 
-		if math.abs(
-				localPosition.X
-			) > starterHalfSize
-			or math.abs(
+		local widthPosition: number
+		local depthPosition: number
+
+
+		if frontAxis
+			== "X" then
+
+			widthPosition =
 				localPosition.Z
-			) > starterHalfSize then
+
+			depthPosition =
+				localPosition.X
+					- starterCenterOffset
+
+		else
+
+			widthPosition =
+				localPosition.X
+
+			depthPosition =
+				localPosition.Z
+					- starterCenterOffset
+		end
+
+
+		local outsideStarterWidth =
+			math.abs(
+				widthPosition
+			) > starterHalfWidth
+
+
+		local outsideStarterDepth =
+			math.abs(
+				depthPosition
+			) > starterHalfDepth
+
+
+		if outsideStarterWidth
+			or outsideStarterDepth then
 
 			AnalyticsTracker.LogFunnel(
 				player,
@@ -1614,7 +1751,6 @@ local function checkExpandedSpaceUsed(
 		end
 	end
 end
-
 
 --==================================================
 -- REPUTATION

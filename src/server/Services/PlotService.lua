@@ -59,8 +59,11 @@ type PlotResult = {
 	DisplayName: string?,
 	Description: string?,
 
-	CurrentSize: number?,
-	NextSize: number?,
+	CurrentWidth: number?,
+	CurrentDepth: number?,
+
+	NextWidth: number?,
+	NextDepth: number?,
 }
 
 
@@ -80,6 +83,7 @@ local purchaseLocks: {
 local function getDefinition(
 	level: number
 )
+
 	for _, definition in
 		PlotConfig.Levels do
 
@@ -90,23 +94,28 @@ local function getDefinition(
 		end
 	end
 
+
 	return nil
 end
 
 
 local function getMaximumLevel(): number
+
 	local maximumLevel =
 		0
+
 
 	for _, definition in
 		PlotConfig.Levels do
 
-		if typeof(definition.Level)
-			== "number" then
+		if typeof(
+			definition.Level
+		) == "number" then
 
 			maximumLevel =
 				math.max(
 					maximumLevel,
+
 					math.floor(
 						definition.Level
 					)
@@ -114,7 +123,28 @@ local function getMaximumLevel(): number
 		end
 	end
 
+
 	return maximumLevel
+end
+
+
+local function isValidDefinition(
+	definition: any
+): boolean
+
+	return type(definition)
+			== "table"
+
+		and typeof(
+			definition.Width
+		) == "number"
+
+		and typeof(
+			definition.Depth
+		) == "number"
+
+		and definition.Width > 0
+		and definition.Depth > 0
 end
 
 
@@ -138,7 +168,9 @@ local function findOwnedPlot(
 
 
 		if plot
-			and plot:IsA("Model")
+			and plot:IsA(
+				"Model"
+			)
 			and plot:GetAttribute(
 				"OwnerUserId"
 			) == player.UserId then
@@ -151,7 +183,9 @@ local function findOwnedPlot(
 	for _, plot in
 		plotsFolder:GetChildren() do
 
-		if plot:IsA("Model")
+		if plot:IsA(
+			"Model"
+		)
 			and plot:GetAttribute(
 				"OwnerUserId"
 			) == player.UserId then
@@ -267,6 +301,7 @@ local function captureBasePlotState(
 			`{plot:GetFullName()} is missing Ground.`
 		)
 
+
 		return nil
 	end
 
@@ -293,8 +328,10 @@ local function captureBasePlotState(
 				)
 
 
-		-- Determine which side of the square
-		-- the entrance is closest to.
+		--
+		-- Determine which side of the plot faces
+		-- the road based on PlayerSpawn/CustomerSpawn.
+		--
 		if math.abs(
 			localPosition.X
 		) > math.abs(
@@ -308,7 +345,9 @@ local function captureBasePlotState(
 				localPosition.X >= 0
 					and 1
 					or -1
+
 		else
+
 			frontAxis =
 				"Z"
 
@@ -317,7 +356,9 @@ local function captureBasePlotState(
 					and 1
 					or -1
 		end
+
 	else
+
 		warn(
 			`{plot:GetFullName()} has no PlayerSpawn or CustomerSpawn. Assuming +Z is the front edge.`
 		)
@@ -353,26 +394,52 @@ end
 
 local function calculateGroundTransform(
 	baseState: BasePlotState,
-	newSize: number
+	width: number,
+	depth: number
 ): (CFrame, Vector3)
 
 	local baseSize =
 		baseState.Size
 
 
+	local targetSize: Vector3
 	local localOffset =
 		Vector3.zero
 
 
+	--
+	-- Width always runs ALONG the road.
+	-- Depth always runs AWAY from the road.
+	--
+	-- The width expands equally left/right.
+	-- Only the depth moves the plot center so
+	-- the road-facing edge stays in place.
+	--
+
 	if baseState.FrontAxis
 		== "X" then
+
+		--
+		-- Road-facing direction is local X.
+		--
+		-- X = depth
+		-- Z = width
+		--
+
+		targetSize =
+			Vector3.new(
+				depth,
+				baseSize.Y,
+				width
+			)
+
 
 		localOffset =
 			Vector3.new(
 				baseState.FrontSign
 					* (
 						baseSize.X
-						- newSize
+						- depth
 					)
 					/ 2,
 
@@ -381,6 +448,22 @@ local function calculateGroundTransform(
 			)
 
 	else
+
+		--
+		-- Road-facing direction is local Z.
+		--
+		-- X = width
+		-- Z = depth
+		--
+
+		targetSize =
+			Vector3.new(
+				width,
+				baseSize.Y,
+				depth
+			)
+
+
 		localOffset =
 			Vector3.new(
 				0,
@@ -389,7 +472,7 @@ local function calculateGroundTransform(
 				baseState.FrontSign
 					* (
 						baseSize.Z
-						- newSize
+						- depth
 					)
 					/ 2
 			)
@@ -403,24 +486,33 @@ local function calculateGroundTransform(
 			)
 
 
-	local targetSize =
-		Vector3.new(
-			newSize,
-			baseSize.Y,
-			newSize
-		)
-
-
 	return targetCFrame,
 		targetSize
 end
 
 
-local function applySize(
+local function applyDimensions(
 	plot: Model,
-	size: number,
+	width: number,
+	depth: number,
 	animate: boolean
 ): boolean
+
+	if typeof(width)
+			~= "number"
+		or typeof(depth)
+			~= "number"
+		or width <= 0
+		or depth <= 0 then
+
+		warn(
+			`[PlotService] Invalid dimensions for {plot:GetFullName()}: {width} x {depth}`
+		)
+
+
+		return false
+	end
+
 
 	local baseState =
 		captureBasePlotState(
@@ -446,7 +538,8 @@ local function applySize(
 		targetSize =
 		calculateGroundTransform(
 			baseState,
-			size
+			width,
+			depth
 		)
 
 
@@ -473,9 +566,11 @@ local function applySize(
 
 
 		tween:Play()
+
 		tween.Completed:Wait()
 
 	else
+
 		ground.CFrame =
 			targetCFrame
 
@@ -485,8 +580,14 @@ local function applySize(
 
 
 	plot:SetAttribute(
-		"PlotSize",
-		size
+		"PlotWidth",
+		width
+	)
+
+
+	plot:SetAttribute(
+		"PlotDepth",
+		depth
 	)
 
 
@@ -559,14 +660,24 @@ local function buildResult(
 				and currentDefinition.Description
 				or "Expand your business property.",
 
-		CurrentSize =
+		CurrentWidth =
 			currentDefinition
-				and currentDefinition.Size
-				or 180,
+				and currentDefinition.Width
+				or nil,
 
-		NextSize =
+		CurrentDepth =
+			currentDefinition
+				and currentDefinition.Depth
+				or nil,
+
+		NextWidth =
 			nextDefinition
-				and nextDefinition.Size
+				and nextDefinition.Width
+				or nil,
+
+		NextDepth =
+			nextDefinition
+				and nextDefinition.Depth
 				or nil,
 	}
 end
@@ -582,15 +693,24 @@ function PlotService.ResetPlot(
 		)
 
 
-	if not definition then
+	if not isValidDefinition(
+		definition
+	) then
+
+		warn(
+			"[PlotService] Starter plot definition is invalid."
+		)
+
+
 		return false
 	end
 
 
 	local applied =
-		applySize(
+		applyDimensions(
 			plot,
-			definition.Size,
+			definition.Width,
+			definition.Depth,
 			false
 		)
 
@@ -646,15 +766,24 @@ function PlotService.ApplyToPlot(
 		)
 
 
-	if not definition then
+	if not isValidDefinition(
+		definition
+	) then
+
+		warn(
+			`[PlotService] Invalid plot definition for level {currentLevel}.`
+		)
+
+
 		return false
 	end
 
 
 	local applied =
-		applySize(
+		applyDimensions(
 			plot,
-			definition.Size,
+			definition.Width,
+			definition.Depth,
 			animate == true
 		)
 
@@ -741,6 +870,7 @@ function PlotService.Purchase(
 			player
 		] = nil
 
+
 		return result
 	end
 
@@ -813,12 +943,14 @@ function PlotService.Purchase(
 		)
 
 
-	if not nextDefinition then
+	if not isValidDefinition(
+		nextDefinition
+	) then
 
 		return finish(
 			createResult(
 				false,
-				"The next plot level is not configured."
+				"The next plot level is not configured correctly."
 			)
 		)
 	end
@@ -941,7 +1073,7 @@ function PlotService.Purchase(
 		buildResult(
 			true,
 
-			`Plot expanded to {nextDefinition.Size} x {nextDefinition.Size}!`,
+			`Plot expanded to {nextDefinition.Width} x {nextDefinition.Depth}!`,
 
 			nextLevel
 		)
@@ -967,6 +1099,7 @@ plotsFolder.ChildAdded:Connect(
 	function(
 		child: Instance
 	)
+
 		if child:IsA(
 			"Model"
 		) then
@@ -984,6 +1117,7 @@ Players.PlayerRemoving:Connect(
 	function(
 		player: Player
 	)
+
 		purchaseLocks[
 			player
 		] = nil

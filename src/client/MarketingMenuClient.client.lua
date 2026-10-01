@@ -101,8 +101,11 @@ type PlotState = {
 	DisplayName: string?,
 	Description: string?,
 
-	CurrentSize: number?,
-	NextSize: number?,
+	CurrentWidth: number?,
+	CurrentDepth: number?,
+
+	NextWidth: number?,
+	NextDepth: number?,
 }
 
 
@@ -1196,33 +1199,37 @@ local function updatePlotInterface(
 
 	plotPanel.StatOneTitle.Text =
 		"Current Size"
-
-
-	if typeof(state.CurrentSize)
-		== "number" then
-
+	
+	
+	if typeof(state.CurrentWidth)
+			== "number"
+		and typeof(state.CurrentDepth)
+			== "number" then
+	
 		plotPanel.StatOneSubtitle.Text =
-			`{state.CurrentSize} x {state.CurrentSize}`
-
+			`{state.CurrentWidth} x {state.CurrentDepth}`
+	
 	else
-
+	
 		plotPanel.StatOneSubtitle.Text =
 			"--"
 	end
-
-
+	
+	
 	plotPanel.StatTwoTitle.Text =
 		"Next Size"
-
-
-	if typeof(state.NextSize)
-		== "number" then
-
+	
+	
+	if typeof(state.NextWidth)
+			== "number"
+		and typeof(state.NextDepth)
+			== "number" then
+	
 		plotPanel.StatTwoSubtitle.Text =
-			`{state.NextSize} x {state.NextSize}`
-
+			`{state.NextWidth} x {state.NextDepth}`
+	
 	else
-
+	
 		plotPanel.StatTwoSubtitle.Text =
 			"MAX"
 	end

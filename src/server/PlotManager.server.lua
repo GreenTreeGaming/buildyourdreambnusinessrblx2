@@ -38,7 +38,7 @@ local plotsFolder =
 --==================================================
 
 local EXPECTED_PLOT_COUNT =
-	6
+	8
 
 
 local REQUIRED_PLOT_CHILDREN = {

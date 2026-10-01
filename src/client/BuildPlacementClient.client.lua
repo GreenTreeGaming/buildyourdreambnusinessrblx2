@@ -2951,8 +2951,11 @@ local function setOriginalStandVisible(
 
 		elseif descendant:IsA(
 			"BillboardGui"
-		) then
-
+		)
+			or descendant:IsA(
+				"SurfaceGui"
+			) then
+		
 			descendant.Enabled =
 				visible
 		end
@@ -3080,8 +3083,11 @@ local function preparePreview(
 
 		elseif descendant:IsA(
 			"BillboardGui"
-		) then
-
+		)
+			or descendant:IsA(
+				"SurfaceGui"
+			) then
+		
 			descendant.Enabled =
 				false
 		end
@@ -3112,8 +3118,11 @@ local function preparePreview(
 
 			elseif descendant:IsA(
 				"BillboardGui"
-			) then
-
+			)
+				or descendant:IsA(
+					"SurfaceGui"
+				) then
+			
 				descendant.Enabled =
 					false
 			end
@@ -4555,25 +4564,76 @@ local function startPlacement(
 
 
 	if editingExisting then
-
+	
 		originalStand =
 			existingStand
-
-
+	
+	
 		setOriginalStandVisible(
 			false
 		)
-
-
-		rotationY =
-			math.deg(
-				select(
-					2,
-					existingStand
-						:GetPivot()
-						:ToOrientation()
-				)
+	
+	
+		--
+		-- Placement rotation is LOCAL to the plot Ground.
+		--
+		-- Using the stand's world rotation here causes plots
+		-- that face the opposite direction to add the Ground's
+		-- rotation a second time, which makes moved stands
+		-- appear rotated by 180 degrees.
+		--
+		local ground =
+			ownedPlot:FindFirstChild(
+				"Ground"
 			)
+	
+	
+		if ground
+			and ground:IsA(
+				"BasePart"
+			) then
+	
+			local relativeCFrame =
+				ground.CFrame
+					:ToObjectSpace(
+						existingStand:GetPivot()
+					)
+	
+	
+			local relativeY =
+				math.deg(
+					select(
+						2,
+						relativeCFrame
+							:ToOrientation()
+					)
+				)
+	
+	
+			--
+			-- Stands rotate in 90-degree increments, so snap
+			-- the recovered angle as well. This avoids values
+			-- such as 89.99999 causing alignment issues.
+			--
+			rotationY =
+				(
+					math.round(
+						relativeY
+							/ ROTATION_INCREMENT
+					)
+					* ROTATION_INCREMENT
+				) % 360
+	
+		else
+	
+			warn(
+				`{ownedPlot:GetFullName()} is missing Ground while moving a business.`
+			)
+	
+	
+			rotationY =
+				0
+		end
 
 
 		for _, descendant in

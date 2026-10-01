@@ -6,20 +6,20 @@ local PlotConfig = {
 			Level = 0,
 			Cost = 0,
 
-			Width = 140,
-			Depth = 120,
+			Width = 90,
+			Depth = 80,
 
 			DisplayName = "Starter Plot",
 			Description =
-				"A compact property to begin your business empire.",
+				"A tiny property to begin your business empire.",
 		},
 
 		{
 			Level = 1,
 			Cost = 1250,
 
-			Width = 155,
-			Depth = 155,
+			Width = 110,
+			Depth = 105,
 
 			DisplayName = "Small Expansion",
 			Description =
@@ -30,8 +30,8 @@ local PlotConfig = {
 			Level = 2,
 			Cost = 6000,
 
-			Width = 170,
-			Depth = 190,
+			Width = 135,
+			Depth = 140,
 
 			DisplayName = "Growing Property",
 			Description =
@@ -42,8 +42,8 @@ local PlotConfig = {
 			Level = 3,
 			Cost = 30000,
 
-			Width = 185,
-			Depth = 230,
+			Width = 160,
+			Depth = 180,
 
 			DisplayName = "Business Yard",
 			Description =
@@ -54,8 +54,8 @@ local PlotConfig = {
 			Level = 4,
 			Cost = 125000,
 
-			Width = 200,
-			Depth = 270,
+			Width = 185,
+			Depth = 225,
 
 			DisplayName = "Commercial Lot",
 			Description =
@@ -66,8 +66,8 @@ local PlotConfig = {
 			Level = 5,
 			Cost = 550000,
 
-			Width = 215,
-			Depth = 305,
+			Width = 205,
+			Depth = 270,
 
 			DisplayName = "Large Commercial Lot",
 			Description =
@@ -78,8 +78,8 @@ local PlotConfig = {
 			Level = 6,
 			Cost = 2500000,
 
-			Width = 225,
-			Depth = 330,
+			Width = 220,
+			Depth = 310,
 
 			DisplayName = "Business Campus",
 			Description =
@@ -90,8 +90,8 @@ local PlotConfig = {
 			Level = 7,
 			Cost = 10000000,
 
-			Width = 235,
-			Depth = 350,
+			Width = 232,
+			Depth = 340,
 
 			DisplayName = "Business Estate",
 			Description =
