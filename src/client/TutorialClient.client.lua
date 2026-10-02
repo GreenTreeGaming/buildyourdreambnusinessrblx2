@@ -29,6 +29,12 @@ local plotsFolder =
 	)
 
 
+local map =
+	Workspace:WaitForChild(
+		"Map"
+	)
+
+
 local shared =
 	ReplicatedStorage:WaitForChild(
 		"Shared"
@@ -59,6 +65,22 @@ local completeTutorialRemote =
 	remotes:WaitForChild(
 		"CompleteTutorial"
 	) :: RemoteEvent
+
+
+--==================================================
+-- STOCK CAMERA PARTS
+--==================================================
+
+local cameraStock1 =
+	map:WaitForChild(
+		"CameraStock1"
+	) :: BasePart
+
+
+local cameraStock2 =
+	map:WaitForChild(
+		"CameraStock2"
+	) :: BasePart
 
 
 --==================================================
@@ -227,14 +249,6 @@ local SIDE_POSITION =
 --==================================================
 -- TIMING
 --==================================================
---
--- Tutorial pacing should feel calm and readable.
---
--- Informational messages remain visible long enough
--- for a new player to actually read them, while
--- action instructions stay visible until the player
--- performs the requested action.
---==================================================
 
 local FRAME_TWEEN_TIME =
 	0.30
@@ -256,32 +270,29 @@ local CAMERA_HOLD_TIME =
 	0.85
 
 
--- Short confirmation / encouragement.
 local SHORT_MESSAGE_TIME =
 	3.0
 
 
--- Normal one-sentence explanation.
 local NORMAL_MESSAGE_TIME =
 	4.0
 
 
--- Longer explanation with multiple ideas.
 local LONG_MESSAGE_TIME =
 	5.25
 
 
--- Small pause after the player completes an action.
--- Gives them time to see the result before the
--- tutorial immediately asks for something else.
 local ACTION_RESULT_PAUSE =
 	0.75
 
 
--- Used for especially important moments such as
--- the first sale and first upgrade.
 local MAJOR_RESULT_PAUSE =
 	1.0
+
+
+local STOCK_CAMERA_HOLD_TIME =
+	1.15
+
 
 --==================================================
 -- TWEEN INFO
@@ -524,11 +535,6 @@ end
 
 --==================================================
 -- DAILY REWARD SUPPRESSION
---==================================================
---
--- Daily Rewards normally auto-opens shortly after
--- joining. Prevent it from covering the first-time
--- tutorial, then show it after the tutorial finishes.
 --==================================================
 
 local function beginSuppressingDailyRewards()
@@ -809,8 +815,6 @@ local function waitForLemonadeStand(
 		end
 
 
-		-- Give placement code one frame to finish
-		-- setting the model's attributes.
 		task.wait()
 
 
@@ -982,6 +986,161 @@ local function showPlotCamera(
 		CAMERA_HOLD_TIME
 	)
 
+
+	local returnTween =
+		TweenService:Create(
+			camera,
+			cameraTweenInfo,
+			{
+				CFrame =
+					previousCFrame,
+			}
+		)
+
+
+	returnTween:Play()
+
+	returnTween.Completed:Wait()
+
+
+	camera.CameraType =
+		previousCameraType
+
+
+	if previousCameraSubject
+		and previousCameraSubject.Parent then
+
+		camera.CameraSubject =
+			previousCameraSubject
+	end
+end
+
+
+local function showStockLocations()
+
+	if not cameraStock1:IsA(
+		"BasePart"
+	) then
+
+		warn(
+			"Workspace.Map.CameraStock1 must be a BasePart."
+		)
+
+		return
+	end
+
+
+	if not cameraStock2:IsA(
+		"BasePart"
+	) then
+
+		warn(
+			"Workspace.Map.CameraStock2 must be a BasePart."
+		)
+
+		return
+	end
+
+
+	local previousCameraType =
+		camera.CameraType
+
+
+	local previousCameraSubject =
+		camera.CameraSubject
+
+
+	local previousCFrame =
+		camera.CFrame
+
+
+	camera.CameraType =
+		Enum.CameraType.Scriptable
+
+
+	--==================================================
+	-- STOCK LOCATION 1
+	--==================================================
+
+	local firstTween =
+		TweenService:Create(
+			camera,
+			cameraTweenInfo,
+			{
+				CFrame =
+					cameraStock1.CFrame,
+			}
+		)
+
+
+	firstTween:Play()
+
+	firstTween.Completed:Wait()
+
+
+	showTimedMessage(
+		"Your businesses use stock every time they serve a customer.",
+		NORMAL_MESSAGE_TIME
+	)
+
+
+	showTimedMessage(
+		"When stock runs out, that business stops serving until you restock it.",
+		NORMAL_MESSAGE_TIME
+	)
+
+
+	showTimedMessage(
+		"This is one place where you can buy more stock.",
+		SHORT_MESSAGE_TIME
+	)
+
+
+	task.wait(
+		STOCK_CAMERA_HOLD_TIME
+	)
+
+
+	--==================================================
+	-- STOCK LOCATION 2
+	--==================================================
+
+	local secondTween =
+		TweenService:Create(
+			camera,
+			cameraTweenInfo,
+			{
+				CFrame =
+					cameraStock2.CFrame,
+			}
+		)
+
+
+	secondTween:Play()
+
+	secondTween.Completed:Wait()
+
+
+	showTimedMessage(
+		"There's another stock shop here too. You can use either location.",
+		NORMAL_MESSAGE_TIME
+	)
+
+
+	showTimedMessage(
+		"Walk into a stock shop anytime to refill your businesses.",
+		NORMAL_MESSAGE_TIME
+	)
+
+
+	task.wait(
+		STOCK_CAMERA_HOLD_TIME
+	)
+
+
+	--==================================================
+	-- RETURN CAMERA
+	--==================================================
 
 	local returnTween =
 		TweenService:Create(
@@ -1289,6 +1448,7 @@ local function waitForSaleValueUpgrade(
 
 
 		if hasUpgrade() then
+
 			return
 		end
 	end
@@ -1679,21 +1839,21 @@ local function finishTutorial()
 
 
 	showTimedMessage(
-	"Keep growing your reputation to unlock bigger businesses.",
-	NORMAL_MESSAGE_TIME
-)
+		"Keep growing your reputation to unlock bigger businesses.",
+		NORMAL_MESSAGE_TIME
+	)
 
 
-showTimedMessage(
-	"Quests, achievements, marketing, plot expansions, daily rewards, and licenses will help your empire grow.",
-	LONG_MESSAGE_TIME
-)
+	showTimedMessage(
+		"Quests, achievements, marketing, plot expansions, daily rewards, and licenses will help your empire grow.",
+		LONG_MESSAGE_TIME
+	)
 
 
-showTimedMessage(
-	"You're ready. Go from broke to billionare!",
-	NORMAL_MESSAGE_TIME
-)
+	showTimedMessage(
+		"You're ready. Go from broke to billionaire!",
+		NORMAL_MESSAGE_TIME
+	)
 
 
 	clearText()
@@ -1827,9 +1987,9 @@ local function runTutorial()
 	--==================================================
 
 	showTimedMessage(
-	"Welcome to Broke To Billionare! Start small, build businesses, and grow your empire.",
-	LONG_MESSAGE_TIME
-)
+		"Welcome to Broke To Billionaire! Start small, build businesses, and grow your empire.",
+		LONG_MESSAGE_TIME
+	)
 
 
 	--==================================================
@@ -1860,9 +2020,10 @@ local function runTutorial()
 			plot
 		)
 
+
 	task.wait(
-	ACTION_RESULT_PAUSE
-)
+		ACTION_RESULT_PAUSE
+	)
 
 
 	if not lemonadeStand then
@@ -1920,9 +2081,9 @@ local function runTutorial()
 	--==================================================
 
 	showTimedMessage(
-	"Nice! Customers visit automatically and pay you when they're served.",
-	LONG_MESSAGE_TIME
-)
+		"Nice! Customers visit automatically and pay you when they're served.",
+		LONG_MESSAGE_TIME
+	)
 
 
 	setTutorialText(
@@ -1934,19 +2095,27 @@ local function runTutorial()
 		lemonadeStand
 	)
 
+
 	task.wait(
-	MAJOR_RESULT_PAUSE
-)
+		MAJOR_RESULT_PAUSE
+	)
 
 
 	showTimedMessage(
-	"First sale! Your businesses keep earning while you build and upgrade.",
-	NORMAL_MESSAGE_TIME
-)
+		"First sale! Your businesses keep earning while you build and upgrade.",
+		NORMAL_MESSAGE_TIME
+	)
 
 
 	--==================================================
-	-- 5. QUESTS + FIRST CLAIM
+	-- 5. STOCK
+	--==================================================
+
+	showStockLocations()
+
+
+	--==================================================
+	-- 6. QUESTS + FIRST CLAIM
 	--==================================================
 
 	setTutorialText(
@@ -1981,15 +2150,16 @@ local function runTutorial()
 			firstSaleClaimButton
 		)
 
+
 		task.wait(
-	ACTION_RESULT_PAUSE
-)
+			ACTION_RESULT_PAUSE
+		)
 
 
 		showTimedMessage(
-	"Perfect. New quests replace completed ones, so you'll always have goals.",
-	NORMAL_MESSAGE_TIME
-)
+			"Perfect. New quests replace completed ones, so you'll always have goals.",
+			NORMAL_MESSAGE_TIME
+		)
 
 	else
 
@@ -2011,7 +2181,7 @@ local function runTutorial()
 
 
 	--==================================================
-	-- 6. MANAGE BUSINESS
+	-- 7. MANAGE BUSINESS
 	--==================================================
 
 	setTutorialText(
@@ -2028,13 +2198,13 @@ local function runTutorial()
 
 
 	showTimedMessage(
-	"Here you can improve earnings, service speed, queue size, and the stand itself.",
-	LONG_MESSAGE_TIME
-)
+		"Here you can improve earnings, service speed, queue size, and the stand itself.",
+		LONG_MESSAGE_TIME
+	)
 
 
 	--==================================================
-	-- 7. FIRST UPGRADE
+	-- 8. FIRST UPGRADE
 	--==================================================
 
 	local firstUpgradeCost =
@@ -2048,7 +2218,7 @@ local function runTutorial()
 			< firstUpgradeCost then
 
 		setTutorialText(
-			`Better Lemonade costs $. Let customers earn the cash you need.`
+			`Better Lemonade costs ${firstUpgradeCost}. Let customers earn the cash you need.`
 		)
 
 
@@ -2061,7 +2231,7 @@ local function runTutorial()
 	if firstUpgradeCost > 0 then
 
 		setTutorialText(
-			`Buy Better Lemonade for $. It increases every sale.`
+			`Buy Better Lemonade for ${firstUpgradeCost}. It increases every sale.`
 		)
 
 	else
@@ -2076,15 +2246,16 @@ local function runTutorial()
 		lemonadeStand
 	)
 
+
 	task.wait(
-	MAJOR_RESULT_PAUSE
-)
+		MAJOR_RESULT_PAUSE
+	)
 
 
 	showTimedMessage(
-	"Great! Reinvesting your cash makes every business stronger.",
-	NORMAL_MESSAGE_TIME
-)
+		"Great! Reinvesting your cash makes every business stronger.",
+		NORMAL_MESSAGE_TIME
+	)
 
 
 	setTutorialText(
@@ -2103,19 +2274,19 @@ local function runTutorial()
 
 
 	--==================================================
-	-- 8. SHORT GAME OVERVIEW
+	-- 9. SHORT GAME OVERVIEW
 	--==================================================
 
 	showTimedMessage(
-	"Serve customers to raise Reputation and unlock Hotdogs, Haircuts, Coffee, and future businesses.",
-	LONG_MESSAGE_TIME
-)
+		"Serve customers to raise Reputation and unlock Hotdogs, Haircuts, Coffee, and future businesses.",
+		LONG_MESSAGE_TIME
+	)
 
 
 	showTimedMessage(
-	"Marketing brings more customers, and Plot Expansions give you more room to build.",
-	LONG_MESSAGE_TIME
-)
+		"Marketing brings more customers, and Plot Expansions give you more room to build.",
+		LONG_MESSAGE_TIME
+	)
 
 
 	finishTutorial()

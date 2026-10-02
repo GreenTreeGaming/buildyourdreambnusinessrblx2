@@ -215,6 +215,17 @@ local cashSaleAmount =
 		"Amount"
 	) :: TextLabel
 
+local DEFAULT_CASH_SALE_COLOR =
+	cashSaleAmount.TextColor3
+
+
+local BOOSTED_CASH_SALE_COLOR =
+	Color3.fromRGB(
+		85,
+		255,
+		105
+	)
+
 local waitingAmount =
 	waitingFrame:WaitForChild(
 		"Amount"
@@ -926,6 +937,46 @@ local function getEffectiveSaleValue(
 	)
 end
 
+local function getRegularCustomerSaleValue(
+	stand: Model?
+): (number, boolean)
+
+	local baseSaleValue =
+		getEffectiveSaleValue(
+			stand
+		)
+
+
+	local cashMultiplier =
+		player:GetAttribute(
+			"CashMultiplier"
+		)
+
+
+	if typeof(cashMultiplier)
+		~= "number"
+		or cashMultiplier < 1 then
+
+		cashMultiplier =
+			1
+	end
+
+
+	local finalSaleValue =
+		math.max(
+			0,
+			math.floor(
+				baseSaleValue
+					* cashMultiplier
+					+ 0.5
+			)
+		)
+
+
+	return finalSaleValue,
+		cashMultiplier > 1
+end
+
 
 --==================================================
 -- NUMBER FORMATTING
@@ -1511,8 +1562,14 @@ end
 --==================================================
 
 local function clearStatistics()
+
 	cashSaleAmount.Text =
 		"--"
+
+
+	cashSaleAmount.TextColor3 =
+		DEFAULT_CASH_SALE_COLOR
+
 
 	waitingAmount.Text =
 		"--"
@@ -1553,8 +1610,9 @@ local defaultCooldown =
 	or 5
 
 
-	local saleValue =
-	getEffectiveSaleValue(
+	local saleValue,
+	isCashBoosted =
+	getRegularCustomerSaleValue(
 		selectedStand
 	)
 
@@ -1591,6 +1649,11 @@ local defaultCooldown =
 		formatCurrency(
 			saleValue
 		)
+
+	cashSaleAmount.TextColor3 =
+	isCashBoosted
+		and BOOSTED_CASH_SALE_COLOR
+		or DEFAULT_CASH_SALE_COLOR
 
 	waitingAmount.Text =
 		formatNumber(
@@ -2880,6 +2943,18 @@ task.spawn(
 			task.wait(
 				0.25
 			)
+		end
+	end
+)
+
+player:GetAttributeChangedSignal(
+	"CashMultiplier"
+):Connect(
+	function()
+
+		if menuOpen then
+
+			updateStatistics()
 		end
 	end
 )
