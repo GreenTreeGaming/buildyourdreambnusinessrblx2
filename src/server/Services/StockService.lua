@@ -25,6 +25,26 @@ local stockBillboardTemplate =
 local StockService = {}
 
 
+--==================================================
+-- EVENTS
+--==================================================
+
+--
+-- Server-only event.
+--
+-- CustomerManager uses this to immediately wake a
+-- queue back up when an empty stand is restocked.
+--
+StockService.StockChanged =
+	Instance.new(
+		"BindableEvent"
+	)
+
+
+--==================================================
+-- STATE
+--==================================================
+
 local initializedStands: {
 	[Model]: boolean
 } =
@@ -67,7 +87,7 @@ local function getBusinessType(
 		BusinessConfig do
 
 		if type(config)
-			~= "table" then
+		~= "table" then
 
 			continue
 		end
@@ -118,6 +138,10 @@ local function getStandLevel(
 	)
 end
 
+
+--==================================================
+-- MAX STOCK
+--==================================================
 
 function StockService.GetMaxStock(
 	stand: Model
@@ -191,10 +215,91 @@ function StockService.GetMaxStock(
 	end
 
 
+	--==================================================
+	-- FASTER SERVICE STOCK BONUS
+	--==================================================
+	--
+	-- Faster Service consumes stock more quickly.
+	--
+	-- Instead of letting highly upgraded stands run
+	-- dry constantly, capacity grows as service speed
+	-- improves.
+	--
+	-- sqrt() keeps the bonus meaningful without making
+	-- stock effectively infinite.
+	--
+	-- Example:
+	--
+	-- 5.0s -> 1.5s service
+	-- ratio = 3.33
+	-- sqrt = ~1.83x stock capacity
+	--
+	--==================================================
+
+	local baseCooldown =
+		config.BaseServingCooldown
+
+
+	if typeof(baseCooldown)
+			~= "number"
+		or baseCooldown <= 0 then
+
+		baseCooldown =
+			5
+	end
+
+
+	local currentCooldown =
+		stand:GetAttribute(
+			"PurchaseCooldown"
+		)
+
+
+	if typeof(currentCooldown)
+			~= "number"
+		or currentCooldown <= 0 then
+
+		currentCooldown =
+			baseCooldown
+	end
+
+
+	local speedRatio =
+		math.max(
+			1,
+			baseCooldown
+				/ currentCooldown
+		)
+
+
+	local serviceStockMultiplier =
+		math.sqrt(
+			speedRatio
+		)
+
+
+	--
+	-- Safety ceiling in case a future upgrade ever
+	-- produces an extremely tiny cooldown.
+	--
+	serviceStockMultiplier =
+		math.clamp(
+			serviceStockMultiplier,
+			1,
+			2.25
+		)
+
+
+	local finalCapacity =
+		configuredCapacity
+			* serviceStockMultiplier
+
+
 	return math.max(
-		0,
+		1,
 		math.floor(
-			configuredCapacity
+			finalCapacity
+				+ 0.5
 		)
 	)
 end
@@ -317,56 +422,6 @@ local function createStockBillboard(
 		adornee
 
 
-	local background =
-		billboard:FindFirstChild(
-			"Background"
-		)
-
-
-	if background
-		and background:IsA(
-			"GuiObject"
-		) then
-
-		local bar =
-			background:FindFirstChild(
-				"Bar"
-			)
-
-
-		if bar
-			and bar:IsA(
-				"GuiObject"
-			) then
-
-			--
-			-- Remember the FULL bar dimensions.
-			-- This lets the stock percentage resize your
-			-- existing UI without requiring hard-coded UI sizes.
-			--
-			bar:SetAttribute(
-				"StockFullXScale",
-				bar.Size.X.Scale
-			)
-
-			bar:SetAttribute(
-				"StockFullXOffset",
-				bar.Size.X.Offset
-			)
-
-			bar:SetAttribute(
-				"StockFullYScale",
-				bar.Size.Y.Scale
-			)
-
-			bar:SetAttribute(
-				"StockFullYOffset",
-				bar.Size.Y.Offset
-			)
-		end
-	end
-
-
 	return billboard
 end
 
@@ -479,14 +534,14 @@ local function updateBillboard(
 		and amount:IsA(
 			"TextLabel"
 		) then
-	
+
 		if currentStock <= 0 then
-	
+
 			amount.Text =
 				"OUT OF STOCK"
-	
+
 		else
-	
+
 			amount.Text =
 				`{currentStock}/{maxStock}`
 		end
@@ -497,20 +552,20 @@ local function updateBillboard(
 		background:FindFirstChild(
 			"Bar"
 		)
-	
-	
+
+
 	if bar
 		and bar:IsA(
 			"GuiObject"
 		) then
-	
+
 		bar.AnchorPoint =
 			Vector2.new(
 				0,
 				bar.AnchorPoint.Y
 			)
-	
-	
+
+
 		bar.Size =
 			UDim2.new(
 				percentage,
@@ -518,76 +573,63 @@ local function updateBillboard(
 				bar.Size.Y.Scale,
 				bar.Size.Y.Offset
 			)
-	
-	
-		--==================================================
-		-- STOCK COLOR
-		--==================================================
-	
+
+
 		local fullColor =
 			Color3.fromRGB(
 				70,
 				220,
 				90
 			)
-	
-	
+
+
 		local middleColor =
 			Color3.fromRGB(
 				255,
 				200,
 				55
 			)
-	
-	
+
+
 		local emptyColor =
 			Color3.fromRGB(
 				235,
 				65,
 				65
 			)
-	
-	
+
+
 		local stockColor
-	
-	
+
+
 		if percentage >= 0.5 then
-	
-			--
-			-- 50% -> 100%
-			-- Yellow -> Green
-			--
+
 			local alpha =
 				(
-					percentage
-						- 0.5
+					percentage - 0.5
 				) / 0.5
-	
-	
+
+
 			stockColor =
 				middleColor:Lerp(
 					fullColor,
 					alpha
 				)
-	
+
 		else
-	
-			--
-			-- 0% -> 50%
-			-- Red -> Yellow
-			--
+
 			local alpha =
 				percentage / 0.5
-	
-	
+
+
 			stockColor =
 				emptyColor:Lerp(
 					middleColor,
 					alpha
 				)
 		end
-	
-	
+
+
 		bar.BackgroundColor3 =
 			stockColor
 	end
@@ -705,6 +747,20 @@ function StockService.SetStock(
 	end
 
 
+	local previousStock =
+		stand:GetAttribute(
+			"Stock"
+		)
+
+
+	if typeof(previousStock)
+		~= "number" then
+
+		previousStock =
+			0
+	end
+
+
 	local maxStock =
 		stand:GetAttribute(
 			"MaxStock"
@@ -751,6 +807,18 @@ function StockService.SetStock(
 	)
 
 
+	if previousStock
+		~= newStock then
+
+		StockService.StockChanged:
+			Fire(
+				stand,
+				previousStock,
+				newStock
+			)
+	end
+
+
 	return newStock
 end
 
@@ -768,6 +836,7 @@ function StockService.AddStock(
 			stand:GetAttribute(
 				"Stock"
 			)
+
 
 		return typeof(current)
 				== "number"
@@ -904,7 +973,7 @@ end
 
 
 --==================================================
--- INITIALIZATION
+-- MAXIMUM STOCK UPDATE
 --==================================================
 
 local function updateMaximumStock(
@@ -934,13 +1003,12 @@ local function updateMaximumStock(
 	)
 
 
-	--
-	-- Brand-new stand:
-	-- starts completely full.
-	--
 	if typeof(previousStock)
 		~= "number" then
 
+		--
+		-- Brand-new business.
+		--
 		stand:SetAttribute(
 			"Stock",
 			maxStock
@@ -949,9 +1017,8 @@ local function updateMaximumStock(
 	else
 
 		--
-		-- Existing/upgraded stand:
-		-- capacity increases, but upgrading does NOT
-		-- magically refill supplies.
+		-- Increasing capacity should not magically
+		-- refill the business.
 		--
 		stand:SetAttribute(
 			"Stock",
@@ -972,6 +1039,10 @@ local function updateMaximumStock(
 	)
 end
 
+
+--==================================================
+-- INITIALIZATION
+--==================================================
 
 function StockService.InitializeStand(
 	stand: Model
@@ -1035,6 +1106,28 @@ function StockService.InitializeStand(
 
 	stand:GetAttributeChangedSignal(
 		"Level"
+	):Connect(
+		function()
+
+			if not stand.Parent then
+				return
+			end
+
+
+			updateMaximumStock(
+				stand
+			)
+		end
+	)
+
+
+	--
+	-- Faster Service modifies PurchaseCooldown,
+	-- therefore it also modifies useful stock
+	-- capacity.
+	--
+	stand:GetAttributeChangedSignal(
+		"PurchaseCooldown"
 	):Connect(
 		function()
 

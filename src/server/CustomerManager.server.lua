@@ -146,10 +146,27 @@ local MOVE_REACHED_DISTANCE =
 	1.35
 
 
--- Reissue Humanoid:MoveTo occasionally in case Roblox
--- drops/stalls a movement command.
 local MOVE_COMMAND_INTERVAL =
-	0.3
+	0.5
+
+
+--
+-- Customer movement does not need to be checked 60
+-- times per second.
+--
+-- At large customer counts, Heartbeat polling becomes
+-- extremely expensive.
+--
+local MOVEMENT_POLL_INTERVAL =
+	0.10
+
+
+local QUEUE_POLL_INTERVAL =
+	0.10
+
+
+local ANIMATION_SAFETY_INTERVAL =
+	0.35
 
 
 -- Maximum time to reach one movement point.
@@ -189,6 +206,133 @@ if not customersFolder then
 	customersFolder.Parent =
 		Workspace
 end
+
+--==================================================
+-- CUSTOMER COUNT CACHE
+--==================================================
+
+local plotCustomerCounts: {
+	[string]: number
+} = {}
+
+
+local trackedCustomerPlots: {
+	[Model]: string
+} =
+	setmetatable(
+		{},
+		{
+			__mode = "k",
+		}
+	)
+
+
+local function trackCustomer(
+	customer: Instance
+)
+
+	if not customer:IsA(
+		"Model"
+	) then
+
+		return
+	end
+
+
+	local plotName =
+		customer:GetAttribute(
+			"PlotName"
+		)
+
+
+	if typeof(plotName)
+		~= "string"
+		or plotName == "" then
+
+		return
+	end
+
+
+	trackedCustomerPlots[
+		customer
+	] =
+		plotName
+
+
+	plotCustomerCounts[
+		plotName
+	] =
+		(
+			plotCustomerCounts[
+				plotName
+			]
+			or 0
+		) + 1
+end
+
+
+local function untrackCustomer(
+	customer: Instance
+)
+
+	if not customer:IsA(
+		"Model"
+	) then
+
+		return
+	end
+
+
+	local plotName =
+		trackedCustomerPlots[
+			customer
+		]
+
+
+	if not plotName then
+		return
+	end
+
+
+	plotCustomerCounts[
+		plotName
+	] =
+		math.max(
+			0,
+
+			(
+				plotCustomerCounts[
+					plotName
+				]
+				or 0
+			) - 1
+		)
+
+
+	trackedCustomerPlots[
+		customer
+	] =
+		nil
+end
+
+
+for _, customer in
+	customersFolder:GetChildren() do
+
+	trackCustomer(
+		customer
+	)
+end
+
+
+customersFolder.ChildAdded:Connect(
+	trackCustomer
+)
+
+
+customersFolder.ChildRemoved:Connect(
+	untrackCustomer
+)
 
 
 local businessAvailabilityEvent =
@@ -3483,32 +3627,9 @@ local function getPlotCustomerCount(
 	plot: Model
 ): number
 
-	local customerCount =
-		0
-
-
-	for _, customer in
-		customersFolder:GetChildren() do
-
-		if not customer:IsA(
-			"Model"
-		) then
-
-			continue
-		end
-
-
-		if customer:GetAttribute(
-			"PlotName"
-		) == plot.Name then
-
-			customerCount +=
-				1
-		end
-	end
-
-
-	return customerCount
+	return plotCustomerCounts[
+		plot.Name
+	] or 0
 end
 
 
@@ -3933,6 +4054,17 @@ local function getBusinessSaleValue(
 	)
 end
 
+local queuePositionCache: {
+	[Model]: {BasePart}
+} =
+	setmetatable(
+		{},
+		{
+			__mode = "k",
+		}
+	)
+
+
 --==================================================
 -- QUEUE POSITIONS
 --==================================================
@@ -3940,6 +4072,17 @@ end
 local function getQueuePositions(
 	stand: Model
 ): {BasePart}
+
+	local cached =
+		queuePositionCache[
+			stand
+		]
+
+
+	if cached then
+		return cached
+	end
+
 
 	local queueFolder =
 		stand:FindFirstChild(
@@ -3949,11 +4092,6 @@ local function getQueuePositions(
 
 
 	if not queueFolder then
-
-		warn(
-			`{stand:GetFullName()} is missing QueuePositions.`
-		)
-
 		return {}
 	end
 
@@ -4027,9 +4165,14 @@ local function getQueuePositions(
 	)
 
 
+	queuePositionCache[
+		stand
+	] =
+		queuePositions
+
+
 	return queuePositions
 end
-
 
 local function getQueuePosition(
 	stand: Model,
@@ -4178,10 +4321,35 @@ local HELPER_PART_NAMES = {
 	SaleEffectPosition = true,
 }
 
+local sanitizedStandMarkers: {
+	[Model]: boolean
+} =
+	setmetatable(
+		{},
+		{
+			__mode = "k",
+		}
+	)
+
 
 local function sanitizeStandMarkers(
 	stand: Model
 )
+
+	if sanitizedStandMarkers[
+		stand
+	] then
+
+		return
+	end
+
+
+	sanitizedStandMarkers[
+		stand
+	] =
+		true
+
+
 	for _, descendant in
 		stand:GetDescendants() do
 
@@ -4828,7 +4996,7 @@ end
 
 
 			task.wait(
-				0.15
+				ANIMATION_SAFETY_INTERVAL
 			)
 		end
 	end)
@@ -5048,7 +5216,9 @@ local function moveCustomerToPosition(
 		end
 
 
-		RunService.Heartbeat:Wait()
+		task.wait(
+MOVEMENT_POLL_INTERVAL
+)
 	end
 
 
@@ -5746,7 +5916,9 @@ local function runQueueMovementController(
 			entry.reachedPosition =
 				false
 
-			RunService.Heartbeat:Wait()
+			task.wait(
+MOVEMENT_POLL_INTERVAL
+)
 
 			continue
 		end
@@ -5987,7 +6159,9 @@ local function runQueueMovementController(
 				and entry.movementVersion
 					== movementVersion do
 
-				RunService.Heartbeat:Wait()
+				task.wait(
+MOVEMENT_POLL_INTERVAL
+)
 			end
 
 
@@ -6066,7 +6240,9 @@ local function runQueueMovementController(
 			and entry.movementVersion
 				== movementVersion do
 
-			RunService.Heartbeat:Wait()
+			task.wait(
+MOVEMENT_POLL_INTERVAL
+)
 		end
 	end
 
@@ -6381,7 +6557,7 @@ local function processQueue(
 
 
 			task.wait(
-				0.05
+				QUEUE_POLL_INTERVAL
 			)
 		end
 
@@ -6486,7 +6662,7 @@ local function processQueue(
 
 
 			task.wait(
-				0.05
+				QUEUE_POLL_INTERVAL
 			)
 		end
 
@@ -6609,6 +6785,77 @@ local function processQueue(
 		false
 end
 
+--==================================================
+-- STOCK RESTOCK WAKE-UP
+--==================================================
+--
+-- When a stand reaches 0 stock, processQueue exits.
+--
+-- Previously, adding stock again did not restart the
+-- existing queue. A new customer had to be spawned,
+-- or the stand had to be moved, before processing
+-- resumed.
+--
+-- Wake the existing queue immediately when stock goes
+-- from empty -> available.
+--==================================================
+
+StockService.StockChanged.Event:Connect(
+	function(
+		stand: Model,
+		previousStock: number,
+		newStock: number
+	)
+
+		if not stand
+			or not stand.Parent then
+
+			return
+		end
+
+
+		if previousStock > 0
+			or newStock <= 0 then
+
+			return
+		end
+
+
+		local plot =
+			getPlotFromStand(
+				stand
+			)
+
+
+		if not plot then
+			return
+		end
+
+
+		local state =
+			standStates[
+				stand
+			]
+
+
+		if not state
+			or #state.queue == 0 then
+
+			return
+		end
+
+
+		--
+		-- processQueue already protects against two
+		-- simultaneous workers with state.isServing.
+		--
+		task.spawn(
+			processQueue,
+			plot,
+			stand
+		)
+	end
+)
 
 --==================================================
 -- SPAWNING
@@ -6749,7 +6996,6 @@ local function spawnCustomerForStand(
 
 customer.Parent =
 	customersFolder
-
 
 customer:PivotTo(
 	customerSpawn.CFrame
