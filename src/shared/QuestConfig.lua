@@ -236,7 +236,7 @@ QuestConfig.Quests = {
 
 	Earn100 = {
 		DisplayName = "FIRST ",
-		Description = "Earn  from your businesses.",
+		Description = "Earn 100 from your businesses.",
 		Type = "LifetimeEarnings",
 		Required = 100,
 		RewardCash = 100,
@@ -244,7 +244,7 @@ QuestConfig.Quests = {
 
 	Earn1000 = {
 		DisplayName = "FOUR FIGURES",
-		Description = "Earn ,000 from your businesses.",
+		Description = "Earn 1,000 from your businesses.",
 		Type = "LifetimeEarnings",
 		Required = 1000,
 		RewardCash = 300,
@@ -252,7 +252,7 @@ QuestConfig.Quests = {
 
 	Earn5000 = {
 		DisplayName = "GROWING PROFITS",
-		Description = "Earn ,000 from your businesses.",
+		Description = "Earn 5,000 from your businesses.",
 		Type = "LifetimeEarnings",
 		Required = 5000,
 		RewardCash = 750,
@@ -260,7 +260,7 @@ QuestConfig.Quests = {
 
 	Earn10000 = {
 		DisplayName = "SERIOUS BUSINESS",
-		Description = "Earn ,000 from your businesses.",
+		Description = "Earn 10,000 from your businesses.",
 		Type = "LifetimeEarnings",
 		Required = 10_000,
 		RewardCash = 1500,
@@ -268,7 +268,7 @@ QuestConfig.Quests = {
 
 	Earn25000 = {
 		DisplayName = "BIG PROFITS",
-		Description = "Earn ,000 from your businesses.",
+		Description = "Earn 25,000 from your businesses.",
 		Type = "LifetimeEarnings",
 		Required = 25_000,
 		RewardCash = 3_000,
@@ -276,7 +276,7 @@ QuestConfig.Quests = {
 
 	Earn50000 = {
 		DisplayName = "ENTREPRENEUR",
-		Description = "Earn ,000 from your businesses.",
+		Description = "Earn 50,000 from your businesses.",
 		Type = "LifetimeEarnings",
 		Required = 50_000,
 		RewardCash = 7_500,
@@ -284,7 +284,7 @@ QuestConfig.Quests = {
 
 	Earn100000 = {
 		DisplayName = "SIX FIGURES",
-		Description = "Earn ,000 from your businesses.",
+		Description = "Earn 100,000 from your businesses.",
 		Type = "LifetimeEarnings",
 		Required = 100_000,
 		RewardCash = 15_000,
@@ -292,7 +292,7 @@ QuestConfig.Quests = {
 
 	Earn250000 = {
 		DisplayName = "BUSINESS MOGUL",
-		Description = "Earn ,000 from your businesses.",
+		Description = "Earn 250,000 from your businesses.",
 		Type = "LifetimeEarnings",
 		Required = 250_000,
 		RewardCash = 35_000,
@@ -300,7 +300,7 @@ QuestConfig.Quests = {
 
 	Earn1000000 = {
 		DisplayName = "MILLIONAIRE",
-		Description = "Earn ,000,000 from your businesses.",
+		Description = "Earn 1,000,000 from your businesses.",
 		Type = "LifetimeEarnings",
 		Required = 1_000_000,
 		RewardCash = 75_000,
@@ -316,7 +316,7 @@ QuestConfig.Quests = {
 
 	Earn25000000 = {
 		DisplayName = "BUSINESS TYCOON",
-		Description = "Earn ,000,000 from your businesses.",
+		Description = "Earn 25,000,000 from your businesses.",
 		Type = "LifetimeEarnings",
 		Required = 25_000_000,
 		RewardCash = 600_000,
@@ -324,7 +324,7 @@ QuestConfig.Quests = {
 
 	Earn100000000 = {
 		DisplayName = "MEGA MOGUL",
-		Description = "Earn ,000,000 from your businesses.",
+		Description = "Earn 100,000,000 from your businesses.",
 		Type = "LifetimeEarnings",
 		Required = 100_000_000,
 		RewardCash = 1_500_000,
@@ -332,7 +332,7 @@ QuestConfig.Quests = {
 
 	Earn500000000 = {
 		DisplayName = "EMPIRE BUILDER",
-		Description = "Earn ,000,000 from your businesses.",
+		Description = "Earn 500,000,000 from your businesses.",
 		Type = "LifetimeEarnings",
 		Required = 500_000_000,
 		RewardCash = 5_000_000,
