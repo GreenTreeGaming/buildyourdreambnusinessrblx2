@@ -66,8 +66,8 @@ local BusinessConfig =
 
 
 local GAMEPLAY_UPGRADE_ORDER = {
-	"QueueCapacity",
 	"SaleValue",
+	"QueueCapacity",
 	"ServingSpeed",
 }
 
@@ -1263,10 +1263,16 @@ do
 end
 
 
+cards.SaleValue =
+	createCard(
+		"SaleValue",
+		1
+	)
+
 cards.StandAppearance =
 	createCard(
 		"StandAppearance",
-		1
+		2
 	)
 
 
@@ -1306,12 +1312,6 @@ cards.StandAppearance.AfterAmount.TextSize =
 cards.QueueCapacity =
 	createCard(
 		"QueueCapacity",
-		2
-	)
-
-cards.SaleValue =
-	createCard(
-		"SaleValue",
 		3
 	)
 
@@ -1323,8 +1323,8 @@ cards.ServingSpeed =
 
 
 local gameplayCards = {
-	cards.QueueCapacity,
 	cards.SaleValue,
+	cards.QueueCapacity,
 	cards.ServingSpeed,
 }
 
