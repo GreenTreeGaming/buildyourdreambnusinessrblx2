@@ -70,7 +70,15 @@ local DEFAULT_PROFILE = {
 	Licenses = 0,
 	TimePlayed = 0,
 	TutorialCompleted = false,
-
+	
+	ContextualTutorials = {
+		Stock = false,
+		Marketing = false,
+		PlotExpansion = false,
+		Licenses = false,
+		Rebirth = false,
+	},
+	
 	DailyRewards = {
 		NextDay = 1,
 	
@@ -183,6 +191,10 @@ type PlayerProfile = {
 	TimePlayed: number,
 
 	TutorialCompleted: boolean,
+
+	ContextualTutorials: {
+		[string]: boolean
+	},
 
 	DailyRewards: {
 		NextDay: number,
@@ -2039,6 +2051,152 @@ function DataService.SetTutorialCompleted(
 		"TutorialCompleted",
 		profile.TutorialCompleted
 	)
+
+
+	return true
+end
+
+--==================================================
+-- CONTEXTUAL TUTORIALS
+--==================================================
+
+local VALID_CONTEXTUAL_TUTORIALS = {
+	Stock = true,
+	Marketing = true,
+	PlotExpansion = true,
+	Licenses = true,
+	Rebirth = true,
+}
+
+
+function DataService.GetContextualTutorials(
+	player: Player
+): {[string]: boolean}
+
+	local profile =
+		profiles[
+			player
+		]
+
+
+	local result = {
+		Stock = false,
+		Marketing = false,
+		PlotExpansion = false,
+		Licenses = false,
+		Rebirth = false,
+	}
+
+
+	if not profile then
+		return result
+	end
+
+
+	if type(
+		profile.ContextualTutorials
+	) ~= "table" then
+
+		profile.ContextualTutorials =
+			{}
+	end
+
+
+	for tutorialId in
+		VALID_CONTEXTUAL_TUTORIALS
+	do
+
+		result[
+			tutorialId
+		] =
+			profile
+				.ContextualTutorials[
+					tutorialId
+				] == true
+	end
+
+
+	return result
+end
+
+
+function DataService.HasCompletedContextualTutorial(
+	player: Player,
+	tutorialId: string
+): boolean
+
+	if VALID_CONTEXTUAL_TUTORIALS[
+		tutorialId
+	] ~= true then
+
+		return false
+	end
+
+
+	local profile =
+		profiles[
+			player
+		]
+
+
+	if not profile then
+		return false
+	end
+
+
+	if type(
+		profile.ContextualTutorials
+	) ~= "table" then
+
+		profile.ContextualTutorials =
+			{}
+	end
+
+
+	return profile
+		.ContextualTutorials[
+			tutorialId
+		] == true
+end
+
+
+function DataService.MarkContextualTutorialCompleted(
+	player: Player,
+	tutorialId: string
+): boolean
+
+	if VALID_CONTEXTUAL_TUTORIALS[
+		tutorialId
+	] ~= true then
+
+		return false
+	end
+
+
+	local profile =
+		profiles[
+			player
+		]
+
+
+	if not profile then
+		return false
+	end
+
+
+	if type(
+		profile.ContextualTutorials
+	) ~= "table" then
+
+		profile.ContextualTutorials =
+			{}
+	end
+
+
+	profile.ContextualTutorials[
+		tutorialId
+	] =
+		true
 
 
 	return true

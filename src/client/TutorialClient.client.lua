@@ -29,12 +29,6 @@ local plotsFolder =
 	)
 
 
-local map =
-	Workspace:WaitForChild(
-		"Map"
-	)
-
-
 local shared =
 	ReplicatedStorage:WaitForChild(
 		"Shared"
@@ -65,22 +59,6 @@ local completeTutorialRemote =
 	remotes:WaitForChild(
 		"CompleteTutorial"
 	) :: RemoteEvent
-
-
---==================================================
--- STOCK CAMERA PARTS
---==================================================
-
-local cameraStock1 =
-	map:WaitForChild(
-		"CameraStock1"
-	) :: BasePart
-
-
-local cameraStock2 =
-	map:WaitForChild(
-		"CameraStock2"
-	) :: BasePart
 
 
 --==================================================
@@ -255,11 +233,11 @@ local FRAME_TWEEN_TIME =
 
 
 local TEXT_FADE_TIME =
-	0.16
+	0.14
 
 
 local TEXT_CLEAR_DELAY =
-	0.18
+	0.10
 
 
 local CAMERA_TWEEN_TIME =
@@ -267,31 +245,27 @@ local CAMERA_TWEEN_TIME =
 
 
 local CAMERA_HOLD_TIME =
-	0.85
+	0.55
 
 
 local SHORT_MESSAGE_TIME =
-	3.0
+	2.25
 
 
 local NORMAL_MESSAGE_TIME =
-	4.0
+	3.25
 
 
 local LONG_MESSAGE_TIME =
-	5.25
+	4
 
 
 local ACTION_RESULT_PAUSE =
-	0.75
+	0.55
 
 
 local MAJOR_RESULT_PAUSE =
-	1.0
-
-
-local STOCK_CAMERA_HOLD_TIME =
-	1.15
+	0.8
 
 
 --==================================================
@@ -360,6 +334,10 @@ local dailyRewardsConnection:
 	nil
 
 
+--==================================================
+-- HIGHLIGHT SETTINGS
+--==================================================
+
 local TUTORIAL_HIGHLIGHT_COLOR =
 	Color3.fromRGB(
 		255,
@@ -373,11 +351,11 @@ local TUTORIAL_HIGHLIGHT_FILL_TRANSPARENCY =
 
 
 local TUTORIAL_HIGHLIGHT_IDLE_TRANSPARENCY =
-	0.18
+	0.12
 
 
 local TUTORIAL_HIGHLIGHT_PULSE_TRANSPARENCY =
-	0.45
+	0.42
 
 
 local TUTORIAL_HIGHLIGHT_THICKNESS =
@@ -385,7 +363,7 @@ local TUTORIAL_HIGHLIGHT_THICKNESS =
 
 
 local TUTORIAL_HIGHLIGHT_PULSE_THICKNESS =
-	5
+	6
 
 
 local TUTORIAL_HIGHLIGHT_SIZE_OFFSET =
@@ -397,7 +375,7 @@ local TUTORIAL_HIGHLIGHT_PULSE_SCALE =
 
 
 local TUTORIAL_HIGHLIGHT_PULSE_TIME =
-	0.55
+	0.5
 
 
 --==================================================
@@ -499,9 +477,14 @@ local function clearText()
 end
 
 
-local function setTutorialText(
+local function setTutorialStep(
+	stepTitle: string,
 	text: string
 )
+
+	title.Text =
+		stepTitle
+
 
 	clearText()
 
@@ -516,12 +499,14 @@ local function setTutorialText(
 end
 
 
-local function showTimedMessage(
+local function showTimedStep(
+	stepTitle: string,
 	text: string,
 	duration: number?
 )
 
-	setTutorialText(
+	setTutorialStep(
+		stepTitle,
 		text
 	)
 
@@ -573,7 +558,7 @@ local function beginSuppressingDailyRewards()
 
 					if running
 						and dailyRewardsGui
-						.Enabled then
+						and dailyRewardsGui.Enabled then
 
 						dailyRewardsGui.Enabled =
 							false
@@ -842,7 +827,7 @@ end
 
 
 --==================================================
--- FIRST SALE
+-- SALES
 --==================================================
 
 local function getTotalSales(
@@ -871,6 +856,37 @@ local function getTotalSales(
 end
 
 
+local function waitForSaleAfter(
+	stand: Model,
+	previousSales: number
+): number
+
+	while player.Parent
+		and stand.Parent do
+
+		local currentSales =
+			getTotalSales(
+				stand
+			)
+
+
+		if currentSales > previousSales then
+			return currentSales
+		end
+
+
+		stand:GetAttributeChangedSignal(
+			"TotalSales"
+		):Wait()
+	end
+
+
+	return getTotalSales(
+		stand
+	)
+end
+
+
 local function waitForFirstSale(
 	stand: Model
 )
@@ -883,20 +899,210 @@ local function waitForFirstSale(
 	end
 
 
+	waitForSaleAfter(
+		stand,
+		0
+	)
+end
+
+
+--==================================================
+-- SALE VALUE
+--==================================================
+
+local function getSaleValueLevel(
+	stand: Model
+): number
+
+	local level =
+		stand:GetAttribute(
+			"SaleValueLevel"
+		)
+
+
+	if typeof(level)
+		~= "number" then
+
+		return 0
+	end
+
+
+	return math.max(
+		0,
+		math.floor(
+			level
+		)
+	)
+end
+
+
+local function getSaleValueForLevel(
+	level: number
+): number
+
+	local lemonadeConfig =
+		BusinessConfig.LemonadeStand
+
+
+	if type(lemonadeConfig)
+			~= "table"
+		or type(
+			lemonadeConfig.Upgrades
+		) ~= "table"
+		or type(
+			lemonadeConfig.Upgrades.SaleValue
+		) ~= "table"
+		or type(
+			lemonadeConfig
+				.Upgrades
+				.SaleValue
+				.Levels
+		) ~= "table" then
+
+		return 0
+	end
+
+
+	local definition =
+		lemonadeConfig
+			.Upgrades
+			.SaleValue
+			.Levels[
+				level + 1
+			]
+
+
+	if type(definition)
+			== "table"
+		and typeof(
+			definition.SaleValue
+		) == "number" then
+
+		return math.max(
+			0,
+			math.floor(
+				definition.SaleValue
+			)
+		)
+	end
+
+
+	return 0
+end
+
+
+local function getBetterLemonadeNextCost(
+	stand: Model
+): number
+
+	local currentLevel =
+		getSaleValueLevel(
+			stand
+		)
+
+
+	local lemonadeConfig =
+		BusinessConfig.LemonadeStand
+
+
+	if type(lemonadeConfig)
+			~= "table"
+		or type(
+			lemonadeConfig.Upgrades
+		) ~= "table"
+		or type(
+			lemonadeConfig.Upgrades.SaleValue
+		) ~= "table"
+		or type(
+			lemonadeConfig
+				.Upgrades
+				.SaleValue
+				.Levels
+		) ~= "table" then
+
+		return 100
+	end
+
+
+	local nextDefinition =
+		lemonadeConfig
+			.Upgrades
+			.SaleValue
+			.Levels[
+				currentLevel + 2
+			]
+
+
+	if type(nextDefinition)
+			== "table"
+		and typeof(
+			nextDefinition.Cost
+		) == "number" then
+
+		return math.max(
+			0,
+			math.floor(
+				nextDefinition.Cost
+			)
+		)
+	end
+
+
+	return 0
+end
+
+
+local function waitForSaleValueUpgrade(
+	stand: Model,
+	startingLevel: number
+)
+
+	if getSaleValueLevel(
+		stand
+	) > startingLevel then
+
+		return
+	end
+
+
 	while player.Parent
 		and stand.Parent do
 
 		stand:GetAttributeChangedSignal(
-			"TotalSales"
+			"SaleValueLevel"
 		):Wait()
 
 
-		if getTotalSales(
+		if getSaleValueLevel(
 			stand
-		) >= 1 then
+		) > startingLevel then
 
 			return
 		end
+	end
+end
+
+
+--==================================================
+-- CASH
+--==================================================
+
+local function waitForCash(
+	requiredCash: number
+)
+
+	if cash.Value
+		>= requiredCash then
+
+		return
+	end
+
+
+	while player.Parent
+		and cash.Value
+			< requiredCash do
+
+		cash.Changed:Wait()
 	end
 end
 
@@ -976,8 +1182,9 @@ local function showPlotCamera(
 	moveTween.Completed:Wait()
 
 
-	showTimedMessage(
-		"This is your plot. Turn it into a business empire.",
+	showTimedStep(
+		"YOUR BUSINESS",
+		"This empty plot is yours. We're going to turn it into an empire.",
 		SHORT_MESSAGE_TIME
 	)
 
@@ -1016,163 +1223,33 @@ local function showPlotCamera(
 end
 
 
-local function showStockLocations()
+local function restorePlayerCamera()
 
-	if not cameraStock1:IsA(
-		"BasePart"
-	) then
-
-		warn(
-			"Workspace.Map.CameraStock1 must be a BasePart."
-		)
-
-		return
-	end
+	local character =
+		player.Character
 
 
-	if not cameraStock2:IsA(
-		"BasePart"
-	) then
-
-		warn(
-			"Workspace.Map.CameraStock2 must be a BasePart."
-		)
-
-		return
-	end
-
-
-	local previousCameraType =
-		camera.CameraType
-
-
-	local previousCameraSubject =
-		camera.CameraSubject
-
-
-	local previousCFrame =
-		camera.CFrame
+	local humanoid =
+		character
+			and character:FindFirstChildOfClass(
+				"Humanoid"
+			)
 
 
 	camera.CameraType =
-		Enum.CameraType.Scriptable
+		Enum.CameraType.Custom
 
 
-	--==================================================
-	-- STOCK LOCATION 1
-	--==================================================
-
-	local firstTween =
-		TweenService:Create(
-			camera,
-			cameraTweenInfo,
-			{
-				CFrame =
-					cameraStock1.CFrame,
-			}
-		)
-
-
-	firstTween:Play()
-
-	firstTween.Completed:Wait()
-
-
-	showTimedMessage(
-		"Your businesses use stock every time they serve a customer.",
-		NORMAL_MESSAGE_TIME
-	)
-
-
-	showTimedMessage(
-		"When stock runs out, that business stops serving until you restock it.",
-		NORMAL_MESSAGE_TIME
-	)
-
-
-	showTimedMessage(
-		"This is one place where you can buy more stock.",
-		SHORT_MESSAGE_TIME
-	)
-
-
-	task.wait(
-		STOCK_CAMERA_HOLD_TIME
-	)
-
-
-	--==================================================
-	-- STOCK LOCATION 2
-	--==================================================
-
-	local secondTween =
-		TweenService:Create(
-			camera,
-			cameraTweenInfo,
-			{
-				CFrame =
-					cameraStock2.CFrame,
-			}
-		)
-
-
-	secondTween:Play()
-
-	secondTween.Completed:Wait()
-
-
-	showTimedMessage(
-		"There's another stock shop here too. You can use either location.",
-		NORMAL_MESSAGE_TIME
-	)
-
-
-	showTimedMessage(
-		"Walk into a stock shop anytime to refill your businesses.",
-		NORMAL_MESSAGE_TIME
-	)
-
-
-	task.wait(
-		STOCK_CAMERA_HOLD_TIME
-	)
-
-
-	--==================================================
-	-- RETURN CAMERA
-	--==================================================
-
-	local returnTween =
-		TweenService:Create(
-			camera,
-			cameraTweenInfo,
-			{
-				CFrame =
-					previousCFrame,
-			}
-		)
-
-
-	returnTween:Play()
-
-	returnTween.Completed:Wait()
-
-
-	camera.CameraType =
-		previousCameraType
-
-
-	if previousCameraSubject
-		and previousCameraSubject.Parent then
+	if humanoid then
 
 		camera.CameraSubject =
-			previousCameraSubject
+			humanoid
 	end
 end
 
 
 --==================================================
--- UI WAIT HELPERS
+-- VISIBILITY HELPERS
 --==================================================
 
 local function waitUntilVisible(
@@ -1250,7 +1327,124 @@ end
 
 
 --==================================================
--- QUEST CLAIM HELPERS
+-- MANAGE / UPGRADE BUTTON
+--==================================================
+
+local function getUpgradeScrollingFrame():
+	ScrollingFrame?
+
+	local contentFrame =
+		manageMain:FindFirstChild(
+			"Frame"
+		)
+
+
+	if not contentFrame
+		or not contentFrame:IsA(
+			"Frame"
+		) then
+
+		return nil
+	end
+
+
+	local scrollingFrame =
+		contentFrame:FindFirstChild(
+			"ScrollingFrame"
+		)
+
+
+	if scrollingFrame
+		and scrollingFrame:IsA(
+			"ScrollingFrame"
+		) then
+
+		return scrollingFrame
+	end
+
+
+	return nil
+end
+
+
+local function findBetterLemonadeBuyButton():
+	GuiButton?
+
+	local scrollingFrame =
+		getUpgradeScrollingFrame()
+
+
+	if not scrollingFrame then
+		return nil
+	end
+
+
+	local saleValueCard =
+		scrollingFrame:FindFirstChild(
+			"SaleValue"
+		)
+
+
+	if not saleValueCard then
+		return nil
+	end
+
+
+	local buy =
+		saleValueCard:FindFirstChild(
+			"Buy"
+		)
+
+
+	if buy
+		and buy:IsA(
+			"GuiButton"
+		) then
+
+		return buy
+	end
+
+
+	return nil
+end
+
+
+local function waitForBetterLemonadeBuyButton(
+	timeout: number
+):
+	GuiButton?
+
+	local startedAt =
+		time()
+
+
+	while player.Parent
+		and time() - startedAt
+			< timeout do
+
+		local button =
+			findBetterLemonadeBuyButton()
+
+
+		if button
+			and button.Visible then
+
+			return button
+		end
+
+
+		task.wait(
+			0.1
+		)
+	end
+
+
+	return nil
+end
+
+
+--==================================================
+-- QUEST HELPERS
 --==================================================
 
 local function findFirstSaleClaimButton():
@@ -1324,138 +1518,6 @@ end
 
 
 --==================================================
--- CASH / UPGRADE HELPERS
---==================================================
-
-local function getBetterLemonadeNextCost(
-	stand: Model
-): number
-
-	local currentLevel =
-		stand:GetAttribute(
-			"SaleValueLevel"
-		)
-
-
-	if typeof(currentLevel)
-		~= "number" then
-
-		currentLevel =
-			0
-	end
-
-
-	local lemonadeConfig =
-		BusinessConfig.LemonadeStand
-
-
-	if not lemonadeConfig
-		or type(
-			lemonadeConfig.Upgrades
-		) ~= "table"
-		or type(
-			lemonadeConfig.Upgrades.SaleValue
-		) ~= "table"
-		or type(
-			lemonadeConfig
-				.Upgrades
-				.SaleValue
-				.Levels
-		) ~= "table" then
-
-		return 100
-	end
-
-
-	local nextDefinition =
-		lemonadeConfig
-			.Upgrades
-			.SaleValue
-			.Levels[
-				currentLevel + 2
-			]
-
-
-	if type(nextDefinition)
-			== "table"
-		and typeof(
-			nextDefinition.Cost
-		) == "number" then
-
-		return math.max(
-			0,
-			math.floor(
-				nextDefinition.Cost
-			)
-		)
-	end
-
-
-	return 0
-end
-
-
-local function waitForCash(
-	requiredCash: number
-)
-
-	if cash.Value
-		>= requiredCash then
-
-		return
-	end
-
-
-	while player.Parent
-		and cash.Value
-			< requiredCash do
-
-		cash.Changed:Wait()
-	end
-end
-
-
-local function waitForSaleValueUpgrade(
-	stand: Model
-)
-
-	local function hasUpgrade():
-		boolean
-
-		local level =
-			stand:GetAttribute(
-				"SaleValueLevel"
-			)
-
-
-		return typeof(level)
-				== "number"
-			and level >= 1
-	end
-
-
-	if hasUpgrade() then
-		return
-	end
-
-
-	while player.Parent
-		and stand.Parent do
-
-		stand:GetAttributeChangedSignal(
-			"SaleValueLevel"
-		):Wait()
-
-
-		if hasUpgrade() then
-
-			return
-		end
-	end
-end
-
-
---==================================================
 -- TUTORIAL VISIBILITY
 --==================================================
 
@@ -1470,7 +1532,7 @@ local function showTutorial()
 
 
 	title.Text =
-		"TUTORIAL"
+		"WELCOME!"
 
 
 	tutorialText.Text =
@@ -1503,6 +1565,7 @@ local function clearButtonHighlight()
 			activeHighlightPulseThread
 		)
 
+
 		activeHighlightPulseThread =
 			nil
 	end
@@ -1511,6 +1574,7 @@ local function clearButtonHighlight()
 	if activeHighlight then
 
 		activeHighlight:Destroy()
+
 
 		activeHighlight =
 			nil
@@ -1722,7 +1786,6 @@ local function highlightButton(
 					growTween:Play()
 					strokeGrowTween:Play()
 
-
 					growTween.Completed:Wait()
 
 
@@ -1774,7 +1837,6 @@ local function highlightButton(
 					shrinkTween:Play()
 					strokeShrinkTween:Play()
 
-
 					shrinkTween.Completed:Wait()
 				end
 			end
@@ -1801,31 +1863,91 @@ end
 
 
 --==================================================
--- RESTORE CAMERA
+-- REPUTATION / NEXT GOAL
 --==================================================
 
-local function restorePlayerCamera()
+local function getReputationLevel(
+	plot: Model
+): number
 
-	local character =
-		player.Character
-
-
-	local humanoid =
-		character
-			and character:FindFirstChildOfClass(
-				"Humanoid"
-			)
+	local reputation =
+		plot:GetAttribute(
+			"ReputationLevel"
+		)
 
 
-	camera.CameraType =
-		Enum.CameraType.Custom
+	if typeof(reputation)
+		~= "number" then
 
-
-	if humanoid then
-
-		camera.CameraSubject =
-			humanoid
+		return 1
 	end
+
+
+	return math.max(
+		1,
+		math.floor(
+			reputation
+		)
+	)
+end
+
+
+local function getHotdogRequirements()
+
+	local hotdogConfig =
+		BusinessConfig.HotdogStand
+
+
+	if type(hotdogConfig)
+		~= "table" then
+
+		return 4, 2500, 2
+	end
+
+
+	local requirements =
+		hotdogConfig.UnlockRequirements
+
+
+	if type(requirements)
+		~= "table" then
+
+		return 4, 2500, 2
+	end
+
+
+	local reputation =
+		tonumber(
+			requirements.ReputationLevel
+		) or 4
+
+
+	local lifetimeEarnings =
+		tonumber(
+			requirements.LifetimeEarnings
+		) or 2500
+
+
+	local lemonadeLevel =
+		2
+
+
+	if type(
+		requirements.BusinessLevel
+	) == "table" then
+
+		lemonadeLevel =
+			tonumber(
+				requirements
+					.BusinessLevel
+					.Level
+			) or 2
+	end
+
+
+	return reputation,
+		lifetimeEarnings,
+		lemonadeLevel
 end
 
 
@@ -1833,25 +1955,42 @@ end
 -- FINISH
 --==================================================
 
-local function finishTutorial()
+local function finishTutorial(
+	plot: Model
+)
 
 	clearButtonHighlight()
 
 
-	showTimedMessage(
-		"Keep growing your reputation to unlock bigger businesses.",
-		NORMAL_MESSAGE_TIME
-	)
+	local reputationRequired,
+		lifetimeRequired,
+		lemonadeLevelRequired =
+		getHotdogRequirements()
 
 
-	showTimedMessage(
-		"Quests, achievements, marketing, plot expansions, daily rewards, and licenses will help your empire grow.",
+	local currentReputation =
+		getReputationLevel(
+			plot
+		)
+
+
+	showTimedStep(
+		"HOW YOU PROGRESS",
+		`Customers build Reputation. You're Reputation {currentReputation} right now — higher Reputation unlocks bigger businesses.`,
 		LONG_MESSAGE_TIME
 	)
 
 
-	showTimedMessage(
-		"You're ready. Go from broke to billionaire!",
+	showTimedStep(
+		"YOUR NEXT GOAL",
+		`Unlock the Hotdog Stand! Reach Reputation {reputationRequired}, earn  total, and upgrade your Lemonade Stand to Level {lemonadeLevelRequired}.`,
+		LONG_MESSAGE_TIME
+	)
+
+
+	showTimedStep(
+		"BUILD YOUR EMPIRE!",
+		"Build → Earn → Upgrade → Unlock. Keep repeating that loop and turn your tiny stand into a business empire!",
 		NORMAL_MESSAGE_TIME
 	)
 
@@ -1946,6 +2085,7 @@ local function skipTutorial()
 			tutorialThread
 		)
 
+
 		tutorialThread =
 			nil
 	end
@@ -1986,14 +2126,15 @@ local function runTutorial()
 	-- 1. VERY SHORT INTRO
 	--==================================================
 
-	showTimedMessage(
-		"Welcome to Broke To Billionaire! Start small, build businesses, and grow your empire.",
-		LONG_MESSAGE_TIME
+	showTimedStep(
+		"WELCOME!",
+		"Start with nothing. Build businesses, serve customers, reinvest your money, and become a billionaire!",
+		NORMAL_MESSAGE_TIME
 	)
 
 
 	--==================================================
-	-- 2. SHOW PLOT
+	-- 2. SHOW PLAYER THEIR PLOT
 	--==================================================
 
 	showPlotCamera(
@@ -2002,16 +2143,22 @@ local function runTutorial()
 
 
 	--==================================================
-	-- 3. PLACE FIRST BUSINESS
+	-- 3. BUILD FIRST BUSINESS
 	--==================================================
 
-	setTutorialText(
-		"Let's start earning. Click Add."
+	setTutorialStep(
+		"BUILD YOUR FIRST BUSINESS",
+		"Click ADD to choose your first business."
 	)
 
 
 	waitForHighlightedButtonPress(
 		addButton
+	)
+
+
+	task.wait(
+		ACTION_RESULT_PAUSE
 	)
 
 
@@ -2021,15 +2168,11 @@ local function runTutorial()
 		)
 
 
-	task.wait(
-		ACTION_RESULT_PAUSE
-	)
-
-
 	if not lemonadeStand then
 
-		setTutorialText(
-			"Choose the Lemonade Stand. Your first one is FREE."
+		setTutorialStep(
+			"CHOOSE A BUSINESS",
+			"Pick the Lemonade Stand. Your first one is FREE!"
 		)
 
 
@@ -2052,8 +2195,9 @@ local function runTutorial()
 		)
 
 
-		setTutorialText(
-			"Pick a spot, rotate it if you want, then press Place."
+		setTutorialStep(
+			"PLACE YOUR STAND",
+			"Choose a spot on your plot, then press Place."
 		)
 
 
@@ -2069,25 +2213,37 @@ local function runTutorial()
 
 	else
 
-		showTimedMessage(
-			"We'll use the Lemonade Stand you already placed.",
+		showTimedStep(
+			"YOUR FIRST BUSINESS",
+			"You already have a Lemonade Stand, so we'll use it!",
 			SHORT_MESSAGE_TIME
 		)
 	end
+
+
+	task.wait(
+		MAJOR_RESULT_PAUSE
+	)
+
+
+	showTimedStep(
+		"NICE!",
+		"That's your first business. Customers will automatically visit it and pay you.",
+		NORMAL_MESSAGE_TIME
+	)
 
 
 	--==================================================
 	-- 4. FIRST CUSTOMER
 	--==================================================
 
-	showTimedMessage(
-		"Nice! Customers visit automatically and pay you when they're served.",
-		LONG_MESSAGE_TIME
-	)
+	local startingCash =
+		cash.Value
 
 
-	setTutorialText(
-		"Watch your first customer get served."
+	setTutorialStep(
+		"YOUR FIRST CUSTOMER",
+		"Watch your Lemonade Stand. A customer is coming!"
 	)
 
 
@@ -2101,25 +2257,269 @@ local function runTutorial()
 	)
 
 
-	showTimedMessage(
-		"First sale! Your businesses keep earning while you build and upgrade.",
+	local earnedCash =
+		math.max(
+			0,
+			cash.Value - startingCash
+		)
+
+
+	if earnedCash > 0 then
+
+		showTimedStep(
+			"YOU MADE MONEY!",
+			`Customer served! You earned +. Every customer your businesses serve earns you cash.`,
+			NORMAL_MESSAGE_TIME
+		)
+
+	else
+
+		showTimedStep(
+			"YOU MADE A SALE!",
+			"Customer served! Businesses automatically make money whenever they serve customers.",
+			NORMAL_MESSAGE_TIME
+		)
+	end
+
+
+	--==================================================
+	-- 5. TEACH CORE LOOP
+	--==================================================
+
+	showTimedStep(
+		"THE CORE LOOP",
+		"More customers = more money. Now let's reinvest that money to make each customer worth MORE.",
 		NORMAL_MESSAGE_TIME
 	)
 
 
 	--==================================================
-	-- 5. STOCK
+	-- 6. OPEN MANAGE MENU
 	--==================================================
 
-	showStockLocations()
+	setTutorialStep(
+		"UPGRADE YOUR BUSINESS",
+		"Walk to your Lemonade Stand and press Manage."
+	)
+
+
+	waitForManageMenu()
+
+
+	tweenFrameTo(
+		SIDE_POSITION
+	)
+
+
+	showTimedStep(
+		"UPGRADE YOUR BUSINESS",
+		"This menu makes your stand stronger. Let's increase how much money every sale earns.",
+		NORMAL_MESSAGE_TIME
+	)
 
 
 	--==================================================
-	-- 6. QUESTS + FIRST CLAIM
+	-- 7. BUY BETTER LEMONADE
 	--==================================================
 
-	setTutorialText(
-		"Quests give you extra cash for progressing. Open Quests."
+	local startingSaleValueLevel =
+		getSaleValueLevel(
+			lemonadeStand
+		)
+
+
+	local beforeUpgradeSaleValue =
+		getSaleValueForLevel(
+			startingSaleValueLevel
+		)
+
+
+	local firstUpgradeCost =
+		getBetterLemonadeNextCost(
+			lemonadeStand
+		)
+
+
+	if firstUpgradeCost > 0
+		and cash.Value
+			< firstUpgradeCost then
+
+		setTutorialStep(
+			"EARN FOR YOUR UPGRADE",
+			`Better Lemonade costs $. Keep serving customers — you need $${firstUpgradeCost - cash.Value} more!`
+		)
+
+
+		waitForCash(
+			firstUpgradeCost
+		)
+
+
+		task.wait(
+			ACTION_RESULT_PAUSE
+		)
+	end
+
+
+	local betterLemonadeButton =
+		waitForBetterLemonadeBuyButton(
+			5
+		)
+
+
+	if firstUpgradeCost > 0 then
+
+		setTutorialStep(
+			"BUY BETTER LEMONADE",
+			`Buy Better Lemonade for $. This permanently increases how much this stand earns per sale.`
+		)
+
+
+		if betterLemonadeButton then
+
+			highlightButton(
+				betterLemonadeButton
+			)
+		end
+
+
+		waitForSaleValueUpgrade(
+			lemonadeStand,
+			startingSaleValueLevel
+		)
+
+
+		clearButtonHighlight()
+
+	else
+
+		showTimedStep(
+			"ALREADY UPGRADED!",
+			"Your Better Lemonade upgrade is already purchased.",
+			SHORT_MESSAGE_TIME
+		)
+	end
+
+
+	task.wait(
+		MAJOR_RESULT_PAUSE
+	)
+
+
+	local upgradedSaleValueLevel =
+		getSaleValueLevel(
+			lemonadeStand
+		)
+
+
+	local afterUpgradeSaleValue =
+		getSaleValueForLevel(
+			upgradedSaleValueLevel
+		)
+
+
+	if afterUpgradeSaleValue
+			> beforeUpgradeSaleValue then
+
+		showTimedStep(
+			"UPGRADE COMPLETE!",
+			`Your Lemonade Stand went from $ → $ per normal sale!`,
+			NORMAL_MESSAGE_TIME
+		)
+
+	else
+
+		showTimedStep(
+			"UPGRADE COMPLETE!",
+			"Great! Reinvesting your money makes your businesses earn more.",
+			NORMAL_MESSAGE_TIME
+		)
+	end
+
+
+	--==================================================
+	-- 8. CLOSE MANAGE
+	--==================================================
+
+	setTutorialStep(
+		"SEE THE DIFFERENCE",
+		"Close the Manage menu. Let's watch your upgraded stand make another sale."
+	)
+
+
+	waitUntilHidden(
+		manageMain
+	)
+
+
+	tweenFrameTo(
+		NORMAL_POSITION
+	)
+
+
+	--==================================================
+	-- 9. SECOND CUSTOMER AFTER UPGRADE
+	--==================================================
+
+	local salesBeforeDemonstration =
+		getTotalSales(
+			lemonadeStand
+		)
+
+
+	local cashBeforeDemonstration =
+		cash.Value
+
+
+	setTutorialStep(
+		"SEE THE DIFFERENCE",
+		"Watch the next customer. Your upgraded Lemonade Stand now earns more per sale!"
+	)
+
+
+	waitForSaleAfter(
+		lemonadeStand,
+		salesBeforeDemonstration
+	)
+
+
+	task.wait(
+		MAJOR_RESULT_PAUSE
+	)
+
+
+	local demonstrationCash =
+		math.max(
+			0,
+			cash.Value - cashBeforeDemonstration
+		)
+
+
+	if demonstrationCash > 0 then
+
+		showTimedStep(
+			"THAT'S THE LOOP!",
+			`Another customer served: +$! Spend money on upgrades → earn faster → buy even better businesses.`,
+			NORMAL_MESSAGE_TIME
+		)
+
+	else
+
+		showTimedStep(
+			"THAT'S THE LOOP!",
+			"Build → earn money → upgrade → earn even more. That's the main loop of the game!",
+			NORMAL_MESSAGE_TIME
+		)
+	end
+
+
+	--==================================================
+	-- 10. QUESTS
+	--==================================================
+
+	setTutorialStep(
+		"WHAT SHOULD I DO NEXT?",
+		"If you're ever unsure what to do, Quests give you goals AND rewards. Open Quests."
 	)
 
 
@@ -2141,8 +2541,9 @@ local function runTutorial()
 
 	if firstSaleClaimButton then
 
-		setTutorialText(
-			"Your first quest is complete. Claim the reward!"
+		setTutorialStep(
+			"CLAIM YOUR REWARD",
+			"You already completed your first quest! Claim the reward."
 		)
 
 
@@ -2156,21 +2557,24 @@ local function runTutorial()
 		)
 
 
-		showTimedMessage(
-			"Perfect. New quests replace completed ones, so you'll always have goals.",
+		showTimedStep(
+			"QUEST COMPLETE!",
+			"Nice! Keep following Quests whenever you want a clear goal and extra rewards.",
 			NORMAL_MESSAGE_TIME
 		)
 
 	else
 
-		showTimedMessage(
-			"Quests track your sales, earnings, upgrades, and business growth.",
+		showTimedStep(
+			"FOLLOW YOUR QUESTS",
+			"Quests track your progress and always give you something useful to work toward.",
 			NORMAL_MESSAGE_TIME
 		)
 	end
 
 
-	setTutorialText(
+	setTutorialStep(
+		"BACK TO YOUR BUSINESS",
 		"Close Quests when you're ready."
 	)
 
@@ -2181,115 +2585,42 @@ local function runTutorial()
 
 
 	--==================================================
-	-- 7. MANAGE BUSINESS
+	-- 11. REPUTATION + NEXT BUSINESS
 	--==================================================
 
-	setTutorialText(
-		"Now walk to your Lemonade Stand and press Manage."
+	local reputationRequired,
+		lifetimeRequired,
+		lemonadeLevelRequired =
+		getHotdogRequirements()
+
+
+	local currentReputation =
+		getReputationLevel(
+			plot
+		)
+
+
+	showTimedStep(
+		"UNLOCK BIGGER BUSINESSES",
+		`Serving customers grows your Reputation. You're Reputation {currentReputation}; the Hotdog Stand needs Reputation {reputationRequired}.`,
+		LONG_MESSAGE_TIME
 	)
 
 
-	waitForManageMenu()
-
-
-	tweenFrameTo(
-		SIDE_POSITION
-	)
-
-
-	showTimedMessage(
-		"Here you can improve earnings, service speed, queue size, and the stand itself.",
+	showTimedStep(
+		"YOUR FIRST BIG GOAL",
+		`Keep serving customers, earn $ total, and upgrade your Lemonade Stand to Level {lemonadeLevelRequired} to unlock Hotdogs.`,
 		LONG_MESSAGE_TIME
 	)
 
 
 	--==================================================
-	-- 8. FIRST UPGRADE
+	-- 12. FINISH
 	--==================================================
 
-	local firstUpgradeCost =
-		getBetterLemonadeNextCost(
-			lemonadeStand
-		)
-
-
-	if firstUpgradeCost > 0
-		and cash.Value
-			< firstUpgradeCost then
-
-		setTutorialText(
-			`Better Lemonade costs ${firstUpgradeCost}. Let customers earn the cash you need.`
-		)
-
-
-		waitForCash(
-			firstUpgradeCost
-		)
-	end
-
-
-	if firstUpgradeCost > 0 then
-
-		setTutorialText(
-			`Buy Better Lemonade for ${firstUpgradeCost}. It increases every sale.`
-		)
-
-	else
-
-		setTutorialText(
-			"You've already upgraded Better Lemonade!"
-		)
-	end
-
-
-	waitForSaleValueUpgrade(
-		lemonadeStand
+	finishTutorial(
+		plot
 	)
-
-
-	task.wait(
-		MAJOR_RESULT_PAUSE
-	)
-
-
-	showTimedMessage(
-		"Great! Reinvesting your cash makes every business stronger.",
-		NORMAL_MESSAGE_TIME
-	)
-
-
-	setTutorialText(
-		"Close the Manage menu."
-	)
-
-
-	waitUntilHidden(
-		manageMain
-	)
-
-
-	tweenFrameTo(
-		NORMAL_POSITION
-	)
-
-
-	--==================================================
-	-- 9. SHORT GAME OVERVIEW
-	--==================================================
-
-	showTimedMessage(
-		"Serve customers to raise Reputation and unlock Hotdogs, Haircuts, Coffee, and future businesses.",
-		LONG_MESSAGE_TIME
-	)
-
-
-	showTimedMessage(
-		"Marketing brings more customers, and Plot Expansions give you more room to build.",
-		LONG_MESSAGE_TIME
-	)
-
-
-	finishTutorial()
 end
 
 

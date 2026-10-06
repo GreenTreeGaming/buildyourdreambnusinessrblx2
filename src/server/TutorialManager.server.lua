@@ -1,3 +1,6 @@
+local Players =
+	game:GetService("Players")
+
 local ReplicatedStorage =
 	game:GetService("ReplicatedStorage")
 
@@ -10,15 +13,6 @@ local DataService =
 	)
 
 
-local remotes =
-	ReplicatedStorage:WaitForChild(
-		"Remotes"
-	)
-
-local Players =
-	game:GetService("Players")
-
-
 local AnalyticsTracker =
 	require(
 		script.Parent
@@ -27,8 +21,27 @@ local AnalyticsTracker =
 	)
 
 
+local remotes =
+	ReplicatedStorage:WaitForChild(
+		"Remotes"
+	)
+
+
 --==================================================
--- REMOTES
+-- VALID CONTEXTUAL TUTORIALS
+--==================================================
+
+local VALID_CONTEXTUAL_TUTORIALS = {
+	Stock = true,
+	Marketing = true,
+	PlotExpansion = true,
+	Licenses = true,
+	Rebirth = true,
+}
+
+
+--==================================================
+-- REMOTE HELPERS
 --==================================================
 
 local function getOrCreateRemoteFunction(
@@ -44,7 +57,9 @@ local function getOrCreateRemoteFunction(
 	if existing then
 
 		assert(
-			existing:IsA("RemoteFunction"),
+			existing:IsA(
+				"RemoteFunction"
+			),
 			`Remotes.{name} must be a RemoteFunction.`
 		)
 
@@ -54,7 +69,9 @@ local function getOrCreateRemoteFunction(
 
 
 	local remote =
-		Instance.new("RemoteFunction")
+		Instance.new(
+			"RemoteFunction"
+		)
 
 
 	remote.Name =
@@ -81,7 +98,9 @@ local function getOrCreateRemoteEvent(
 	if existing then
 
 		assert(
-			existing:IsA("RemoteEvent"),
+			existing:IsA(
+				"RemoteEvent"
+			),
 			`Remotes.{name} must be a RemoteEvent.`
 		)
 
@@ -91,7 +110,9 @@ local function getOrCreateRemoteEvent(
 
 
 	local remote =
-		Instance.new("RemoteEvent")
+		Instance.new(
+			"RemoteEvent"
+		)
 
 
 	remote.Name =
@@ -105,6 +126,10 @@ local function getOrCreateRemoteEvent(
 end
 
 
+--==================================================
+-- MAIN TUTORIAL REMOTES
+--==================================================
+
 local getTutorialStateRemote =
 	getOrCreateRemoteFunction(
 		"GetTutorialState"
@@ -114,6 +139,22 @@ local getTutorialStateRemote =
 local completeTutorialRemote =
 	getOrCreateRemoteEvent(
 		"CompleteTutorial"
+	)
+
+
+--==================================================
+-- CONTEXTUAL TUTORIAL REMOTES
+--==================================================
+
+local getContextualTutorialStateRemote =
+	getOrCreateRemoteFunction(
+		"GetContextualTutorialState"
+	)
+
+
+local completeContextualTutorialRemote =
+	getOrCreateRemoteFunction(
+		"CompleteContextualTutorial"
 	)
 
 
@@ -153,7 +194,7 @@ end
 
 
 --==================================================
--- GET STATE
+-- MAIN TUTORIAL STATE
 --==================================================
 
 getTutorialStateRemote.OnServerInvoke =
@@ -168,6 +209,7 @@ getTutorialStateRemote.OnServerInvoke =
 
 
 		if not profile then
+
 			return {
 				Loaded = false,
 				Completed = false,
@@ -195,7 +237,7 @@ getTutorialStateRemote.OnServerInvoke =
 
 
 --==================================================
--- COMPLETE TUTORIAL
+-- MAIN TUTORIAL COMPLETION
 --==================================================
 
 local completionLocks: {
@@ -237,10 +279,23 @@ completeTutorialRemote.OnServerEvent:Connect(
 		end
 
 
-		-- Already completed.
+		--==================================================
+		-- ALREADY COMPLETED
+		--==================================================
+
 		if DataService.GetTutorialCompleted(
 			player
 		) then
+
+			--
+			-- Still make sure the replicated attribute
+			-- correctly reflects the saved state.
+			--
+			player:SetAttribute(
+				"TutorialCompleted",
+				true
+			)
+
 
 			completionLocks[
 				player
@@ -249,6 +304,10 @@ completeTutorialRemote.OnServerEvent:Connect(
 			return
 		end
 
+
+		--==================================================
+		-- SAVE COMPLETION
+		--==================================================
 
 		local updated =
 			DataService.SetTutorialCompleted(
@@ -266,6 +325,20 @@ completeTutorialRemote.OnServerEvent:Connect(
 			return
 		end
 
+
+		--
+		-- IMPORTANT:
+		--
+		-- Contextual tutorials listen to this.
+		-- Set it immediately instead of waiting until
+		-- the player rejoins.
+		--
+		player:SetAttribute(
+			"TutorialCompleted",
+			true
+		)
+
+
 		AnalyticsTracker.LogOnboarding(
 			player,
 			AnalyticsTracker.Onboarding
@@ -274,8 +347,6 @@ completeTutorialRemote.OnServerEvent:Connect(
 		)
 
 
-		-- Save immediately instead of relying solely
-		-- on the regular autosave.
 		task.spawn(
 			function()
 
@@ -288,6 +359,148 @@ completeTutorialRemote.OnServerEvent:Connect(
 
 
 		completionLocks[
+			player
+		] = nil
+	end
+)
+
+
+--==================================================
+-- GET CONTEXTUAL TUTORIAL STATE
+--==================================================
+
+getContextualTutorialStateRemote.OnServerInvoke =
+	function(
+		player: Player
+	)
+
+		local profile =
+			waitForProfile(
+				player
+			)
+
+
+		if not profile then
+
+			return {
+				Success = false,
+				Completed = {},
+			}
+		end
+
+
+		return {
+			Success = true,
+
+			Completed =
+				DataService.GetContextualTutorials(
+					player
+				),
+		}
+	end
+
+
+--==================================================
+-- COMPLETE CONTEXTUAL TUTORIAL
+--==================================================
+
+local contextualCompletionLocks: {
+	[Player]: boolean
+} = {}
+
+
+completeContextualTutorialRemote.OnServerInvoke =
+	function(
+		player: Player,
+		tutorialId: string
+	)
+
+		if type(tutorialId)
+			~= "string"
+			or VALID_CONTEXTUAL_TUTORIALS[
+				tutorialId
+			] ~= true then
+
+			return false
+		end
+
+
+		if contextualCompletionLocks[
+			player
+		] then
+
+			return false
+		end
+
+
+		contextualCompletionLocks[
+			player
+		] = true
+
+
+		local profile =
+			waitForProfile(
+				player
+			)
+
+
+		if not profile then
+
+			contextualCompletionLocks[
+				player
+			] = nil
+
+			return false
+		end
+
+
+		local success =
+			DataService.MarkContextualTutorialCompleted(
+				player,
+				tutorialId
+			)
+
+
+		if success then
+
+			task.spawn(
+				function()
+
+					if player.Parent then
+
+						DataService.SavePlayer(
+							player
+						)
+					end
+				end
+			)
+		end
+
+
+		contextualCompletionLocks[
+			player
+		] = nil
+
+
+		return success
+	end
+
+
+--==================================================
+-- CLEANUP
+--==================================================
+
+Players.PlayerRemoving:Connect(
+	function(
+		player: Player
+	)
+
+		completionLocks[
+			player
+		] = nil
+
+
+		contextualCompletionLocks[
 			player
 		] = nil
 	end
