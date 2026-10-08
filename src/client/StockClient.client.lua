@@ -591,6 +591,10 @@ local function collectBusinessStates():
 		[string]: BusinessStockState
 	} = {}
 
+	local highestLevels: {
+		[string]: number
+	} = {}
+
 
 	for _, child in
 		placedBusinesses:GetChildren() do
@@ -620,6 +624,25 @@ local function collectBusinessStates():
 		if not businessType then
 			continue
 		end
+
+		local standLevel =
+			child:GetAttribute("Level")
+		
+		
+		if typeof(standLevel) ~= "number"
+			or standLevel ~= standLevel
+			or standLevel == math.huge
+			or standLevel == -math.huge then
+		
+			standLevel = 1
+		end
+		
+		
+		highestLevels[businessType] =
+			math.max(
+				highestLevels[businessType] or 1,
+				math.floor(standLevel)
+			)
 
 
 		local purchaseDefinition =
@@ -780,15 +803,22 @@ local function collectBusinessStates():
 
 
 	for _, state in totals do
-
+	
 		state.Shortage =
 			math.max(
 				0,
 				state.MaximumStock
 					- state.CurrentStock
 			)
-
-
+	
+	
+		state.UnitPrice =
+			StockPurchaseConfig.GetUnitPrice(
+				state.BusinessType,
+				highestLevels[state.BusinessType] or 1
+			)
+	
+	
 		table.insert(
 			states,
 			state

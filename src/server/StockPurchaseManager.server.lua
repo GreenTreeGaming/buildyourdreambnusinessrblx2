@@ -936,35 +936,32 @@ local function purchaseStock(
 	end
 
 
-	local unitPrice =
-		definition.UnitPrice
-
-
-	if typeof(unitPrice)
-		~= "number"
-		or unitPrice < 0 then
-
-		return createResult(
-			false,
-			"The stock price is not configured correctly."
-		)
-	end
-
-
-	unitPrice =
-		math.max(
-			0,
-			math.floor(
-				unitPrice
-			)
-		)
-
-
 	local stands =
 		getBusinessesOfType(
 			player,
 			businessType
 		)
+
+	local highestLevel =
+		StockPurchaseConfig.GetHighestStandLevel(
+			stands
+		)
+	
+	
+	local unitPrice =
+		StockPurchaseConfig.GetUnitPrice(
+			businessType,
+			highestLevel
+		)
+	
+	
+	if unitPrice <= 0 then
+	
+		return createResult(
+			false,
+			"The stock price is not configured correctly."
+		)
+	end
 
 
 	--
@@ -1155,33 +1152,28 @@ local function restockAll(
 			continue
 		end
 
-
-		local unitPrice =
-			definition.UnitPrice
-
-
-		if typeof(unitPrice)
-			~= "number"
-			or unitPrice < 0 then
-
-			continue
-		end
-
-
-		unitPrice =
-			math.max(
-				0,
-				math.floor(
-					unitPrice
-				)
-			)
-
-
 		local stands =
 			getBusinessesOfType(
 				player,
 				businessType
 			)
+
+		local highestLevel =
+			StockPurchaseConfig.GetHighestStandLevel(
+				stands
+			)
+		
+		
+		local unitPrice =
+			StockPurchaseConfig.GetUnitPrice(
+				businessType,
+				highestLevel
+			)
+		
+		
+		if unitPrice <= 0 then
+			continue
+		end
 
 
 		if #stands == 0 then
