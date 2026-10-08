@@ -11,7 +11,6 @@ local TweenService =
 local player =
 	Players.LocalPlayer
 
-
 local playerGui =
 	player:WaitForChild(
 		"PlayerGui"
@@ -39,44 +38,74 @@ local tutorialFrame =
 --==================================================
 
 --
--- 0 = solid black
+-- 0 = completely black
 -- 1 = invisible
 --
--- 0.20 means the world is roughly 80% dark.
---
 local DIM_TRANSPARENCY =
-	0.20
+	0.22
 
 
 local FADE_TIME =
-	0.25
+	0.22
 
 
 local SPOTLIGHT_MOVE_TIME =
-	0.28
+	0.25
 
 
---
--- Extra room around the highlighted button.
---
 local SPOTLIGHT_PADDING_X =
-	12
-
-
-local SPOTLIGHT_PADDING_Y =
 	10
 
 
+local SPOTLIGHT_PADDING_Y =
+	8
+
+
 --
--- The overlay gets an extremely high DisplayOrder.
--- The Tutorial GUI sits one level ABOVE it.
+-- Slight overlap prevents 1px seams between
+-- the four darkness panels.
 --
+local PANEL_OVERLAP =
+	2
+
+
 local OVERLAY_DISPLAY_ORDER =
 	10000
 
 
 local TUTORIAL_DISPLAY_ORDER =
 	10001
+
+
+--==================================================
+-- FOCUS MODES
+--==================================================
+--
+-- "Dim"
+--     Dark background.
+--     If a tutorial highlight exists, create spotlight.
+--
+-- "Clear"
+--     No darkness at all.
+--     Used for 3D world interaction.
+--
+--==================================================
+
+local FOCUS_MODE_ATTRIBUTE =
+	"TutorialFocusMode"
+
+
+if typeof(
+	tutorialGui:GetAttribute(
+		FOCUS_MODE_ATTRIBUTE
+	)
+) ~= "string" then
+
+	tutorialGui:SetAttribute(
+		FOCUS_MODE_ATTRIBUTE,
+		"Dim"
+	)
+end
 
 
 --==================================================
@@ -90,7 +119,7 @@ local VALID_HIGHLIGHT_NAMES = {
 
 
 --==================================================
--- CREATE OVERLAY GUI
+-- REMOVE OLD OVERLAY
 --==================================================
 
 local oldOverlay =
@@ -104,6 +133,10 @@ if oldOverlay then
 end
 
 
+--==================================================
+-- SCREEN GUI
+--==================================================
+
 local overlayGui =
 	Instance.new(
 		"ScreenGui"
@@ -113,34 +146,27 @@ local overlayGui =
 overlayGui.Name =
 	"TutorialFocusOverlay"
 
-
 overlayGui.ResetOnSpawn =
 	false
-
 
 overlayGui.IgnoreGuiInset =
 	tutorialGui.IgnoreGuiInset
 
-
 overlayGui.DisplayOrder =
 	OVERLAY_DISPLAY_ORDER
-
 
 overlayGui.ZIndexBehavior =
 	Enum.ZIndexBehavior.Global
 
-
 overlayGui.Enabled =
 	true
-
 
 overlayGui.Parent =
 	playerGui
 
 
 --
--- Guarantee the tutorial text itself is always
--- above the darkness.
+-- Tutorial text ALWAYS stays above darkness.
 --
 tutorialGui.DisplayOrder =
 	math.max(
@@ -162,21 +188,11 @@ local root =
 root.Name =
 	"Root"
 
-
 root.BackgroundTransparency =
 	1
 
-
 root.BorderSizePixel =
 	0
-
-
-root.Size =
-	UDim2.fromScale(
-		1,
-		1
-	)
-
 
 root.Position =
 	UDim2.fromScale(
@@ -184,28 +200,39 @@ root.Position =
 		0
 	)
 
+root.Size =
+	UDim2.fromScale(
+		1,
+		1
+	)
 
 root.Visible =
 	false
 
 
+--
+-- VERY IMPORTANT:
+--
+-- The focus overlay must NEVER eat 3D clicks.
+--
 root.Active =
 	false
 
+root.Selectable =
+	false
 
 root.ZIndex =
 	1
-
 
 root.Parent =
 	overlayGui
 
 
 --==================================================
--- DIM PANELS
+-- PANELS
 --==================================================
 
-local function createDimPanel(
+local function createPanel(
 	name: string
 ): Frame
 
@@ -218,7 +245,6 @@ local function createDimPanel(
 	frame.Name =
 		name
 
-
 	frame.BackgroundColor3 =
 		Color3.new(
 			0,
@@ -226,30 +252,29 @@ local function createDimPanel(
 			0
 		)
 
-
 	frame.BackgroundTransparency =
 		1
-
 
 	frame.BorderSizePixel =
 		0
 
 
 	--
-	-- Important:
-	-- this blocks input OUTSIDE the spotlight.
+	-- CRITICAL:
+	--
+	-- Do NOT block mouse/touch input.
+	--
+	-- This fixes placement and all future
+	-- world-interaction tutorial steps.
 	--
 	frame.Active =
-		true
-
+		false
 
 	frame.Selectable =
 		false
 
-
 	frame.ZIndex =
 		1
-
 
 	frame.Parent =
 		root
@@ -260,40 +285,48 @@ end
 
 
 local topPanel =
-	createDimPanel(
+	createPanel(
 		"Top"
 	)
 
 
 local bottomPanel =
-	createDimPanel(
+	createPanel(
 		"Bottom"
 	)
 
 
 local leftPanel =
-	createDimPanel(
+	createPanel(
 		"Left"
 	)
 
 
 local rightPanel =
-	createDimPanel(
+	createPanel(
 		"Right"
 	)
+
+
+local panels = {
+	topPanel,
+	bottomPanel,
+	leftPanel,
+	rightPanel,
+}
 
 
 --==================================================
 -- STATE
 --==================================================
 
+local currentMode =
+	"Hidden"
+
+
 local currentTarget:
 	GuiObject? =
 	nil
-
-
-local currentMode =
-	"Hidden"
 
 
 local activeTweens: {
@@ -306,6 +339,10 @@ local transitionVersion =
 
 
 local followingSpotlight =
+	false
+
+
+local refreshScheduled =
 	false
 
 
@@ -329,7 +366,7 @@ local function cancelTweens()
 end
 
 
-local function tweenObject(
+local function createTween(
 	object: Instance,
 	info: TweenInfo,
 	properties: {
@@ -359,70 +396,13 @@ end
 
 
 --==================================================
--- TRANSPARENCY
+-- FULL DIM GEOMETRY
 --==================================================
 
-local function setPanelTransparency(
-	transparency: number,
-	animated: boolean
-)
-
-	local panels = {
-		topPanel,
-		bottomPanel,
-		leftPanel,
-		rightPanel,
-	}
-
-
-	if not animated then
-
-		for _, panel in
-			panels
-		do
-
-			panel.BackgroundTransparency =
-				transparency
-		end
-
-
-		return
-	end
-
-
-	local tweenInfo =
-		TweenInfo.new(
-			FADE_TIME,
-			Enum.EasingStyle.Quad,
-			Enum.EasingDirection.Out
-		)
-
-
-	for _, panel in
-		panels
-	do
-
-		tweenObject(
-			panel,
-			tweenInfo,
-			{
-				BackgroundTransparency =
-					transparency,
-			}
-		)
-	end
-end
-
-
---==================================================
--- GEOMETRY
---==================================================
-
-local function setFullDimGeometry()
+local function applyFullDimGeometry()
 
 	local width =
 		root.AbsoluteSize.X
-
 
 	local height =
 		root.AbsoluteSize.Y
@@ -434,7 +414,6 @@ local function setFullDimGeometry()
 			0
 		)
 
-
 	topPanel.Size =
 		UDim2.fromOffset(
 			width,
@@ -447,7 +426,6 @@ local function setFullDimGeometry()
 			0,
 			height
 		)
-
 
 	bottomPanel.Size =
 		UDim2.fromOffset(
@@ -462,7 +440,6 @@ local function setFullDimGeometry()
 			0
 		)
 
-
 	leftPanel.Size =
 		UDim2.fromOffset(
 			0,
@@ -476,262 +453,25 @@ local function setFullDimGeometry()
 			0
 		)
 
-
 	rightPanel.Size =
 		UDim2.fromOffset(
 			0,
 			0
 		)
-end
-
-
-local function getSpotlightBounds(
-	target: GuiObject
-): (
-	number,
-	number,
-	number,
-	number
-)
-
-	local rootPosition =
-		root.AbsolutePosition
-
-
-	local rootSize =
-		root.AbsoluteSize
-
-
-	local targetPosition =
-		target.AbsolutePosition
-
-
-	local targetSize =
-		target.AbsoluteSize
-
-
-	local left =
-		targetPosition.X
-		- rootPosition.X
-		- SPOTLIGHT_PADDING_X
-
-
-	local top =
-		targetPosition.Y
-		- rootPosition.Y
-		- SPOTLIGHT_PADDING_Y
-
-
-	local right =
-		targetPosition.X
-		- rootPosition.X
-		+ targetSize.X
-		+ SPOTLIGHT_PADDING_X
-
-
-	local bottom =
-		targetPosition.Y
-		- rootPosition.Y
-		+ targetSize.Y
-		+ SPOTLIGHT_PADDING_Y
-
-
-	left =
-		math.clamp(
-			left,
-			0,
-			rootSize.X
-		)
-
-
-	right =
-		math.clamp(
-			right,
-			0,
-			rootSize.X
-		)
-
-
-	top =
-		math.clamp(
-			top,
-			0,
-			rootSize.Y
-		)
-
-
-	bottom =
-		math.clamp(
-			bottom,
-			0,
-			rootSize.Y
-		)
-
-
-	return left,
-		top,
-		right,
-		bottom
-end
-
-
-local function getSpotlightGeometry(
-	target: GuiObject
-)
-
-	local rootSize =
-		root.AbsoluteSize
-
-
-	local width =
-		rootSize.X
-
-
-	local height =
-		rootSize.Y
-
-
-	local left,
-		top,
-		right,
-		bottom =
-		getSpotlightBounds(
-			target
-		)
-
-
-	local holeWidth =
-		math.max(
-			0,
-			right - left
-		)
-
-
-	local holeHeight =
-		math.max(
-			0,
-			bottom - top
-		)
-
-
-	return {
-		TopPosition =
-			UDim2.fromOffset(
-				0,
-				0
-			),
-
-		TopSize =
-			UDim2.fromOffset(
-				width,
-				top
-			),
-
-
-		BottomPosition =
-			UDim2.fromOffset(
-				0,
-				bottom
-			),
-
-		BottomSize =
-			UDim2.fromOffset(
-				width,
-				math.max(
-					0,
-					height - bottom
-				)
-			),
-
-
-		LeftPosition =
-			UDim2.fromOffset(
-				0,
-				top
-			),
-
-		LeftSize =
-			UDim2.fromOffset(
-				left,
-				holeHeight
-			),
-
-
-		RightPosition =
-			UDim2.fromOffset(
-				right,
-				top
-			),
-
-		RightSize =
-			UDim2.fromOffset(
-				math.max(
-					0,
-					width - right
-				),
-				holeHeight
-			),
-	}
-end
-
-
-local function applySpotlightGeometry(
-	target: GuiObject
-)
-
-	local geometry =
-		getSpotlightGeometry(
-			target
-		)
-
-
-	topPanel.Position =
-		geometry.TopPosition
-
-
-	topPanel.Size =
-		geometry.TopSize
-
-
-	bottomPanel.Position =
-		geometry.BottomPosition
-
-
-	bottomPanel.Size =
-		geometry.BottomSize
-
-
-	leftPanel.Position =
-		geometry.LeftPosition
-
-
-	leftPanel.Size =
-		geometry.LeftSize
-
-
-	rightPanel.Position =
-		geometry.RightPosition
-
-
-	rightPanel.Size =
-		geometry.RightSize
 end
 
 
 --==================================================
--- TARGET VALIDITY
+-- TARGET VISIBILITY
 --==================================================
 
 local function isTargetUsable(
 	target: GuiObject?
 ): boolean
 
-	if not target then
-		return false
-	end
+	if not target
+		or not target.Parent then
 
-
-	if not target.Parent then
 		return false
 	end
 
@@ -756,9 +496,6 @@ local function isTargetUsable(
 	end
 
 
-	--
-	-- Make sure all GuiObject ancestors are visible.
-	--
 	local ancestor =
 		target.Parent
 
@@ -794,12 +531,382 @@ end
 
 
 --==================================================
+-- VISIBLE RECT
+--==================================================
+--
+-- This intersects the target with clipping parents.
+--
+-- It fixes weird giant spotlight holes when a button
+-- lives in a ScrollingFrame or clipped menu.
+--
+--==================================================
+
+local function getVisibleRect(
+	target: GuiObject
+): (
+	number,
+	number,
+	number,
+	number
+)
+
+	local rootPosition =
+		root.AbsolutePosition
+
+	local rootSize =
+		root.AbsoluteSize
+
+
+	local left =
+		target.AbsolutePosition.X
+
+	local top =
+		target.AbsolutePosition.Y
+
+	local right =
+		left
+		+ target.AbsoluteSize.X
+
+	local bottom =
+		top
+		+ target.AbsoluteSize.Y
+
+
+	local ancestor =
+		target.Parent
+
+
+	while ancestor
+		and ancestor ~= playerGui do
+
+		if ancestor:IsA(
+			"GuiObject"
+		)
+			and ancestor.ClipsDescendants then
+
+			local ancestorLeft =
+				ancestor.AbsolutePosition.X
+
+			local ancestorTop =
+				ancestor.AbsolutePosition.Y
+
+			local ancestorRight =
+				ancestorLeft
+				+ ancestor.AbsoluteSize.X
+
+			local ancestorBottom =
+				ancestorTop
+				+ ancestor.AbsoluteSize.Y
+
+
+			left =
+				math.max(
+					left,
+					ancestorLeft
+				)
+
+			top =
+				math.max(
+					top,
+					ancestorTop
+				)
+
+			right =
+				math.min(
+					right,
+					ancestorRight
+				)
+
+			bottom =
+				math.min(
+					bottom,
+					ancestorBottom
+				)
+		end
+
+
+		ancestor =
+			ancestor.Parent
+	end
+
+
+	--
+	-- Convert absolute screen position into
+	-- overlay-root coordinates.
+	--
+	left -=
+		rootPosition.X
+
+	right -=
+		rootPosition.X
+
+	top -=
+		rootPosition.Y
+
+	bottom -=
+		rootPosition.Y
+
+
+	left -=
+		SPOTLIGHT_PADDING_X
+
+	right +=
+		SPOTLIGHT_PADDING_X
+
+	top -=
+		SPOTLIGHT_PADDING_Y
+
+	bottom +=
+		SPOTLIGHT_PADDING_Y
+
+
+	left =
+		math.clamp(
+			left,
+			0,
+			rootSize.X
+		)
+
+	right =
+		math.clamp(
+			right,
+			0,
+			rootSize.X
+		)
+
+	top =
+		math.clamp(
+			top,
+			0,
+			rootSize.Y
+		)
+
+	bottom =
+		math.clamp(
+			bottom,
+			0,
+			rootSize.Y
+		)
+
+
+	return left,
+		top,
+		right,
+		bottom
+end
+
+
+--==================================================
+-- SPOTLIGHT GEOMETRY
+--==================================================
+
+local function getSpotlightGeometry(
+	target: GuiObject
+)
+
+	local screenWidth =
+		root.AbsoluteSize.X
+
+	local screenHeight =
+		root.AbsoluteSize.Y
+
+
+	local left,
+		top,
+		right,
+		bottom =
+		getVisibleRect(
+			target
+		)
+
+
+	local holeHeight =
+		math.max(
+			0,
+			bottom - top
+		)
+
+
+	return {
+		TopPosition =
+			UDim2.fromOffset(
+				0,
+				0
+			),
+
+		TopSize =
+			UDim2.fromOffset(
+				screenWidth,
+				math.max(
+					0,
+					top + PANEL_OVERLAP
+				)
+			),
+
+
+		BottomPosition =
+			UDim2.fromOffset(
+				0,
+				math.max(
+					0,
+					bottom - PANEL_OVERLAP
+				)
+			),
+
+		BottomSize =
+			UDim2.fromOffset(
+				screenWidth,
+				math.max(
+					0,
+					screenHeight
+						- bottom
+						+ PANEL_OVERLAP
+				)
+			),
+
+
+		LeftPosition =
+			UDim2.fromOffset(
+				0,
+				math.max(
+					0,
+					top - PANEL_OVERLAP
+				)
+			),
+
+		LeftSize =
+			UDim2.fromOffset(
+				math.max(
+					0,
+					left + PANEL_OVERLAP
+				),
+
+				holeHeight
+					+ PANEL_OVERLAP * 2
+			),
+
+
+		RightPosition =
+			UDim2.fromOffset(
+				math.max(
+					0,
+					right - PANEL_OVERLAP
+				),
+
+				math.max(
+					0,
+					top - PANEL_OVERLAP
+				)
+			),
+
+		RightSize =
+			UDim2.fromOffset(
+				math.max(
+					0,
+					screenWidth
+						- right
+						+ PANEL_OVERLAP
+				),
+
+				holeHeight
+					+ PANEL_OVERLAP * 2
+			),
+	}
+end
+
+
+local function applySpotlightGeometry(
+	target: GuiObject
+)
+
+	local geometry =
+		getSpotlightGeometry(
+			target
+		)
+
+
+	topPanel.Position =
+		geometry.TopPosition
+
+	topPanel.Size =
+		geometry.TopSize
+
+
+	bottomPanel.Position =
+		geometry.BottomPosition
+
+	bottomPanel.Size =
+		geometry.BottomSize
+
+
+	leftPanel.Position =
+		geometry.LeftPosition
+
+	leftPanel.Size =
+		geometry.LeftSize
+
+
+	rightPanel.Position =
+		geometry.RightPosition
+
+	rightPanel.Size =
+		geometry.RightSize
+end
+
+
+--==================================================
+-- FIND HIGHLIGHT
+--==================================================
+
+local function findHighlightTarget():
+	GuiObject?
+
+	for _, descendant in
+		playerGui:GetDescendants()
+	do
+
+		if VALID_HIGHLIGHT_NAMES[
+			descendant.Name
+		] ~= true then
+
+			continue
+		end
+
+
+		if not descendant:IsA(
+			"GuiObject"
+		) then
+
+			continue
+		end
+
+
+		local parent =
+			descendant.Parent
+
+
+		if parent
+			and parent:IsA(
+				"GuiObject"
+			)
+			and isTargetUsable(
+				parent
+			) then
+
+			return parent
+		end
+	end
+
+
+	return nil
+end
+
+
+--==================================================
 -- FULL DIM
 --==================================================
 
-local function showFullDim(
-	animated: boolean
-)
+local function showFullDim()
 
 	if currentMode
 		== "FullDim" then
@@ -831,119 +938,101 @@ local function showFullDim(
 		true
 
 
-	if animated then
+	local width =
+		root.AbsoluteSize.X
 
-		--
-		-- If we were hidden, start transparent.
-		--
-		if topPanel.BackgroundTransparency
-			>= 0.99 then
-
-			setFullDimGeometry()
-		end
+	local height =
+		root.AbsoluteSize.Y
 
 
-		local tweenInfo =
-			TweenInfo.new(
-				SPOTLIGHT_MOVE_TIME,
-				Enum.EasingStyle.Quint,
-				Enum.EasingDirection.Out
-			)
-
-
-		local width =
-			root.AbsoluteSize.X
-
-
-		local height =
-			root.AbsoluteSize.Y
-
-
-		tweenObject(
-			topPanel,
-			tweenInfo,
-			{
-				Position =
-					UDim2.fromOffset(
-						0,
-						0
-					),
-
-				Size =
-					UDim2.fromOffset(
-						width,
-						height
-					),
-			}
+	local info =
+		TweenInfo.new(
+			SPOTLIGHT_MOVE_TIME,
+			Enum.EasingStyle.Quint,
+			Enum.EasingDirection.Out
 		)
 
 
-		tweenObject(
-			bottomPanel,
-			tweenInfo,
-			{
-				Position =
-					UDim2.fromOffset(
-						0,
-						height
-					),
+	createTween(
+		topPanel,
+		info,
+		{
+			Position =
+				UDim2.fromOffset(
+					0,
+					0
+				),
 
-				Size =
-					UDim2.fromOffset(
-						width,
-						0
-					),
-			}
-		)
+			Size =
+				UDim2.fromOffset(
+					width,
+					height
+				),
 
-
-		tweenObject(
-			leftPanel,
-			tweenInfo,
-			{
-				Size =
-					UDim2.fromOffset(
-						0,
-						0
-					),
-			}
-		)
+			BackgroundTransparency =
+				DIM_TRANSPARENCY,
+		}
+	)
 
 
-		tweenObject(
-			rightPanel,
-			tweenInfo,
-			{
-				Position =
-					UDim2.fromOffset(
-						width,
-						0
-					),
+	createTween(
+		bottomPanel,
+		info,
+		{
+			Position =
+				UDim2.fromOffset(
+					0,
+					height
+				),
 
-				Size =
-					UDim2.fromOffset(
-						0,
-						0
-					),
-			}
-		)
+			Size =
+				UDim2.fromOffset(
+					width,
+					0
+				),
 
-
-		setPanelTransparency(
-			DIM_TRANSPARENCY,
-			true
-		)
-
-	else
-
-		setFullDimGeometry()
+			BackgroundTransparency =
+				DIM_TRANSPARENCY,
+		}
+	)
 
 
-		setPanelTransparency(
-			DIM_TRANSPARENCY,
-			false
-		)
-	end
+	createTween(
+		leftPanel,
+		info,
+		{
+			Size =
+				UDim2.fromOffset(
+					0,
+					0
+				),
+
+			BackgroundTransparency =
+				DIM_TRANSPARENCY,
+		}
+	)
+
+
+	createTween(
+		rightPanel,
+		info,
+		{
+			Position =
+				UDim2.fromOffset(
+					width,
+					0
+				),
+
+			Size =
+				UDim2.fromOffset(
+					0,
+					0
+				),
+
+			BackgroundTransparency =
+				DIM_TRANSPARENCY,
+		}
+	)
 end
 
 
@@ -959,9 +1048,7 @@ local function showSpotlight(
 		target
 	) then
 
-		showFullDim(
-			true
-		)
+		showFullDim()
 
 		return
 	end
@@ -1003,31 +1090,13 @@ local function showSpotlight(
 		true
 
 
-	--
-	-- If we're appearing from completely hidden,
-	-- begin as one dark full-screen layer and then
-	-- open the spotlight.
-	--
-	if topPanel.BackgroundTransparency
-		>= 0.99 then
-
-		setFullDimGeometry()
-
-
-		setPanelTransparency(
-			DIM_TRANSPARENCY,
-			false
-		)
-	end
-
-
 	local geometry =
 		getSpotlightGeometry(
 			target
 		)
 
 
-	local tweenInfo =
+	local info =
 		TweenInfo.new(
 			SPOTLIGHT_MOVE_TIME,
 			Enum.EasingStyle.Quint,
@@ -1035,10 +1104,10 @@ local function showSpotlight(
 		)
 
 
-	local tweens = {
-		tweenObject(
+	local tween =
+		createTween(
 			topPanel,
-			tweenInfo,
+			info,
 			{
 				Position =
 					geometry.TopPosition,
@@ -1049,69 +1118,69 @@ local function showSpotlight(
 				BackgroundTransparency =
 					DIM_TRANSPARENCY,
 			}
-		),
+		)
 
-		tweenObject(
-			bottomPanel,
-			tweenInfo,
-			{
-				Position =
-					geometry.BottomPosition,
 
-				Size =
-					geometry.BottomSize,
+	createTween(
+		bottomPanel,
+		info,
+		{
+			Position =
+				geometry.BottomPosition,
 
-				BackgroundTransparency =
-					DIM_TRANSPARENCY,
-			}
-		),
+			Size =
+				geometry.BottomSize,
 
-		tweenObject(
-			leftPanel,
-			tweenInfo,
-			{
-				Position =
-					geometry.LeftPosition,
+			BackgroundTransparency =
+				DIM_TRANSPARENCY,
+		}
+	)
 
-				Size =
-					geometry.LeftSize,
 
-				BackgroundTransparency =
-					DIM_TRANSPARENCY,
-			}
-		),
+	createTween(
+		leftPanel,
+		info,
+		{
+			Position =
+				geometry.LeftPosition,
 
-		tweenObject(
-			rightPanel,
-			tweenInfo,
-			{
-				Position =
-					geometry.RightPosition,
+			Size =
+				geometry.LeftSize,
 
-				Size =
-					geometry.RightSize,
+			BackgroundTransparency =
+				DIM_TRANSPARENCY,
+		}
+	)
 
-				BackgroundTransparency =
-					DIM_TRANSPARENCY,
-			}
-		),
-	}
+
+	createTween(
+		rightPanel,
+		info,
+		{
+			Position =
+				geometry.RightPosition,
+
+			Size =
+				geometry.RightSize,
+
+			BackgroundTransparency =
+				DIM_TRANSPARENCY,
+		}
+	)
 
 
 	task.spawn(
 		function()
 
-			tweens[1]
-				.Completed
-				:Wait()
+			tween.Completed:Wait()
 
 
 			if transitionVersion
 					== thisVersion
-				and currentTarget
-					== target
 				and currentMode
-					== "Spotlight" then
+					== "Spotlight"
+				and currentTarget
+					== target then
 
 				followingSpotlight =
 					true
@@ -1125,9 +1194,7 @@ end
 -- HIDE
 --==================================================
 
-local function hideOverlay(
-	animated: boolean
-)
+local function hideOverlay()
 
 	if currentMode
 		== "Hidden" then
@@ -1159,23 +1226,7 @@ local function hideOverlay(
 	cancelTweens()
 
 
-	if not animated then
-
-		setPanelTransparency(
-			1,
-			false
-		)
-
-
-		root.Visible =
-			false
-
-
-		return
-	end
-
-
-	local tweenInfo =
+	local info =
 		TweenInfo.new(
 			FADE_TIME,
 			Enum.EasingStyle.Quad,
@@ -1183,17 +1234,13 @@ local function hideOverlay(
 		)
 
 
-	for _, panel in {
-		topPanel,
-		bottomPanel,
-		leftPanel,
-		rightPanel,
-	}
+	for _, panel in
+		panels
 	do
 
-		tweenObject(
+		createTween(
 			panel,
-			tweenInfo,
+			info,
 			{
 				BackgroundTransparency =
 					1,
@@ -1219,83 +1266,39 @@ local function hideOverlay(
 				false
 
 
-			setFullDimGeometry()
+			applyFullDimGeometry()
 		end
 	)
 end
 
 
 --==================================================
--- FIND CURRENT TUTORIAL TARGET
+-- TUTORIAL STATE
 --==================================================
 
-local function findHighlightTarget():
-	GuiObject?
-
-	local found:
-		GuiObject? =
-		nil
-
-
-	for _, descendant in
-		playerGui:GetDescendants()
-	do
-
-		if VALID_HIGHLIGHT_NAMES[
-			descendant.Name
-		] ~= true then
-
-			continue
-		end
-
-
-		if not descendant:IsA(
-			"GuiObject"
-		) then
-
-			continue
-		end
-
-
-		local parent =
-			descendant.Parent
-
-
-		if parent
-			and parent:IsA(
-				"GuiObject"
-			)
-			and isTargetUsable(
-				parent
-			) then
-
-			found =
-				parent
-		end
-	end
-
-
-	return found
-end
-
-
---==================================================
--- TUTORIAL VISIBILITY
---==================================================
-
-local function isTutorialShowing():
+local function tutorialShowing():
 	boolean
-
-	if tutorialGui:GetAttribute(
-		"SuppressFocusOverlay"
-	) == true then
-
-		return false
-	end
-
 
 	return tutorialGui.Enabled
 		and tutorialFrame.Visible
+end
+
+
+local function getFocusMode():
+	string
+
+	local mode =
+		tutorialGui:GetAttribute(
+			FOCUS_MODE_ATTRIBUTE
+		)
+
+
+	if mode == "Clear" then
+		return "Clear"
+	end
+
+
+	return "Dim"
 end
 
 
@@ -1303,21 +1306,24 @@ end
 -- REFRESH
 --==================================================
 
-local refreshScheduled =
-	false
-
-
 local function refresh()
 
 	refreshScheduled =
 		false
 
 
-	if not isTutorialShowing() then
+	if not tutorialShowing() then
 
-		hideOverlay(
-			true
-		)
+		hideOverlay()
+
+		return
+	end
+
+
+	if getFocusMode()
+		== "Clear" then
+
+		hideOverlay()
 
 		return
 	end
@@ -1335,9 +1341,7 @@ local function refresh()
 
 	else
 
-		showFullDim(
-			true
-		)
+		showFullDim()
 	end
 end
 
@@ -1360,7 +1364,7 @@ end
 
 
 --==================================================
--- WATCH TUTORIAL VISIBILITY
+-- WATCH TUTORIAL
 --==================================================
 
 tutorialGui:
@@ -1380,9 +1384,10 @@ tutorialFrame:
 		scheduleRefresh
 	)
 
+
 tutorialGui:
 	GetAttributeChangedSignal(
-		"SuppressFocusOverlay"
+		FOCUS_MODE_ATTRIBUTE
 	)
 	:Connect(
 		scheduleRefresh
@@ -1417,10 +1422,6 @@ playerGui.DescendantRemoving:Connect(
 			descendant.Name
 		] then
 
-			--
-			-- Wait one frame so the old highlight has
-			-- actually disappeared before searching.
-			--
 			task.defer(
 				scheduleRefresh
 			)
@@ -1430,7 +1431,7 @@ playerGui.DescendantRemoving:Connect(
 
 
 --==================================================
--- FOLLOW MOVING BUTTON
+-- FOLLOW MOVING UI
 --==================================================
 
 RunService.RenderStepped:Connect(
@@ -1458,13 +1459,6 @@ RunService.RenderStepped:Connect(
 		end
 
 
-		--
-		-- Buttons inside scrolling frames, animated
-		-- menus, etc. can move after the spotlight
-		-- initially opens.
-		--
-		-- Keep the cutout perfectly attached.
-		--
 		applySpotlightGeometry(
 			target :: GuiObject
 		)
@@ -1473,7 +1467,7 @@ RunService.RenderStepped:Connect(
 
 
 --==================================================
--- SCREEN SIZE CHANGES
+-- RESOLUTION CHANGES
 --==================================================
 
 root:
@@ -1484,7 +1478,7 @@ root:
 		function()
 
 			if currentMode
-				== "Spotlight"
+					== "Spotlight"
 				and currentTarget then
 
 				applySpotlightGeometry(
@@ -1494,23 +1488,26 @@ root:
 			elseif currentMode
 				== "FullDim" then
 
-				setFullDimGeometry()
+				applyFullDimGeometry()
 			end
 		end
 	)
 
 
 --==================================================
--- INITIAL STATE
+-- INITIAL
 --==================================================
 
-setFullDimGeometry()
+applyFullDimGeometry()
 
 
-setPanelTransparency(
-	1,
-	false
-)
+for _, panel in
+	panels
+do
+
+	panel.BackgroundTransparency =
+		1
+end
 
 
 root.Visible =

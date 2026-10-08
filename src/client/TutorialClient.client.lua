@@ -220,6 +220,11 @@ local NORMAL_POSITION =
 	)
 
 
+--
+-- Bottom-right position.
+--
+-- Used whenever a non-Quest UI is open.
+--
 local SIDE_POSITION =
 	UDim2.new(
 		0.882,
@@ -424,6 +429,36 @@ local function tweenFrameTo(
 
 	activeFrameTween =
 		nil
+end
+
+--==================================================
+-- FOCUS HELPERS
+--==================================================
+
+local function setFocusMode(
+	mode: "Dim" | "Clear"
+)
+
+	tutorialGui:SetAttribute(
+		"TutorialFocusMode",
+		mode
+	)
+end
+
+
+local function useNormalTutorialPosition()
+
+	tweenFrameTo(
+		NORMAL_POSITION
+	)
+end
+
+
+local function useSideTutorialPosition()
+
+	tweenFrameTo(
+		SIDE_POSITION
+	)
 end
 
 
@@ -1167,28 +1202,23 @@ local function showPlotCamera(
 		camera.CFrame
 
 
-	--==================================================
-	-- REMOVE DARKNESS WHILE SHOWING THE WORLD
-	--==================================================
-
-	tutorialGui:SetAttribute(
-		"SuppressFocusOverlay",
-		true
+	--
+	-- We are intentionally showing the player
+	-- the world, so darkness should disappear.
+	--
+	setFocusMode(
+		"Clear"
 	)
 
 
-	--
-	-- Give the focus overlay a moment to animate out
-	-- before starting the camera showcase.
-	--
-	task.wait(
-		0.2
+	local previousPosition =
+		tutorialFrame.Position
+
+
+	tweenFrameTo(
+		NORMAL_POSITION
 	)
 
-
-	--==================================================
-	-- CAMERA SHOWCASE
-	--==================================================
 
 	camera.CameraType =
 		Enum.CameraType.Scriptable
@@ -1222,10 +1252,6 @@ local function showPlotCamera(
 	)
 
 
-	--==================================================
-	-- RETURN CAMERA
-	--==================================================
-
 	local returnTween =
 		TweenService:Create(
 			camera,
@@ -1254,18 +1280,12 @@ local function showPlotCamera(
 	end
 
 
-	--==================================================
-	-- TURN FOCUS SYSTEM BACK ON
-	--==================================================
-
-	tutorialGui:SetAttribute(
-		"SuppressFocusOverlay",
-		false
-	)
+	tutorialFrame.Position =
+		previousPosition
 
 
-	task.wait(
-		0.1
+	setFocusMode(
+		"Dim"
 	)
 end
 
@@ -1570,6 +1590,12 @@ end
 
 local function showTutorial()
 
+	tutorialGui:SetAttribute(
+		"TutorialFocusMode",
+		"Dim"
+	)
+
+
 	tutorialGui.Enabled =
 		true
 
@@ -1598,7 +1624,6 @@ local function showTutorial()
 		NORMAL_POSITION
 	)
 end
-
 
 --==================================================
 -- BUTTON HIGHLIGHT
@@ -2008,6 +2033,13 @@ local function finishTutorial(
 
 	clearButtonHighlight()
 
+	useNormalTutorialPosition()
+	
+	
+	setFocusMode(
+		"Dim"
+	)
+
 
 	local reputationRequired,
 		lifetimeRequired,
@@ -2030,7 +2062,7 @@ local function finishTutorial(
 
 	showTimedStep(
 		"YOUR NEXT GOAL",
-		`Unlock the Hotdog Stand! Reach Reputation {reputationRequired}, earn  total, and upgrade your Lemonade Stand to Level {lemonadeLevelRequired}.`,
+		`Unlock the Hotdog Stand! Reach Reputation {reputationRequired}, earn ${lifetimeRequired} total, and upgrade your Lemonade Stand to Level {lemonadeLevelRequired}.`,
 		LONG_MESSAGE_TIME
 	)
 
@@ -2084,6 +2116,11 @@ local function skipTutorial()
 
 	running =
 		false
+
+	tutorialGui:SetAttribute(
+		"TutorialFocusMode",
+		"Clear"
+	)
 
 
 	clearButtonHighlight()
@@ -2192,74 +2229,108 @@ local function runTutorial()
 	--==================================================
 	-- 3. BUILD FIRST BUSINESS
 	--==================================================
-
+	
+	--
+	-- We're about to open a menu on the left,
+	-- so move the tutorial out of the way.
+	--
+	useSideTutorialPosition()
+	
+	
+	setFocusMode(
+		"Dim"
+	)
+	
+	
 	setTutorialStep(
 		"BUILD YOUR FIRST BUSINESS",
 		"Click ADD to choose your first business."
 	)
-
-
+	
+	
 	waitForHighlightedButtonPress(
 		addButton
 	)
-
-
+	
+	
 	task.wait(
 		ACTION_RESULT_PAUSE
 	)
-
-
+	
+	
 	local lemonadeStand =
 		findLemonadeStand(
 			plot
 		)
-
-
+	
+	
 	if not lemonadeStand then
-
+	
 		setTutorialStep(
 			"CHOOSE A BUSINESS",
 			"Pick the Lemonade Stand. Your first one is FREE!"
 		)
-
-
+	
+	
 		local lemonadeButton =
 			getLemonadeButton()
-
-
+	
+	
 		waitForHighlightedButtonPress(
 			lemonadeButton
 		)
-
-
+	
+	
 		waitUntilVisible(
 			addButtons
 		)
-
-
-		tweenFrameTo(
-			SIDE_POSITION
+	
+	
+		--
+		-- PLACEMENT IS A 3D-WORLD ACTION.
+		--
+		-- Absolutely no darkness here.
+		--
+		-- This also means mouse/touch placement can
+		-- never be obstructed by the tutorial.
+		--
+		setFocusMode(
+			"Clear"
 		)
-
-
+	
+	
+		useSideTutorialPosition()
+	
+	
 		setTutorialStep(
 			"PLACE YOUR STAND",
 			"Choose a spot on your plot, then press Place."
 		)
-
-
+	
+	
 		lemonadeStand =
 			waitForLemonadeStand(
 				plot
 			)
-
-
-		tweenFrameTo(
-			NORMAL_POSITION
+	
+	
+		setFocusMode(
+			"Dim"
 		)
-
+	
+	
+		useNormalTutorialPosition()
+	
 	else
-
+	
+		useNormalTutorialPosition()
+	
+	
+		setFocusMode(
+			"Dim"
+		)
+	
+	
 		showTimedStep(
 			"YOUR FIRST BUSINESS",
 			"You already have a Lemonade Stand, so we'll use it!",
@@ -2293,12 +2364,21 @@ local function runTutorial()
 		"Watch your Lemonade Stand. A customer is coming!"
 	)
 
+	setFocusMode(
+		"Clear"
+	)
+
 
 	waitForFirstSale(
 		lemonadeStand
 	)
-
-
+	
+	
+	setFocusMode(
+		"Dim"
+	)
+	
+	
 	task.wait(
 		MAJOR_RESULT_PAUSE
 	)
@@ -2315,7 +2395,7 @@ local function runTutorial()
 
 		showTimedStep(
 			"YOU MADE MONEY!",
-			`Customer served! You earned +. Every customer your businesses serve earns you cash.`,
+			`Customer served! You earned +${earnedCash}. Every customer your businesses serve earns you cash.`,
 			NORMAL_MESSAGE_TIME
 		)
 
@@ -2344,18 +2424,37 @@ local function runTutorial()
 	-- 6. OPEN MANAGE MENU
 	--==================================================
 
+	--
+	-- Walking to a physical stand is another
+	-- world-interaction step.
+	--
+	setFocusMode(
+		"Clear"
+	)
+	
+	
+	useSideTutorialPosition()
+	
+	
 	setTutorialStep(
 		"UPGRADE YOUR BUSINESS",
 		"Walk to your Lemonade Stand and press Manage."
 	)
-
-
+	
+	
 	waitForManageMenu()
-
-
-	tweenFrameTo(
-		SIDE_POSITION
+	
+	
+	--
+	-- Menu is now open. Bring the guided darkness
+	-- back for its UI controls.
+	--
+	setFocusMode(
+		"Dim"
 	)
+	
+	
+	useSideTutorialPosition()
 
 
 	showTimedStep(
@@ -2393,7 +2492,7 @@ local function runTutorial()
 
 		setTutorialStep(
 			"EARN FOR YOUR UPGRADE",
-			`Better Lemonade costs $. Keep serving customers — you need $${firstUpgradeCost - cash.Value} more!`
+			`Better Lemonade costs ${firstUpgradeCost}. Keep serving customers — you need ${firstUpgradeCost - cash.Value} more!`
 		)
 
 
@@ -2418,7 +2517,7 @@ local function runTutorial()
 
 		setTutorialStep(
 			"BUY BETTER LEMONADE",
-			`Buy Better Lemonade for $. This permanently increases how much this stand earns per sale.`
+			`Buy Better Lemonade for ${firstUpgradeCost}. This permanently increases how much this stand earns per sale.`
 		)
 
 
@@ -2470,7 +2569,7 @@ local function runTutorial()
 
 		showTimedStep(
 			"UPGRADE COMPLETE!",
-			`Your Lemonade Stand went from $ → $ per normal sale!`,
+			`Your Lemonade Stand went from ${beforeUpgradeSaleValue} → ${afterUpgradeSaleValue} per normal sale!`,
 			NORMAL_MESSAGE_TIME
 		)
 
@@ -2492,15 +2591,21 @@ local function runTutorial()
 		"SEE THE DIFFERENCE",
 		"Close the Manage menu. Let's watch your upgraded stand make another sale."
 	)
-
-
+	
+	
 	waitUntilHidden(
 		manageMain
 	)
-
-
-	tweenFrameTo(
-		NORMAL_POSITION
+	
+	
+	useNormalTutorialPosition()
+	
+	
+	--
+	-- We're going back to watching the world.
+	--
+	setFocusMode(
+		"Clear"
 	)
 
 
@@ -2529,6 +2634,10 @@ local function runTutorial()
 		salesBeforeDemonstration
 	)
 
+	setFocusMode(
+		"Dim"
+	)
+
 
 	task.wait(
 		MAJOR_RESULT_PAUSE
@@ -2546,7 +2655,7 @@ local function runTutorial()
 
 		showTimedStep(
 			"THAT'S THE LOOP!",
-			`Another customer served: +$! Spend money on upgrades → earn faster → buy even better businesses.`,
+			`Another customer served: +${demonstrationCash}! Spend money on upgrades → earn faster → buy even better businesses.`,
 			NORMAL_MESSAGE_TIME
 		)
 
@@ -2563,6 +2672,13 @@ local function runTutorial()
 	--==================================================
 	-- 10. QUESTS
 	--==================================================
+
+	useNormalTutorialPosition()
+	
+	
+	setFocusMode(
+		"Dim"
+	)
 
 	setTutorialStep(
 		"WHAT SHOULD I DO NEXT?",
@@ -2656,7 +2772,7 @@ local function runTutorial()
 
 	showTimedStep(
 		"YOUR FIRST BIG GOAL",
-		`Keep serving customers, earn $ total, and upgrade your Lemonade Stand to Level {lemonadeLevelRequired} to unlock Hotdogs.`,
+		`Keep serving customers, earn ${lifetimeRequired} total, and upgrade your Lemonade Stand to Level {lemonadeLevelRequired} to unlock Hotdogs.`,
 		LONG_MESSAGE_TIME
 	)
 

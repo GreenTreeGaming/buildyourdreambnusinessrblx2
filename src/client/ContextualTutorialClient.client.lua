@@ -139,6 +139,107 @@ local skipButton =
 
 
 --==================================================
+-- TUTORIAL POSITIONS
+--==================================================
+
+local HIDDEN_POSITION =
+	UDim2.new(
+		0.5,
+		0,
+		1.1,
+		0
+	)
+
+
+local NORMAL_POSITION =
+	UDim2.new(
+		0.5,
+		0,
+		0.731,
+		0
+	)
+
+
+local SIDE_POSITION =
+	UDim2.new(
+		0.882,
+		0,
+		0.731,
+		0
+	)
+
+
+local TUTORIAL_POSITION_TWEEN_TIME =
+	0.25
+
+
+local positionTween:
+	Tween? =
+	nil
+
+
+local function setFocusMode(
+	mode: "Dim" | "Clear"
+)
+
+	tutorialGui:SetAttribute(
+		"TutorialFocusMode",
+		mode
+	)
+end
+
+
+local function tweenTutorialPosition(
+	position: UDim2
+)
+
+	if positionTween then
+
+		positionTween:Cancel()
+
+		positionTween =
+			nil
+	end
+
+
+	positionTween =
+		TweenService:Create(
+			tutorialFrame,
+
+			TweenInfo.new(
+				TUTORIAL_POSITION_TWEEN_TIME,
+				Enum.EasingStyle.Quint,
+				Enum.EasingDirection.Out
+			),
+
+			{
+				Position =
+					position,
+			}
+		)
+
+
+	positionTween:Play()
+end
+
+
+local function useNormalTutorialPosition()
+
+	tweenTutorialPosition(
+		NORMAL_POSITION
+	)
+end
+
+
+local function useSideTutorialPosition()
+
+	tweenTutorialPosition(
+		SIDE_POSITION
+	)
+end
+
+
+--==================================================
 -- MANAGE / MARKETING / PLOT
 --==================================================
 
@@ -310,6 +411,7 @@ assert(
 
 restockAllButton =
 	restockAllButton :: GuiButton
+
 
 
 --==================================================
@@ -500,8 +602,27 @@ local function showTutorial(
 	bodyText: string
 )
 
+	if positionTween then
+
+		positionTween:Cancel()
+
+		positionTween =
+			nil
+	end
+
+
+	tutorialGui:SetAttribute(
+		"TutorialFocusMode",
+		"Dim"
+	)
+
+
 	tutorialGui.Enabled =
 		true
+
+
+	tutorialFrame.Position =
+		HIDDEN_POSITION
 
 
 	tutorialFrame.Visible =
@@ -518,8 +639,12 @@ local function showTutorial(
 
 	tutorialText.TextTransparency =
 		0
-end
 
+
+	tweenTutorialPosition(
+		NORMAL_POSITION
+	)
+end
 
 local function setTutorialText(
 	titleText: string,
@@ -537,12 +662,65 @@ end
 
 local function hideTutorial()
 
+	setFocusMode(
+		"Clear"
+	)
+
+
+	if positionTween then
+
+		positionTween:Cancel()
+
+		positionTween =
+			nil
+	end
+
+
+	local tween =
+		TweenService:Create(
+			tutorialFrame,
+
+			TweenInfo.new(
+				0.2,
+				Enum.EasingStyle.Quad,
+				Enum.EasingDirection.In
+			),
+
+			{
+				Position =
+					HIDDEN_POSITION,
+			}
+		)
+
+
+	positionTween =
+		tween
+
+
+	tween:Play()
+
+
+	tween.Completed:Wait()
+
+
+	if positionTween
+		== tween then
+
+		positionTween =
+			nil
+	end
+
+
 	tutorialFrame.Visible =
 		false
 
 
 	tutorialGui.Enabled =
 		false
+
+
+	tutorialFrame.Position =
+		NORMAL_POSITION
 end
 
 
@@ -1642,6 +1820,14 @@ local function runStockTutorial()
 	end
 
 
+	useNormalTutorialPosition()
+
+
+	setFocusMode(
+		"Dim"
+	)
+
+
 	showTutorial(
 		"LOW STOCK!",
 		"Your business is running low on stock. When stock reaches 0, it cannot serve customers."
@@ -1658,37 +1844,58 @@ local function runStockTutorial()
 	end
 
 
+	--
+	-- They're walking through the WORLD,
+	-- so remove darkness.
+	--
+	useSideTutorialPosition()
+
+
+	setFocusMode(
+		"Clear"
+	)
+
+
 	highlightStockShop()
-	
-	
+
+
 	startStockGuideBeam()
-	
-	
+
+
 	setTutorialText(
 		"RESTOCK YOUR BUSINESS",
 		"Follow the yellow guide to the nearest Stock Shop!"
 	)
-	
-	
+
+
 	local reachedShop =
 		waitForVisible(
 			stockMain
 		)
-	
-	
-	--
-	-- They reached a stock shop, so the directional
-	-- beam is no longer needed.
-	--
+
+
 	clearStockGuideBeam()
-	
-	
+
+
 	clearWorldHighlights()
 
 
 	if not reachedShop then
 		return
 	end
+
+
+	--
+	-- Stock UI is open.
+	--
+	-- Bring spotlight mode back.
+	--
+	useSideTutorialPosition()
+
+
+	setFocusMode(
+		"Dim"
+	)
 
 
 	setTutorialText(
@@ -1734,6 +1941,9 @@ local function runStockTutorial()
 	end
 
 
+	useNormalTutorialPosition()
+
+
 	showTimedMessage(
 		"STOCK REFILLED!",
 		"Perfect! If a business ever stops serving, check its stock first.",
@@ -1771,6 +1981,14 @@ local function runMarketingTutorial()
 	end
 
 
+	useNormalTutorialPosition()
+
+
+	setFocusMode(
+		"Dim"
+	)
+
+
 	showTutorial(
 		"GET MORE CUSTOMERS",
 		"Your business is growing! Marketing lets more customers visit you at once."
@@ -1785,6 +2003,13 @@ local function runMarketingTutorial()
 
 		return
 	end
+
+
+	--
+	-- From this point on a Management menu is
+	-- involved, so stay bottom-right.
+	--
+	useSideTutorialPosition()
 
 
 	setTutorialText(
@@ -1812,6 +2037,9 @@ local function runMarketingTutorial()
 	end
 
 
+	useSideTutorialPosition()
+
+
 	setTutorialText(
 		"MARKETING",
 		"Open the Marketing tab. More Marketing = more customers = more sales."
@@ -1824,6 +2052,9 @@ local function runMarketingTutorial()
 
 		return
 	end
+
+
+	useSideTutorialPosition()
 
 
 	setTutorialText(
@@ -1864,6 +2095,9 @@ local function runMarketingTutorial()
 	end
 
 
+	useNormalTutorialPosition()
+
+
 	showTimedMessage(
 		"MORE CUSTOMERS!",
 		"Nice! Upgrade Marketing whenever your businesses are ready for more customer traffic.",
@@ -1901,6 +2135,14 @@ local function runPlotTutorial()
 	end
 
 
+	useNormalTutorialPosition()
+
+
+	setFocusMode(
+		"Dim"
+	)
+
+
 	showTutorial(
 		"YOUR EMPIRE NEEDS ROOM",
 		"You can expand your plot to create more room for businesses."
@@ -1915,6 +2157,9 @@ local function runPlotTutorial()
 
 		return
 	end
+
+
+	useSideTutorialPosition()
 
 
 	setTutorialText(
@@ -1942,6 +2187,9 @@ local function runPlotTutorial()
 	end
 
 
+	useSideTutorialPosition()
+
+
 	setTutorialText(
 		"PLOT EXPANSIONS",
 		"Open the Plot tab."
@@ -1954,6 +2202,9 @@ local function runPlotTutorial()
 
 		return
 	end
+
+
+	useSideTutorialPosition()
 
 
 	setTutorialText(
@@ -1994,13 +2245,15 @@ local function runPlotTutorial()
 	end
 
 
+	useNormalTutorialPosition()
+
+
 	showTimedMessage(
 		"MORE ROOM!",
 		"Your plot is bigger! Expand again later whenever your empire needs more space.",
 		SHORT_MESSAGE_TIME
 	)
 end
-
 
 --==================================================
 -- LICENSE TUTORIAL
@@ -2022,6 +2275,14 @@ local function runLicenseTutorial()
 	end
 
 
+	useNormalTutorialPosition()
+
+
+	setFocusMode(
+		"Dim"
+	)
+
+
 	showTutorial(
 		"YOU EARNED A LICENSE!",
 		"Licenses buy powerful long-term upgrades for your entire business empire."
@@ -2036,6 +2297,9 @@ local function runLicenseTutorial()
 
 		return
 	end
+
+
+	useSideTutorialPosition()
 
 
 	setTutorialText(
@@ -2058,6 +2322,9 @@ local function runLicenseTutorial()
 
 		return
 	end
+
+
+	useSideTutorialPosition()
 
 
 	setTutorialText(
@@ -2118,6 +2385,9 @@ local function runLicenseTutorial()
 				"GuiButton"
 			) then
 
+			useSideTutorialPosition()
+
+
 			setTutorialText(
 				"BUY A PERMANENT UPGRADE",
 				"Try the Operations License. License upgrades strengthen your entire empire."
@@ -2158,6 +2428,9 @@ local function runLicenseTutorial()
 	end
 
 
+	useNormalTutorialPosition()
+
+
 	showTimedMessage(
 		"PERMANENT PROGRESS!",
 		"Great! Keep earning Licenses from milestones and use them for permanent bonuses.",
@@ -2165,12 +2438,19 @@ local function runLicenseTutorial()
 	)
 end
 
-
 --==================================================
 -- REBIRTH TUTORIAL
 --==================================================
 
 local function runRebirthTutorial()
+
+	useNormalTutorialPosition()
+
+
+	setFocusMode(
+		"Dim"
+	)
+
 
 	showTutorial(
 		"REBIRTH READY!",
@@ -2186,6 +2466,9 @@ local function runRebirthTutorial()
 
 		return
 	end
+
+
+	useSideTutorialPosition()
 
 
 	setTutorialText(
@@ -2210,6 +2493,9 @@ local function runRebirthTutorial()
 	end
 
 
+	useSideTutorialPosition()
+
+
 	if not showTimedMessage(
 		"PERMANENT BONUSES",
 		"Rebirth gives permanent Cash, Customer Speed, and Rare Customer bonuses that make future runs faster.",
@@ -2218,6 +2504,9 @@ local function runRebirthTutorial()
 
 		return
 	end
+
+
+	useSideTutorialPosition()
 
 
 	highlightGui(
@@ -2234,7 +2523,6 @@ local function runRebirthTutorial()
 
 	clearHighlight()
 end
-
 
 --==================================================
 -- RUNNER MAP
@@ -2346,6 +2634,11 @@ skipButton.Activated:Connect(
 			true
 
 
+		setFocusMode(
+			"Clear"
+		)
+
+
 		clearHighlight()
 
 		clearWorldHighlights()
@@ -2353,7 +2646,6 @@ skipButton.Activated:Connect(
 		clearStockGuideBeam()
 	end
 )
-
 
 --==================================================
 -- QUEUE PROCESSOR
@@ -2435,6 +2727,10 @@ task.spawn(
 			clearWorldHighlights()
 			
 			clearStockGuideBeam()
+
+			setFocusMode(
+				"Clear"
+			)
 			
 			hideTutorial()
 
