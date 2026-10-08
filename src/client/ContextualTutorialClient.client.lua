@@ -394,6 +394,29 @@ local worldHighlights: {
 	Highlight
 } = {}
 
+local stockGuideBeam:
+	Beam? =
+	nil
+
+
+local stockGuidePlayerAttachment:
+	Attachment? =
+	nil
+
+
+local stockGuideTargetAttachment:
+	Attachment? =
+	nil
+
+
+local stockGuideTargetPart:
+	BasePart? =
+	nil
+
+
+local stockGuideThread:
+	thread? =
+	nil
 
 --==================================================
 -- PLOT HELPERS
@@ -748,6 +771,454 @@ local function highlightGui(
 	)
 end
 
+
+--==================================================
+-- STOCK GUIDE BEAM
+--==================================================
+
+local STOCK_BEAM_COLOR =
+	Color3.fromRGB(
+	255,
+	220,
+	60
+)
+
+
+local STOCK_BEAM_WIDTH =
+	0.32
+
+
+local STOCK_BEAM_HEIGHT_OFFSET =
+	1.5
+
+
+local function getCharacterRoot():
+	BasePart?
+
+	local character =
+		player.Character
+
+
+	if not character then
+		return nil
+	end
+
+
+	local root =
+		character:FindFirstChild(
+			"HumanoidRootPart"
+		)
+
+
+	if root
+		and root:IsA(
+			"BasePart"
+		) then
+
+		return root
+	end
+
+
+	return nil
+end
+
+
+local function getStockTouchParts():
+	{BasePart}
+
+	local parts = {}
+
+
+	if not touchForStock then
+		return parts
+	end
+
+
+	if touchForStock:IsA(
+		"BasePart"
+	) then
+
+		table.insert(
+			parts,
+			touchForStock
+		)
+	end
+
+
+	for _, descendant in
+		touchForStock:GetDescendants()
+	do
+
+		if descendant:IsA(
+			"BasePart"
+		) then
+
+			table.insert(
+				parts,
+				descendant
+			)
+		end
+	end
+
+
+	return parts
+end
+
+
+local function getNearestStockTouchPart():
+	BasePart?
+
+	local root =
+		getCharacterRoot()
+
+
+	if not root then
+		return nil
+	end
+
+
+	local nearestPart:
+		BasePart? =
+		nil
+
+
+	local nearestDistance =
+		math.huge
+
+
+	for _, part in
+		getStockTouchParts()
+	do
+
+		if not part.Parent then
+			continue
+		end
+
+
+		local distance =
+			(
+				root.Position
+				- part.Position
+			).Magnitude
+
+
+		if distance
+			< nearestDistance then
+
+			nearestDistance =
+				distance
+
+
+			nearestPart =
+				part
+		end
+	end
+
+
+	return nearestPart
+end
+
+
+local function clearStockGuideBeam()
+
+	if stockGuideThread then
+
+		task.cancel(
+			stockGuideThread
+		)
+
+
+		stockGuideThread =
+			nil
+	end
+
+
+	if stockGuideBeam then
+
+		stockGuideBeam:Destroy()
+
+
+		stockGuideBeam =
+			nil
+	end
+
+
+	if stockGuidePlayerAttachment then
+
+		stockGuidePlayerAttachment:
+			Destroy()
+
+
+		stockGuidePlayerAttachment =
+			nil
+	end
+
+
+	if stockGuideTargetAttachment then
+
+		stockGuideTargetAttachment:
+			Destroy()
+
+
+		stockGuideTargetAttachment =
+			nil
+	end
+
+
+	stockGuideTargetPart =
+		nil
+end
+
+
+local function createStockGuideBeamForTarget(
+	targetPart: BasePart
+)
+
+	local root =
+		getCharacterRoot()
+
+
+	if not root
+		or not targetPart.Parent then
+
+		return
+	end
+
+
+	if stockGuideBeam then
+
+		stockGuideBeam:Destroy()
+
+
+		stockGuideBeam =
+			nil
+	end
+
+
+	if stockGuidePlayerAttachment then
+
+		stockGuidePlayerAttachment:
+			Destroy()
+
+
+		stockGuidePlayerAttachment =
+			nil
+	end
+
+
+	if stockGuideTargetAttachment then
+
+		stockGuideTargetAttachment:
+			Destroy()
+
+
+		stockGuideTargetAttachment =
+			nil
+	end
+
+
+	--==================================================
+	-- PLAYER ATTACHMENT
+	--==================================================
+
+	local playerAttachment =
+		Instance.new(
+			"Attachment"
+		)
+
+
+	playerAttachment.Name =
+		"StockTutorialPlayerAttachment"
+
+
+	playerAttachment.Position =
+		Vector3.new(
+			0,
+			-STOCK_BEAM_HEIGHT_OFFSET,
+			0
+		)
+
+
+	playerAttachment.Parent =
+		root
+
+
+	--==================================================
+	-- STOCK SHOP ATTACHMENT
+	--==================================================
+
+	local targetAttachment =
+		Instance.new(
+			"Attachment"
+		)
+
+
+	targetAttachment.Name =
+		"StockTutorialTargetAttachment"
+
+
+	targetAttachment.Position =
+		Vector3.new(
+			0,
+			targetPart.Size.Y / 2
+				+ 1,
+			0
+		)
+
+
+	targetAttachment.Parent =
+		targetPart
+
+
+	--==================================================
+	-- BEAM
+	--==================================================
+
+	local beam =
+		Instance.new(
+			"Beam"
+		)
+
+
+	beam.Name =
+		"StockTutorialGuideBeam"
+
+
+	beam.Attachment0 =
+		playerAttachment
+
+
+	beam.Attachment1 =
+		targetAttachment
+
+
+	beam.Color =
+		ColorSequence.new(
+			STOCK_BEAM_COLOR
+		)
+
+
+	beam.Width0 =
+		STOCK_BEAM_WIDTH
+
+
+	beam.Width1 =
+		STOCK_BEAM_WIDTH
+
+
+	beam.FaceCamera =
+		true
+
+
+	beam.LightEmission =
+		1
+
+
+	beam.LightInfluence =
+		0
+
+
+	beam.Transparency =
+		NumberSequence.new({
+			NumberSequenceKeypoint.new(
+				0,
+				0.05
+			),
+
+			NumberSequenceKeypoint.new(
+				1,
+				0.15
+			),
+		})
+
+
+	--
+	-- A slight curve makes the direction line easier
+	-- to see instead of hiding directly against the floor.
+	--
+	beam.CurveSize0 =
+		3
+
+
+	beam.CurveSize1 =
+		3
+
+
+	beam.Parent =
+		root
+
+
+	stockGuidePlayerAttachment =
+		playerAttachment
+
+
+	stockGuideTargetAttachment =
+		targetAttachment
+
+
+	stockGuideBeam =
+		beam
+
+
+	stockGuideTargetPart =
+		targetPart
+end
+
+
+local function startStockGuideBeam()
+
+	clearStockGuideBeam()
+
+
+	stockGuideThread =
+		task.spawn(
+			function()
+
+				while player.Parent
+					and tutorialRunning
+					and activeTutorialId
+						== "Stock"
+					and not skipRequested do
+
+					local root =
+						getCharacterRoot()
+
+
+					if not root then
+
+						task.wait(
+							0.25
+						)
+
+						continue
+					end
+
+
+					local nearestPart =
+						getNearestStockTouchPart()
+
+
+					if nearestPart
+						and (
+							stockGuideTargetPart
+								~= nearestPart
+							or not stockGuideBeam
+							or not stockGuideBeam.Parent
+						) then
+
+						createStockGuideBeamForTarget(
+							nearestPart
+						)
+					end
+
+
+					task.wait(
+						0.25
+					)
+				end
+			end
+		)
+end
 
 --==================================================
 -- WORLD HIGHLIGHTS
@@ -1188,20 +1659,30 @@ local function runStockTutorial()
 
 
 	highlightStockShop()
-
-
+	
+	
+	startStockGuideBeam()
+	
+	
 	setTutorialText(
 		"RESTOCK YOUR BUSINESS",
-		"Go to the highlighted Stock Shop to buy more stock."
+		"Follow the yellow guide to the nearest Stock Shop!"
 	)
-
-
+	
+	
 	local reachedShop =
 		waitForVisible(
 			stockMain
 		)
-
-
+	
+	
+	--
+	-- They reached a stock shop, so the directional
+	-- beam is no longer needed.
+	--
+	clearStockGuideBeam()
+	
+	
 	clearWorldHighlights()
 
 
@@ -1863,6 +2344,13 @@ skipButton.Activated:Connect(
 
 		skipRequested =
 			true
+
+
+		clearHighlight()
+
+		clearWorldHighlights()
+
+		clearStockGuideBeam()
 	end
 )
 
@@ -1943,9 +2431,11 @@ task.spawn(
 
 
 			clearHighlight()
-
+			
 			clearWorldHighlights()
-
+			
+			clearStockGuideBeam()
+			
 			hideTutorial()
 
 

@@ -71,6 +71,11 @@ local tutorialGui =
 	) :: ScreenGui
 
 
+tutorialGui:SetAttribute(
+	"SuppressFocusOverlay",
+	false
+)
+
 local tutorialFrame =
 	tutorialGui:WaitForChild(
 		"Frame"
@@ -1162,6 +1167,29 @@ local function showPlotCamera(
 		camera.CFrame
 
 
+	--==================================================
+	-- REMOVE DARKNESS WHILE SHOWING THE WORLD
+	--==================================================
+
+	tutorialGui:SetAttribute(
+		"SuppressFocusOverlay",
+		true
+	)
+
+
+	--
+	-- Give the focus overlay a moment to animate out
+	-- before starting the camera showcase.
+	--
+	task.wait(
+		0.2
+	)
+
+
+	--==================================================
+	-- CAMERA SHOWCASE
+	--==================================================
+
 	camera.CameraType =
 		Enum.CameraType.Scriptable
 
@@ -1194,6 +1222,10 @@ local function showPlotCamera(
 	)
 
 
+	--==================================================
+	-- RETURN CAMERA
+	--==================================================
+
 	local returnTween =
 		TweenService:Create(
 			camera,
@@ -1220,6 +1252,21 @@ local function showPlotCamera(
 		camera.CameraSubject =
 			previousCameraSubject
 	end
+
+
+	--==================================================
+	-- TURN FOCUS SYSTEM BACK ON
+	--==================================================
+
+	tutorialGui:SetAttribute(
+		"SuppressFocusOverlay",
+		false
+	)
+
+
+	task.wait(
+		0.1
+	)
 end
 
 
