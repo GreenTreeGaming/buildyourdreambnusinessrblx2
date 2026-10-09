@@ -562,40 +562,34 @@ setHiddenPose()
 -- OPEN UPGRADE MENU EVENT
 --==================================================
 
-local function getOpenUpgradeMenuEvent():
-	BindableEvent
+local function getOpenUpgradeMenuEvent(): BindableEvent
+
+	local playerScripts =
+		player:WaitForChild("PlayerScripts")
 
 	local existing =
-		playerGui:FindFirstChild(
+		playerScripts:FindFirstChild(
 			"OpenUpgradeMenu"
 		)
 
 	if existing then
-		if existing:IsA(
-			"BindableEvent"
-		) then
 
-			return existing
-		end
-
-		existing:Destroy()
-	end
-
-
-	local event =
-		Instance.new(
-			"BindableEvent"
+		assert(
+			existing:IsA("BindableEvent"),
+			"OpenUpgradeMenu must be a BindableEvent."
 		)
 
-	event.Name =
-		"OpenUpgradeMenu"
+		return existing
+	end
 
-	event.Parent =
-		playerGui
+	local event =
+		Instance.new("BindableEvent")
+
+	event.Name = "OpenUpgradeMenu"
+	event.Parent = playerScripts
 
 	return event
 end
-
 
 local openUpgradeMenuEvent =
 	getOpenUpgradeMenuEvent()
@@ -2554,6 +2548,17 @@ mainTitle.Text =
 	main.Visible =
 		true
 
+	print(
+		"[MANAGE DEBUG] Menu opened:",
+		businessId,
+		"GUI Enabled:",
+		manageGui.Enabled,
+		"Main Visible:",
+		main.Visible,
+		"GUI Parent:",
+		manageGui.Parent
+	)
+
 
 	menuScale.Scale =
 		OPEN_START_SCALE
@@ -2850,9 +2855,27 @@ openUpgradeMenuEvent.Event:Connect(
 	function(
 		businessId: string
 	)
-		openMenuForStand(
+
+		print(
+			"[MANAGE DEBUG] Event received:",
 			businessId
 		)
+
+		local success, err =
+			pcall(
+				function()
+					openMenuForStand(
+						businessId
+					)
+				end
+			)
+
+		if not success then
+			warn(
+				"[MANAGE DEBUG] Failed to open menu:",
+				err
+			)
+		end
 	end
 )
 

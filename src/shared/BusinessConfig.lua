@@ -113,7 +113,7 @@ local BusinessConfig = {
 			SaleValue = {
 				DisplayName = "Better Lemonade",
 				Description =
-					"Improve your lemonade recipe and dramatically increase the value of every sale.",
+					"Better lemonade, bigger profits!",
 				ValueType = "SaleValue",
 
 				Levels = {

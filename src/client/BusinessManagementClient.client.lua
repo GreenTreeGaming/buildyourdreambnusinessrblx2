@@ -248,40 +248,34 @@ applyRemoveHiddenPose()
 -- OPEN UPGRADE MENU EVENT
 --==================================================
 
-local function getOpenUpgradeMenuEvent():
-	BindableEvent
+local function getOpenUpgradeMenuEvent(): BindableEvent
+
+	local playerScripts =
+		player:WaitForChild("PlayerScripts")
 
 	local existing =
-		playerGui:FindFirstChild(
+		playerScripts:FindFirstChild(
 			"OpenUpgradeMenu"
 		)
 
 	if existing then
-		if existing:IsA(
-			"BindableEvent"
-		) then
 
-			return existing
-		end
-
-		existing:Destroy()
-	end
-
-
-	local event =
-		Instance.new(
-			"BindableEvent"
+		assert(
+			existing:IsA("BindableEvent"),
+			"OpenUpgradeMenu must be a BindableEvent."
 		)
 
-	event.Name =
-		"OpenUpgradeMenu"
+		return existing
+	end
 
-	event.Parent =
-		playerGui
+	local event =
+		Instance.new("BindableEvent")
+
+	event.Name = "OpenUpgradeMenu"
+	event.Parent = playerScripts
 
 	return event
 end
-
 
 local openUpgradeMenuEvent =
 	getOpenUpgradeMenuEvent()
@@ -1975,6 +1969,11 @@ businessNameLabel.Text =
 			)
 
 
+			print(
+				"[MANAGE DEBUG] Firing OpenUpgradeMenu:",
+				businessId
+			)
+			
 			openUpgradeMenuEvent:Fire(
 				businessId
 			)
