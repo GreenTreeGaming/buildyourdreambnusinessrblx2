@@ -35,6 +35,13 @@ local LicenseConfig =
 			)
 	)
 
+local ExclusiveUI =
+	require(
+		ReplicatedStorage
+			:WaitForChild("Shared")
+			:WaitForChild("ExclusiveUI")
+	)
+
 
 local remotes =
 	ReplicatedStorage:WaitForChild(
@@ -1047,6 +1054,7 @@ end
 
 
 local function openMenu()
+	ExclusiveUI.Open("Licenses")
 
 	if main.Visible then
 		return
@@ -1093,6 +1101,7 @@ end
 
 
 local function closeMenu()
+	ExclusiveUI.Closed("Licenses")
 
 	if not main.Visible then
 		return
@@ -1149,6 +1158,14 @@ local function closeMenu()
 
 	tween:Play()
 end
+
+ExclusiveUI.Register("Licenses", function()
+	closeMenu()
+
+	stopMenuTween()
+	main.Visible = false
+	menuScale.Scale = 1
+end)
 
 
 --==================================================

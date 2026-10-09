@@ -613,11 +613,48 @@ local function getClosestOwnedStand():
 			continue
 		end
 
-
+		-- Measure proximity to the actual stand geometry,
+		-- not the decorative ManagementUIPosition part.
+		
+		local boundingCFrame, boundingSize =
+			child:GetBoundingBox()
+		
+		local localPosition =
+			boundingCFrame:PointToObjectSpace(
+				root.Position
+			)
+		
+		local halfSize =
+			boundingSize * 0.5
+		
+		local closestLocalPoint =
+			Vector3.new(
+				math.clamp(
+					localPosition.X,
+					-halfSize.X,
+					halfSize.X
+				),
+				math.clamp(
+					localPosition.Y,
+					-halfSize.Y,
+					halfSize.Y
+				),
+				math.clamp(
+					localPosition.Z,
+					-halfSize.Z,
+					halfSize.Z
+				)
+			)
+		
+		local closestWorldPoint =
+			boundingCFrame:PointToWorldSpace(
+				closestLocalPoint
+			)
+		
 		local distance =
 			(
 				root.Position
-					- positionPart.Position
+					- closestWorldPoint
 			).Magnitude
 
 

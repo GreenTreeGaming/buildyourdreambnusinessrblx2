@@ -30,6 +30,13 @@ local FormatNumber =
 			:WaitForChild("FormatNumber")
 	)
 
+local ExclusiveUI =
+	require(
+		ReplicatedStorage
+			:WaitForChild("Shared")
+			:WaitForChild("ExclusiveUI")
+	)
+
 local shopGui =
 	playerGui:WaitForChild("Shop")
 
@@ -224,6 +231,8 @@ local function openShop()
 		return
 	end
 
+	ExclusiveUI.Open("Shop")
+
 	shopOpen =
 		true
 
@@ -305,6 +314,8 @@ openShopRequest.Event:Connect(
 
 
 local function closeShop()
+	ExclusiveUI.Closed("Shop")
+
 	if not main.Visible then
 		shopOpen =
 			false
@@ -363,6 +374,16 @@ local function closeShop()
 
 	tween:Play()
 end
+
+ExclusiveUI.Register("Shop", function()
+	closeShop()
+
+	-- Close immediately when another menu takes priority.
+	stopMenuTween()
+	main.Visible = false
+	mainScale.Scale = 1
+	openButton.Visible = true
+end)
 
 
 --==================================================

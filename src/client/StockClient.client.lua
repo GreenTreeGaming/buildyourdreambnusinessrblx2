@@ -48,6 +48,13 @@ local FormatNumber =
 			:WaitForChild("FormatNumber")
 	)
 
+local ExclusiveUI =
+	require(
+		ReplicatedStorage
+			:WaitForChild("Shared")
+			:WaitForChild("ExclusiveUI")
+	)
+
 
 local plotsFolder =
 	Workspace:WaitForChild(
@@ -1777,10 +1784,21 @@ local function openMenu()
 		return
 	end
 
+	-- Do not interrupt another main menu just
+	-- because the player walked into the stock zone.
+	local active =
+		ExclusiveUI.GetActive()
 
-	main.Visible =
-		true
+	if active ~= nil
+		and active ~= "Stock" then
 
+		dismissedUntilExit = true
+		return
+	end
+
+	ExclusiveUI.Open("Stock")
+
+	main.Visible = true
 
 	refreshUI()
 end
@@ -1788,9 +1806,19 @@ end
 
 local function hideMenu()
 
-	main.Visible =
-		false
+	ExclusiveUI.Closed("Stock")
+
+	main.Visible = false
 end
+
+ExclusiveUI.Register("Stock", function()
+
+	-- Other menus must be able to close the stock UI,
+	-- even while the player remains in the trigger.
+	dismissedUntilExit = true
+
+	hideMenu()
+end)
 
 
 if closeButton then

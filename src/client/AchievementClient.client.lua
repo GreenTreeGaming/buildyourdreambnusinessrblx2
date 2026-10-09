@@ -19,6 +19,13 @@ local AchievementConfig =
 			:WaitForChild("AchievementConfig")
 	)
 
+local ExclusiveUI =
+	require(
+		ReplicatedStorage
+			:WaitForChild("Shared")
+			:WaitForChild("ExclusiveUI")
+	)
+
 
 local FormatNumber =
 	require(
@@ -467,6 +474,8 @@ local function openWindow()
 		return
 	end
 
+	ExclusiveUI.Open("Achievements")
+
 	main.Visible = true
 
 	-- Keep the achievements side button visible.
@@ -485,6 +494,8 @@ end
 
 
 local function closeWindow()
+	ExclusiveUI.Closed("Achievements")
+
 	if not main.Visible then
 		return
 	end
@@ -500,14 +511,28 @@ local function closeWindow()
 
 	tween:Play()
 
-	tween.Completed:Once(function()
+	tween.Completed:Once(function(playbackState)
+		if playbackState ~= Enum.PlaybackState.Completed then
+			return
+		end
+	
+		if ExclusiveUI.GetActive() == "Achievements" then
+			return
+		end
+	
 		main.Visible = false
 		uiScale.Scale = 1
-
-		-- Never hide the open button.
 		openButton.Visible = true
 	end)
 end
+
+ExclusiveUI.Register("Achievements", function()
+	closeWindow()
+
+	main.Visible = false
+	uiScale.Scale = 1
+	openButton.Visible = true
+end)
 
 
 openButton.Active = true

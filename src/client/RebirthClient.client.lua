@@ -39,6 +39,13 @@ local FormatNumber =
 			)
 	)
 
+local ExclusiveUI =
+	require(
+		ReplicatedStorage
+			:WaitForChild("Shared")
+			:WaitForChild("ExclusiveUI")
+	)
+
 
 --==================================================
 -- REMOTES
@@ -677,6 +684,8 @@ local function openMenu()
 		return
 	end
 
+	ExclusiveUI.Open("Rebirth")
+
 
 	menuOpen =
 		true
@@ -742,6 +751,7 @@ end
 
 
 local function closeMenu()
+	ExclusiveUI.Closed("Rebirth")
 
 	confirmationActive =
 		false
@@ -816,6 +826,14 @@ local function closeMenu()
 
 	tween:Play()
 end
+
+ExclusiveUI.Register("Rebirth", function()
+	closeMenu()
+
+	stopMenuTween()
+	main.Visible = false
+	uiScale.Scale = 1
+end)
 
 --==================================================
 -- REBIRTH

@@ -33,6 +33,13 @@ local Notification =
 			:WaitForChild("Notification")
 	)
 
+local ExclusiveUI =
+	require(
+		ReplicatedStorage
+			:WaitForChild("Shared")
+			:WaitForChild("ExclusiveUI")
+	)
+
 
 local purchaseUpgradeRemote =
 	remotes:WaitForChild("PurchaseUpgrade")
@@ -2353,6 +2360,8 @@ end
 --==================================================
 
 local function closeMenu()
+	ExclusiveUI.Closed("ManageStand")
+	
 	if not menuOpen then
 		return
 	end
@@ -2447,6 +2456,14 @@ local function closeMenu()
 	)
 end
 
+ExclusiveUI.Register("ManageStand", function()
+	closeMenu()
+
+	-- Immediately hide it while preserving closeMenu's
+	-- selection cleanup and animation invalidation.
+	main.Visible = false
+end)
+
 
 local function openMenuForStand(
 	businessId: string
@@ -2529,6 +2546,8 @@ mainTitle.Text =
 
 
 	stopMenuTweens()
+
+	ExclusiveUI.Open("ManageStand")
 
 
 	menuOpen =
