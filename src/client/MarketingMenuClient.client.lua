@@ -28,6 +28,13 @@ local FormatNumber =
 			:WaitForChild("FormatNumber")
 	)
 
+local ExclusiveUI =
+	require(
+		ReplicatedStorage
+			:WaitForChild("Shared")
+			:WaitForChild("ExclusiveUI")
+	)
+
 
 local player =
 	Players.LocalPlayer
@@ -1822,6 +1829,8 @@ local function openMenu()
 		return
 	end
 
+	-- Close all other main menus.
+	ExclusiveUI.Open("ManageUI")
 
 	menuOpen =
 		true
@@ -1888,6 +1897,8 @@ end
 
 local function closeMenu()
 
+	ExclusiveUI.Closed("ManageUI")
+
 	if not menuOpen then
 		return
 	end
@@ -1950,6 +1961,30 @@ local function closeMenu()
 
 	tween:Play()
 end
+
+--==================================================
+-- EXCLUSIVE UI INTEGRATION
+--==================================================
+
+ExclusiveUI.Register(
+	"ManageUI",
+	function()
+
+		closeMenu()
+
+		-- Stop the closing animation to ensure
+		-- the menu immediately disappears.
+
+		stopMenuTween()
+
+		main.Visible = false
+
+		mainScale.Scale = 1
+
+		-- Keep the sidebar button visible.
+		openButton.Visible = true
+	end
+)
 
 
 --==================================================
