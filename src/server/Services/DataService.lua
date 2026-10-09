@@ -150,11 +150,12 @@ local DEFAULT_PROFILE = {
 	},
 
 	UnlockedBusinesses = {
-	LemonadeStand = true,
-	HotdogStand = false,
-	HaircutStand = false,
-	CoffeeStand = false,
-},
+		LemonadeStand = true,
+		HotdogStand = false,
+		HaircutStand = false,
+		CoffeeStand = false,
+		IcecreamStand = false,
+	},
 }
 
 type SerializedCFrame = {

@@ -798,17 +798,15 @@ local function resetCurrentRun(
 
 
 	profile.UnlockedBusinesses = {
-		LemonadeStand =
-			true,
-
-		HotdogStand =
-			false,
-
-		HaircutStand =
-			false,
-
-		CoffeeStand =
-			false,
+		LemonadeStand = true,
+	
+		HotdogStand = false,
+	
+		HaircutStand = false,
+	
+		CoffeeStand = false,
+	
+		IcecreamStand = false,
 	}
 
 

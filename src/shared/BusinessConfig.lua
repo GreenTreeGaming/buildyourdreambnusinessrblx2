@@ -569,6 +569,323 @@ local BusinessConfig = {
 			},
 		},
 	},
+
+	IcecreamStand = {
+		DisplayName = "Ice Cream Stand",
+		DisplayOrder = 5,
+	
+		RevealDescription =
+			"Open your own ice cream business, serve delicious frozen treats, and earn huge profits!",
+	
+		UnlockRequirements = {
+			RebirthsRequired = 2,
+	
+			ReputationLevel = 25,
+	
+			LifetimeEarnings = 5_000_000,
+	
+			BusinessLevel = {
+				BusinessType = "CoffeeStand",
+				Level = 3,
+			},
+		},
+	
+		FirstStandFree = false,
+	
+		AdditionalStandCost = 400_000,
+	
+		StandCostGrowth = 1.38,
+	
+		MaximumPlaced = 8,
+	
+		BaseSaleValue = 4_000,
+	
+		BaseServingCooldown = 6,
+	
+		--==================================================
+		-- STOCK CAPACITY
+		--==================================================
+	
+		StockCapacityByLevel = {
+			[1] = 35,
+			[2] = 50,
+			[3] = 70,
+			[4] = 95,
+			[5] = 130,
+		},
+	
+		--==================================================
+		-- STAND LEVELS
+		--==================================================
+	
+		StandLevels = {
+			[1] = {
+				TemplateName = "IcecreamStand",
+	
+				UpgradeCost = 100_000,
+	
+				CustomerAttraction = 1.15,
+	
+				CustomerRateMultiplier = 1.00,
+	
+				SaleValueMultiplier = 1.00,
+	
+				PremiumCustomerAttraction = 1.30,
+			},
+	
+			[2] = {
+				TemplateName = "IcecreamStand2",
+	
+				UpgradeCost = 350_000,
+	
+				CustomerAttraction = 1.40,
+	
+				CustomerRateMultiplier = 1.10,
+	
+				SaleValueMultiplier = 1.35,
+	
+				PremiumCustomerAttraction = 1.60,
+			},
+	
+			[3] = {
+				TemplateName = "IcecreamStand3",
+	
+				UpgradeCost = 900_000,
+	
+				CustomerAttraction = 1.75,
+	
+				CustomerRateMultiplier = 1.20,
+	
+				SaleValueMultiplier = 1.90,
+	
+				PremiumCustomerAttraction = 2.00,
+			},
+	
+			[4] = {
+				TemplateName = "IcecreamStand4",
+	
+				UpgradeCost = 2_250_000,
+	
+				CustomerAttraction = 2.15,
+	
+				CustomerRateMultiplier = 1.32,
+	
+				SaleValueMultiplier = 2.80,
+	
+				PremiumCustomerAttraction = 2.65,
+			},
+	
+			[5] = {
+				TemplateName = "IcecreamStand5",
+	
+				UpgradeCost = nil,
+	
+				CustomerAttraction = 2.70,
+	
+				CustomerRateMultiplier = 1.45,
+	
+				SaleValueMultiplier = 4.20,
+	
+				PremiumCustomerAttraction = 3.50,
+			},
+		},
+	
+		--==================================================
+		-- BUSINESS UPGRADES
+		--==================================================
+	
+		Upgrades = {
+	
+			--==============================================
+			-- SERVING SPEED
+			--==============================================
+	
+			ServingSpeed = {
+				DisplayName = "Faster Scooping",
+	
+				Description =
+					"Upgrade your equipment to serve ice cream faster.",
+	
+				ValueType = "Cooldown",
+	
+				Levels = {
+					{
+						Level = 0,
+						Cost = 0,
+						Cooldown = 6,
+					},
+	
+					{
+						Level = 1,
+						Cost = 25_000,
+						Cooldown = 5.3,
+					},
+	
+					{
+						Level = 2,
+						Cost = 80_000,
+						Cooldown = 4.6,
+					},
+	
+					{
+						Level = 3,
+						Cost = 220_000,
+						Cooldown = 3.9,
+					},
+	
+					{
+						Level = 4,
+						Cost = 500_000,
+						Cooldown = 3.3,
+					},
+	
+					{
+						Level = 5,
+						Cost = 1_100_000,
+						Cooldown = 2.7,
+					},
+	
+					{
+						Level = 6,
+						Cost = 2_250_000,
+						Cooldown = 2.2,
+					},
+	
+					{
+						Level = 7,
+						Cost = 4_500_000,
+						Cooldown = 1.8,
+					},
+				},
+			},
+	
+			--==============================================
+			-- QUEUE CAPACITY
+			--==============================================
+	
+			QueueCapacity = {
+				DisplayName = "More Seating",
+	
+				Description =
+					"Expand your seating area to serve more customers.",
+	
+				ValueType = "QueueCapacity",
+	
+				Levels = {
+					{
+						Level = 0,
+						Cost = 0,
+						Capacity = 1,
+					},
+	
+					{
+						Level = 1,
+						Cost = 40_000,
+						Capacity = 2,
+					},
+	
+					{
+						Level = 2,
+						Cost = 120_000,
+						Capacity = 3,
+					},
+	
+					{
+						Level = 3,
+						Cost = 350_000,
+						Capacity = 4,
+					},
+	
+					{
+						Level = 4,
+						Cost = 900_000,
+						Capacity = 5,
+					},
+				},
+			},
+	
+			--==============================================
+			-- SALE VALUE
+			--==============================================
+	
+			SaleValue = {
+				DisplayName = "Better Ice Cream",
+	
+				Description =
+					"Create premium ice cream flavors for bigger profits!",
+	
+				ValueType = "SaleValue",
+	
+				Levels = {
+					{
+						Level = 0,
+						Cost = 0,
+						SaleValue = 4_000,
+					},
+	
+					{
+						Level = 1,
+						Cost = 30_000,
+						SaleValue = 6_400,
+					},
+	
+					{
+						Level = 2,
+						Cost = 100_000,
+						SaleValue = 10_000,
+					},
+	
+					{
+						Level = 3,
+						Cost = 280_000,
+						SaleValue = 15_200,
+					},
+	
+					{
+						Level = 4,
+						Cost = 680_000,
+						SaleValue = 23_200,
+					},
+	
+					{
+						Level = 5,
+						Cost = 1_600_000,
+						SaleValue = 34_000,
+					},
+	
+					{
+						Level = 6,
+						Cost = 3_600_000,
+						SaleValue = 50_000,
+					},
+	
+					{
+						Level = 7,
+						Cost = 7_200_000,
+						SaleValue = 72_000,
+					},
+	
+					{
+						Level = 8,
+						Cost = 14_000_000,
+						SaleValue = 104_000,
+					},
+	
+					{
+						Level = 9,
+						Cost = 26_000_000,
+						SaleValue = 152_000,
+					},
+	
+					{
+						Level = 10,
+						Cost = 48_000_000,
+						SaleValue = 220_000,
+					},
+				},
+			},
+		},
+	},
 }
 
 
