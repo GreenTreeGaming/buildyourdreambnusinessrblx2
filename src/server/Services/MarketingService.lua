@@ -19,6 +19,13 @@ local MarketingConfig = require(
 		:WaitForChild("MarketingConfig")
 )
 
+local StockProtectionService =
+	require(
+		script.Parent:WaitForChild(
+			"StockProtectionService"
+		)
+	)
+
 local plotsFolder =
 	Workspace:WaitForChild("Plots")
 
@@ -413,6 +420,28 @@ function MarketingService.Purchase(
 			buildResult(
 				false,
 				`You need ${cost - cash.Value} more.`,
+				currentLevel
+			)
+		)
+	end
+
+	--==================================================
+	-- STOCK PROTECTION
+	--==================================================
+	
+	local canSpend, protectionMessage =
+		StockProtectionService.CanSpend(
+			player,
+			cost
+		)
+	
+	if not canSpend then
+	
+		return finish(
+			buildResult(
+				false,
+				protectionMessage
+					or "Restock your business first.",
 				currentLevel
 			)
 		)

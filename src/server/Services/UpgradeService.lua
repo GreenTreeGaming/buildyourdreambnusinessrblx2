@@ -16,6 +16,13 @@ local BusinessConfig = require(
 		:WaitForChild("BusinessConfig")
 )
 
+local StockProtectionService =
+	require(
+		script.Parent:WaitForChild(
+			"StockProtectionService"
+		)
+	)
+
 type UpgradeResult = {
 	Success: boolean,
 	Message: string,
@@ -684,6 +691,35 @@ function UpgradeService.PurchaseUpgrade(
 			buildUpgradeResult(
 				false,
 				`You need ${cost - cash.Value} more.`,
+				businessId,
+				businessName,
+				upgradeName,
+				currentLevel,
+				maximumLevel,
+				upgradeConfig,
+				currentDefinition,
+				nextDefinition
+			)
+		)
+	end
+
+	--==================================================
+	-- STOCK PROTECTION
+	--==================================================
+	
+	local canSpend, protectionMessage =
+		StockProtectionService.CanSpend(
+			player,
+			cost
+		)
+	
+	if not canSpend then
+	
+		return finish(
+			buildUpgradeResult(
+				false,
+				protectionMessage
+					or "Restock your business first.",
 				businessId,
 				businessName,
 				upgradeName,

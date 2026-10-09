@@ -39,6 +39,13 @@ local plotsFolder =
 		"Plots"
 	)
 
+local StockProtectionService =
+	require(
+		script.Parent
+			:WaitForChild("Services")
+			:WaitForChild("StockProtectionService")
+	)
+
 
 local REQUEST_COOLDOWN =
 	0.5
@@ -1328,6 +1335,31 @@ local function performUpgrade(
 		)
 
 
+		return
+	end
+
+	--==================================================
+	-- STOCK PROTECTION
+	--==================================================
+	
+	local canSpend, protectionMessage =
+		StockProtectionService.CanSpend(
+			player,
+			upgradeCost
+		)
+	
+	if not canSpend then
+	
+		finish()
+	
+		sendResult(
+			player,
+			false,
+			protectionMessage
+				or "Restock your business first.",
+			currentLevel
+		)
+	
 		return
 	end
 

@@ -27,6 +27,13 @@ local PlotConfig =
 	)
 
 
+local StockProtectionService =
+	require(
+		script.Parent:WaitForChild(
+			"StockProtectionService"
+		)
+	)
+
 local plotsFolder =
 	Workspace:WaitForChild(
 		"Plots"
@@ -999,6 +1006,28 @@ function PlotService.Purchase(
 
 				`You need ${cost - cash.Value} more.`,
 
+				currentLevel
+			)
+		)
+	end
+
+	--==================================================
+	-- STOCK PROTECTION
+	--==================================================
+	
+	local canSpend, protectionMessage =
+		StockProtectionService.CanSpend(
+			player,
+			cost
+		)
+	
+	if not canSpend then
+	
+		return finish(
+			buildResult(
+				false,
+				protectionMessage
+					or "Restock your business first.",
 				currentLevel
 			)
 		)

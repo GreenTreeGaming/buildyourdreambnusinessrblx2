@@ -22,6 +22,13 @@ local BusinessBuildAnimation =
 			:WaitForChild("BusinessBuildAnimation")
 	)
 
+local StockProtectionService =
+	require(
+		script.Parent
+			:WaitForChild("Services")
+			:WaitForChild("StockProtectionService")
+	)
+
 local businessModels =
 	ReplicatedStorage:WaitForChild("BusinessModels")
 
@@ -1397,6 +1404,28 @@ local standCost =
 				`You need ${standCost - cash.Value} more to build this business.`
 			)
 
+			return
+		end
+
+		--==================================================
+		-- STOCK PROTECTION
+		--==================================================
+		
+		local canSpend, protectionMessage =
+			StockProtectionService.CanSpend(
+				player,
+				standCost
+			)
+		
+		if not canSpend then
+		
+			placeBusinessRemote:FireClient(
+				player,
+				false,
+				protectionMessage
+					or "Restock your business first."
+			)
+		
 			return
 		end
 
