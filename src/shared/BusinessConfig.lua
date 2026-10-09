@@ -22,11 +22,11 @@ local BusinessConfig = {
 
 		-- Lemonade Stand
 		StockCapacityByLevel = {
-			[1] = 30,
-			[2] = 42,
-			[3] = 58,
-			[4] = 80,
-			[5] = 110,
+			[1] = 45,
+			[2] = 65,
+			[3] = 90,
+			[4] = 130,
+			[5] = 180,
 		},
 
 		StandLevels = {
@@ -164,11 +164,11 @@ local BusinessConfig = {
 
 		-- Hotdog Stand
 		StockCapacityByLevel = {
-			[1] = 30,
-			[2] = 44,
-			[3] = 62,
-			[4] = 85,
-			[5] = 115,
+			[1] = 45,
+			[2] = 70,
+			[3] = 100,
+			[4] = 145,
+			[5] = 200,
 		},
 
 		StandLevels = {
@@ -306,11 +306,11 @@ local BusinessConfig = {
 
 		-- Haircut Stand
 		StockCapacityByLevel = {
-			[1] = 25,
-			[2] = 36,
-			[3] = 50,
-			[4] = 70,
-			[5] = 95,
+			[1] = 40,
+			[2] = 60,
+			[3] = 85,
+			[4] = 120,
+			[5] = 165,
 		},
 
 		StandLevels = {
@@ -449,11 +449,11 @@ local BusinessConfig = {
 
 		-- Coffee Stand
 		StockCapacityByLevel = {
-			[1] = 28,
-			[2] = 42,
-			[3] = 60,
-			[4] = 85,
-			[5] = 120,
+			[1] = 45,
+			[2] = 70,
+			[3] = 100,
+			[4] = 145,
+			[5] = 200,
 		},
 
 		StandLevels = {
@@ -607,11 +607,11 @@ local BusinessConfig = {
 		--==================================================
 	
 		StockCapacityByLevel = {
-			[1] = 35,
-			[2] = 50,
-			[3] = 70,
-			[4] = 95,
-			[5] = 130,
+			[1] = 50,
+			[2] = 75,
+			[3] = 110,
+			[4] = 155,
+			[5] = 215,
 		},
 	
 		--==================================================

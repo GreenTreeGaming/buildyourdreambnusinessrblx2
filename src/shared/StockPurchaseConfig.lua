@@ -27,6 +27,13 @@ local StockPurchaseConfig = {
 		Buy1 = 20,
 		Buy2 = 60,
 	},
+
+	IcecreamStand = {
+		UnitPrice = 1_400,
+
+		Buy1 = 25,
+		Buy2 = 75,
+	},
 }
 
 

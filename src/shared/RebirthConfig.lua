@@ -189,16 +189,38 @@ function RebirthConfig.GetRequirements(
 		currentRebirths + 1
 
 
-	local requiredReputation =
-		math.floor(
-			15
-				+ 7 * currentRebirths
-				+ 2.5 * (
-					currentRebirths
-					^ 1.35
-				)
-				+ 0.5
-		)
+	--==================================================
+	-- BALANCED REBIRTH REPUTATION
+	--==================================================
+	
+	-- Rebirth 1: Reputation 15
+	-- Rebirth 2: Reputation 22
+	-- Rebirth 3: Reputation 28
+	--
+	-- Later rebirths increase steadily instead
+	-- of becoming exponentially harder.
+	--
+	-- Reputation still requires more sales at
+	-- higher levels because ReputationConfig
+	-- already scales sales per level.
+	
+	local requiredReputation
+	
+	if rebirthBeingPurchased == 1 then
+	
+		requiredReputation = 15
+	
+	elseif rebirthBeingPurchased == 2 then
+	
+		requiredReputation = 22
+	
+	else
+	
+		requiredReputation =
+			28 + (
+				rebirthBeingPurchased - 3
+			) * 6
+	end
 
 
 	local requiredCash =

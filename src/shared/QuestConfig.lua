@@ -67,6 +67,10 @@ QuestConfig.Chains = {
 		"BetterCoffee1",
 		"BetterCoffee3",
 		"BetterCoffee5",
+		
+		"BetterIcecream1",
+		"BetterIcecream3",
+		"BetterIcecream5",
 	},
 
 	Service = {
@@ -89,6 +93,11 @@ QuestConfig.Chains = {
 		"CoffeeQueue2",
 		"CoffeeService3",
 		"CoffeeService5",
+		
+		"IcecreamService1",
+		"IcecreamQueue2",
+		"IcecreamService3",
+		"IcecreamService5",
 	},
 
 	Growth = {
@@ -111,6 +120,11 @@ QuestConfig.Chains = {
 		"ThreeCoffeeStands",
 		"ProfessionalCoffeeStand",
 		"MaxCoffeeAppearance",
+		
+		"FirstIcecreamStand",
+		"ThreeIcecreamStands",
+		"ProfessionalIcecreamStand",
+		"MaxIcecreamAppearance",
 	},
 }
 
@@ -820,6 +834,199 @@ QuestConfig.Quests = {
 		BusinessType = "CoffeeStand",
 		Required = 5,
 		RewardCash = 200_000,
+	},
+
+	--==================================================
+	-- RECIPE: ICE CREAM
+	--==================================================
+	
+	BetterIcecream1 = {
+		DisplayName = "SWEETER SCOOPS",
+	
+		Description =
+			"Upgrade Better Ice Cream once.",
+	
+		Type = "UpgradeLevel",
+	
+		BusinessType = "IcecreamStand",
+	
+		UpgradeName = "SaleValue",
+	
+		Required = 1,
+	
+		RewardCash = 20_000,
+	},
+	
+	BetterIcecream3 = {
+		DisplayName = "PREMIUM FLAVORS",
+	
+		Description =
+			"Reach Better Ice Cream Level 3.",
+	
+		Type = "UpgradeLevel",
+	
+		BusinessType = "IcecreamStand",
+	
+		UpgradeName = "SaleValue",
+	
+		Required = 3,
+	
+		RewardCash = 60_000,
+	},
+	
+	BetterIcecream5 = {
+		DisplayName = "ICE CREAM MASTER",
+	
+		Description =
+			"Reach Better Ice Cream Level 5.",
+	
+		Type = "UpgradeLevel",
+	
+		BusinessType = "IcecreamStand",
+	
+		UpgradeName = "SaleValue",
+	
+		Required = 5,
+	
+		RewardCash = 160_000,
+	},
+	
+	
+	--==================================================
+	-- SERVICE: ICE CREAM
+	--==================================================
+	
+	IcecreamService1 = {
+		DisplayName = "QUICK SCOOPS",
+	
+		Description =
+			"Upgrade Faster Scooping once.",
+	
+		Type = "UpgradeLevel",
+	
+		BusinessType = "IcecreamStand",
+	
+		UpgradeName = "ServingSpeed",
+	
+		Required = 1,
+	
+		RewardCash = 20_000,
+	},
+	
+	IcecreamQueue2 = {
+		DisplayName = "POPULAR ICE CREAM SHOP",
+	
+		Description =
+			"Reach More Seating Level 2.",
+	
+		Type = "UpgradeLevel",
+	
+		BusinessType = "IcecreamStand",
+	
+		UpgradeName = "QueueCapacity",
+	
+		Required = 2,
+	
+		RewardCash = 50_000,
+	},
+	
+	IcecreamService3 = {
+		DisplayName = "EXPERT SCOOPER",
+	
+		Description =
+			"Reach Faster Scooping Level 3.",
+	
+		Type = "UpgradeLevel",
+	
+		BusinessType = "IcecreamStand",
+	
+		UpgradeName = "ServingSpeed",
+	
+		Required = 3,
+	
+		RewardCash = 120_000,
+	},
+	
+	IcecreamService5 = {
+		DisplayName = "FROZEN EXPRESS",
+	
+		Description =
+			"Reach Faster Scooping Level 5.",
+	
+		Type = "UpgradeLevel",
+	
+		BusinessType = "IcecreamStand",
+	
+		UpgradeName = "ServingSpeed",
+	
+		Required = 5,
+	
+		RewardCash = 300_000,
+	},
+	
+	
+	--==================================================
+	-- GROWTH: ICE CREAM
+	--==================================================
+	
+	FirstIcecreamStand = {
+		DisplayName = "ICE CREAM BUSINESS",
+	
+		Description =
+			"Place your first Ice Cream Stand.",
+	
+		Type = "BusinessCount",
+	
+		BusinessType = "IcecreamStand",
+	
+		Required = 1,
+	
+		RewardCash = 60_000,
+	},
+	
+	ThreeIcecreamStands = {
+		DisplayName = "ICE CREAM EMPIRE",
+	
+		Description =
+			"Own 3 Ice Cream Stands at once.",
+	
+		Type = "BusinessCount",
+	
+		BusinessType = "IcecreamStand",
+	
+		Required = 3,
+	
+		RewardCash = 160_000,
+	},
+	
+	ProfessionalIcecreamStand = {
+		DisplayName = "PREMIUM ICE CREAM SHOP",
+	
+		Description =
+			"Reach Ice Cream Stand appearance Level 3.",
+	
+		Type = "AppearanceLevel",
+	
+		BusinessType = "IcecreamStand",
+	
+		Required = 3,
+	
+		RewardCash = 300_000,
+	},
+	
+	MaxIcecreamAppearance = {
+		DisplayName = "FROZEN EMPIRE",
+	
+		Description =
+			"Reach Ice Cream Stand appearance Level 5.",
+	
+		Type = "AppearanceLevel",
+	
+		BusinessType = "IcecreamStand",
+	
+		Required = 5,
+	
+		RewardCash = 800_000,
 	},
 }
 
