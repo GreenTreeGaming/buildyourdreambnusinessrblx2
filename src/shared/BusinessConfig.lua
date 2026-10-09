@@ -255,7 +255,7 @@ local BusinessConfig = {
 			SaleValue = {
 				DisplayName = "Better Hotdogs",
 				Description =
-					"Improve your hotdogs and dramatically increase the value of every sale.",
+					"Tastier hotdogs, bigger profits!",
 				ValueType = "SaleValue",
 
 				Levels = {
@@ -397,7 +397,7 @@ local BusinessConfig = {
 			SaleValue = {
 				DisplayName = "Better Haircuts",
 				Description =
-					"Improve your service quality and dramatically increase what each haircut earns.",
+					"Better haircuts, bigger profits!",
 				ValueType = "SaleValue",
 
 				Levels = {
@@ -540,7 +540,7 @@ local BusinessConfig = {
 			SaleValue = {
 				DisplayName = "Better Coffee",
 				Description =
-					"Use higher-quality ingredients and dramatically increase the value of every order.",
+					"Premium coffee, bigger profits!",
 				ValueType = "SaleValue",
 
 				Levels = {
